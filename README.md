@@ -14,6 +14,8 @@ too technical type constrained languages are creativity breaking or too outrageo
 for some, time are obscures but python is the good old friend, with less constraints 
 and clearer mathematical definitions math are already serious enough as a topic by itself.
 
+https://www.python.org/
+
 </pre>
 </body>
 </html>
