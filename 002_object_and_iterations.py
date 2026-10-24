@@ -18,6 +18,7 @@ class Vec2:
     x: float
     y: float
 
+    # arithmetic operator + - * / ...
     def __add__(self, other: "Vec2") -> "Vec2":
         return Vec2(self.x + other.x, self.y + other.y)
 
@@ -35,22 +36,23 @@ class Vec2:
             raise ZeroDivisionError("cannot divide a vector by zero")
         return Vec2(self.x / k, self.y / k)
 
+    # compute hypotenuse (the length)  
     def length(self) -> float:
         return math.hypot(self.x, self.y)
 
     def dot(self, other: "Vec2") -> float:
         return self.x * other.x + self.y * other.y
-
+    
     def determinant(self, other: "Vec2") -> float:
         return self.x * other.y - self.y * other.x
-
+    # convert the vector at unit circle scale
     def normalized(self) -> "Vec2":
         n = self.length()
         if n == 0.0:
             raise ZeroDivisionError("cannot normalize a zero-length vector")
         return self * (1.0 / n)
 
-
+# main body entry.
 def main() -> int:
 
     # Define some ascii terminal colors
@@ -110,7 +112,6 @@ def main() -> int:
     print(f"Total sum: {yellow}{total}{rst} of {green}{compute_quantity}{rst}. average direction: {total.normalized()}")
 
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())
