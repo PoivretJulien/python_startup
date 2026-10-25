@@ -1,4 +1,5 @@
-"""Simple python object example.
+"""
+Simple python object example.
 
 Objective: demonstrate the python object class definition.
 Subtracting two Vec2 gives a delta Vec2 where the length() method
@@ -15,6 +16,9 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class Vec2:
+    """
+            tool box for a classic Vec2.
+    """
     x: float
     y: float
 
@@ -45,12 +49,17 @@ class Vec2:
     
     def determinant(self, other: "Vec2") -> float:
         return self.x * other.y - self.y * other.x
+
     # convert the vector at unit circle scale
     def normalized(self) -> "Vec2":
         n = self.length()
         if n == 0.0:
             raise ZeroDivisionError("cannot normalize a zero-length vector")
         return self * (1.0 / n)
+
+    # format an entity to str.
+    def to_string(self)->str:
+        return f"Vec2(x:{self.x:3.3f},y:{self.y:3.3f})"
 
 # main body entry.
 def main() -> int:
@@ -76,7 +85,6 @@ def main() -> int:
     else:
         token = "\u274c"
         
-
     # Print the result.
     print(
         f"Vector length: {yellow}{length:3.3f}{rst} "
@@ -97,19 +105,22 @@ def main() -> int:
 
     # Increase value to test computing machine and python capability
     compute_quantity = 50000
-    
+   
+    # Populate vector on x an y respectively 
     for i in range(1, compute_quantity):
         data.append(Vec2(i, 0))
         data.append(Vec2(0, i * (-1)))
     # print(f"{data}")
 
+    # Sum the vectors.
     total = Vec2(0.0, 0.0)
     for v in data:
         total = total + v
 
     # Normalizing the average give the unit circle scale  
-    # representation of the given direction.
-    print(f"Total sum: {yellow}{total}{rst} of {green}{compute_quantity}{rst}. average direction: {total.normalized()}")
+    # representation of the average direction.
+    print(f"Total sum: {yellow}{total}{rst} of {green}{compute_quantity}{rst} "
+          f"average direction: {yellow}{total.normalized().to_string()}{rst}")
 
     return 1
 
