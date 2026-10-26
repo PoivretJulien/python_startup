@@ -10,7 +10,7 @@ but with far, far more technical frictions constraints.
 there we are focusing on theory, not effective mass
 computing applications in a nested context.
 
-quotes:"a clear mind worth more than hours of works for nothing more."
+quotes:"A clear mind worth more than hours of works for nothing more."
 """
 
 from lib.vec2 import Vec2
