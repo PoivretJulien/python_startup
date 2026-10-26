@@ -12,7 +12,7 @@ too technical type constrained languages are creativity breaking or too outrageo
 for some, time are obscures but python is the good old friend, with less constraints 
 and clearer mathematical definitions, math are already serious enough as a whole topic by it self.
 
-Python is slow, clear, easy, algorithmic solid, no memory issue open, source friendly preserving
+Python is slow, clear, easy, algorithmic solid, no memory issue, open source friendly, preserving
 "community asset" (is that still mean something at the hour of IA ?) allowing to share knowledge 
 in peace and make the world evolve around the world beyond any kind of obscurantism, python is 
 the right fit for prototype and theory and should be more than enough 
