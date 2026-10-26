@@ -6,13 +6,14 @@ this time less technique, of course compiled language
 for such computation would be an optimal choice
 for a direct application case,
 but with far more technical frictions constraints,
-we are focusing on theory there, not effective mass 
+we are focusing on theory there, not effective mass
 computing applications.
 
 quotes:"a clear mind worth more than hours of works for nothing more."
 """
 
 from lib.vec2 import Vec2
+from lib.vec3 import Vec3
 import sys
 
 
@@ -39,12 +40,15 @@ def main() -> int:
     identity = [
         [1, 0, 0],
         [0, 1, 0],
+        [0, 0, 1],
     ]
 
     # 45 deg (anticlockwise) + ~30 % scale.
     rotationA = [
         [1, 1, 0],
         [1, -1, 0],
+        [0, 0, 1],
+        
     ]
 
     # Inverse of square root of 2 -> (1/math.sqrt(2))
@@ -54,12 +58,14 @@ def main() -> int:
     rotationB = [
         [inv, -inv, 0],
         [inv, inv, 0],
+        [0, 0, 1],
     ]
 
     # Translation of 3 units on X axis.
     translationA = [
         [1, 0, 3],
         [0, 1, 0],
+        [0, 0, 1],
     ]
 
     # Create a new square memory list
@@ -85,7 +91,64 @@ def main() -> int:
     # Print the transformed square
     print("Translated square on (3 units on x axis)")
     print_the_square(translated_square, blue)
+
+    # combine transformations together.
+    combined_transform = multiply_matrices(identity, translationA)
+    combined_transform = multiply_matrices(combined_transform, rotationB)
+
+    rotated_translated_2d_square = []
+    # Apply the combined rotation + transformation.
+    for i in range(4):
+        rotated_translated_2d_square.append(
+            transform_point(square_2d[i], combined_transform)
+        )
+
+    print_the_square(square_2d, yellow)
+    print_the_square(rotated_translated_2d_square, red)
+
     return 1
+
+
+def multiply_matrices(
+    m_a: list[list[float]], m_b: list[list[float]]
+) -> list[list[float]]:
+    """
+    Combine two 3x3 matrices transformations.
+    -> "the dot product of each m_a row by each m_b column"
+    """
+    # Format the result memory.
+    result = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ]
+
+    # extract row from matrix A
+    a0 = Vec3(m_a[0][0],m_a[0][1],m_a[0][2])
+    a1 = Vec3(m_a[1][0],m_a[1][1],m_a[1][2])
+    a2 = Vec3(m_a[2][0],m_a[2][1],m_a[2][2])
+
+    # extract column from matrix B
+    b0 = Vec3(m_b[0][0],m_b[1][0],m_b[2][0])
+    b1 = Vec3(m_b[0][1],m_b[1][1],m_b[2][1])
+    b2 = Vec3(m_b[0][2],m_b[1][2],m_b[2][2])
+
+
+    # Multiply both matrices together.
+    # first line.
+    result[0][0] = a0.dot(b0)
+    result[0][1] = a0.dot(b1) 
+    result[0][2] = a0.dot(b2)
+    # second line.
+    result[1][0] = a1.dot(b0) 
+    result[1][1] = a1.dot(b1)
+    result[1][2] = a1.dot(b2)
+    # third line.
+    result[2][0] = a2.dot(b0)
+    result[2][1] = a2.dot(b1)
+    result[2][2] = a2.dot(b2)
+    # return the result.
+    return result
 
 
 def transform_point(pt: Vec2, m: list[list[float]]) -> Vec2:
