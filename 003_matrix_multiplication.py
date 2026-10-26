@@ -33,24 +33,40 @@ green = "\x1b[32m"
 
 
 def main() -> int:
+    """
+    In this example a 3x3 matrix will be used for learning 
+    2D transformations.
+     R U T = (Right, UP, Translation) (columns meaning)
+    [1,0,0]
+    [1,0,0]
+    [1,0,0]
+    """
 
     # A simple 2d square
     square_2d = [Vec2(1, 1), Vec2(-1, 1), Vec2(-1, -1), Vec2(1, -1)]
 
-    # Identity matrix.
+    # Identity matrix (neutral not transformation).
+    # simply a diagonal of 1.
     identity = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
     ]
-
+     
     # 45 deg (anticlockwise) + ~30 % scale.
+    # the last collumn is dedicated to the translation 
+    # (no translation  in that case.)
+    # [2][2] = 1 it's the last 1 of the diagonal of 
+    # the identity matrix
     rotationA = [
         [1, 1, 0],
         [1, -1, 0],
         [0, 0, 1],
         
     ]
+    # note: if we remap the orthogonal axis in diagonal 
+    # the determinant grow about 30% 
+    
 
     # Inverse of square root of 2 -> (1/math.sqrt(2))
     inv = 1.4142 * 0.5
