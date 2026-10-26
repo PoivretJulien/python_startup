@@ -18,10 +18,10 @@ import sys
 
 
 # notes:
-# there are no significant differences from a python or c code
-# on such basic fundamental array operations syntax is pretty similar,
+# there are no significant differences between a python or c code
+# on such basic fundamental array operations syntax. is pretty mush similar,
 # only the runtime differ, so from a theory point of view
-# that's all good for simple models.
+# that's what we want for a mental model.
 
 # Define some ascii terminal colors
 yellow = "\x1b[33m"
