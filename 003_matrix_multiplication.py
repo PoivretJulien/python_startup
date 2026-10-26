@@ -36,7 +36,7 @@ def main() -> int:
     """
     In this example a 3x3 matrix will be used for learning 
     2D transformations.
-     R U T = (Right, UP, Translation) (columns meaning)
+     R U T = (Right, Up, Translation) (columns meaning)
     [1,0,0]
     [1,0,0]
     [1,0,0]
