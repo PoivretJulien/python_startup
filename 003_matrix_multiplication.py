@@ -5,7 +5,7 @@ Simple and minimal python script that "crystallize
 this time less technique, of course compiled language
 for such computation would be an optimal choice
 for a direct application case,
-but with far more technical frictions constraint...
+but with far more technical frictions constraints,
 we are focusing on theory there, not effective mass 
 computing applications.
 
