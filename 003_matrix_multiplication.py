@@ -54,9 +54,10 @@ def main() -> int:
     ]
      
     # - 45 deg (anticlockwise) + ~41 % scale ( Eigen vector streching ).
-    # the scare of 1 after transformation would have an edge 1.41  \[\sqrt{2}\] 
+    # the square of 1, after transformation (rotation) would have an half edge of 1.41 sqrt{2}
+    # so each side will strech by ~41,42% 
     # - the last collumn is dedicated to the translation (no translation in that case.)
-    # [2][2] = 1 it's the last 1 of the diagonal of the identity matrix
+    # [2][2] = 1, it's the last 1 of the diagonal of the identity matrix.
     rotationA = [
         [1, 1, 0],
         [1, -1, 0],
