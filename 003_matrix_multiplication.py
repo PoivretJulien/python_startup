@@ -53,7 +53,7 @@ def main() -> int:
         [0, 0, 1],
     ]
      
-    # 45 deg (anticlockwise) + ~30 % scale.
+    # 45 deg (anticlockwise) + ~41 % scale ( Eigen vector streching ).
     # the last collumn is dedicated to the translation 
     # (no translation  in that case.)
     # [2][2] = 1 it's the last 1 of the diagonal of 
