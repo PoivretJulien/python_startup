@@ -3,10 +3,12 @@ The early fundamental of computing:
 -> transformation of a vector by a simple 2x3 matrix
 Simple and minimal python script that "crystallize
 this time less technique, of course compiled language
-for such computation would be an optimal choice for a direct
-an application case but with far more technical frictions constraint
-with nothing about the mathematical issue we are focusing on theory there
-not effective mass computing application.
+for such computation would be an optimal choice
+for a direct application case,
+but with far more technical frictions constraint...
+with nothing really about the mathematical issue,
+we are focusing on theory there not effective mass 
+computing application.
 
 quotes:"a clear mind worth more than hours of works for nothing more."
 """
