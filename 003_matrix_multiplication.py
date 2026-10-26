@@ -92,7 +92,9 @@ def main() -> int:
     print("Translated square on (3 units on x axis)")
     print_the_square(translated_square, blue)
 
-    # combine transformations together.
+    # combine transformations together 
+    # (reverse order must be apply to recreate the same transformation as the
+    # non combined one).
     combined_transform = multiply_matrices(identity, translationA)
     combined_transform = multiply_matrices(combined_transform, rotationB)
 
@@ -132,7 +134,6 @@ def multiply_matrices(
     b0 = Vec3(m_b[0][0],m_b[1][0],m_b[2][0])
     b1 = Vec3(m_b[0][1],m_b[1][1],m_b[2][1])
     b2 = Vec3(m_b[0][2],m_b[1][2],m_b[2][2])
-
 
     # Multiply both matrices together.
     # first line.
