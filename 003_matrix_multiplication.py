@@ -45,7 +45,7 @@ def main() -> int:
     # A simple 2d square
     square_2d = [Vec2(1, 1), Vec2(-1, 1), Vec2(-1, -1), Vec2(1, -1)]
 
-    # 3x3 Identity matrix (neutral not transformation).
+    # 3x3 Identity matrix (neutral no transformation).
     # simply a diagonal of 1.
     identity = [
         [1, 0, 0],
