@@ -77,7 +77,7 @@ def main() -> int:
     print_the_square(rotated_square, green)
     translated_square = []
 
-    # Apply the rotation.
+    # Apply the translation.
     for i in range(4):
         translated_square.append(transform_point(rotated_square[i], translationA))
 
