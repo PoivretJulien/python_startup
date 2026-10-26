@@ -36,10 +36,20 @@ def main() -> int:
     """
     In this example a 3x3 matrix will be used for learning 
     2D transformations.
+    a 3x3 matrix allow to embbed 2d rotation and translation.
+    
      R U T = (Right, Up, Translation) (columns meaning)
     [1,0,0]   R(x axis) become x=1 y=0 
     [0,1,0]   U(y axis) Become x=0 Y=1
     [0,0,0]   this is the 2x2 identity matrix (no change)
+    
+    note:
+    in fact a 2x3 is enought for translation and rotaion
+    but if we want to combine transformations by matrix 
+    multiplications we need to transpose row and columns 
+    and this involve, a squared oredring matrix.
+    (a 3x3 in that case) symetry is indeed needed when swaping 
+    row and column in the matrix multiplication algorithm.
     """
 
     # A simple 2d square
