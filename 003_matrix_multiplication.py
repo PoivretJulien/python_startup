@@ -19,8 +19,8 @@ import sys
 # notes:
 # there are no significant differences from a python or c code
 # on such basic fundamental array operations syntax is pretty similar,
-# only the runtime differ so for a theory point of view
-# that's all good for simple model.
+# only the runtime differ, so from a theory point of view
+# that's all good for simple models.
 
 # Define some ascii terminal colors
 yellow = "\x1b[33m"
