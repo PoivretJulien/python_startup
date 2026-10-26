@@ -6,9 +6,8 @@ this time less technique, of course compiled language
 for such computation would be an optimal choice
 for a direct application case,
 but with far more technical frictions constraint...
-with nothing really about the mathematical issue,
-we are focusing on theory there not effective mass 
-computing application.
+we are focusing on theory there, not effective mass 
+computing applications.
 
 quotes:"a clear mind worth more than hours of works for nothing more."
 """
