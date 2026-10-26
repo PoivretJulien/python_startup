@@ -52,7 +52,7 @@ def main() -> int:
     ]
 
     # Inverse of square root of 2 -> (1/math.sqrt(2))
-    inv = 1.414 * 0.5
+    inv = 1.4142 * 0.5
 
     # 45 deg (anticlockwise) + zero strech.
     rotationB = [
