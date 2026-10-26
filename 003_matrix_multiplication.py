@@ -22,7 +22,7 @@ import sys
 # there are no significant differences between a python or c code
 # on such basic fundamental array operations. it's pretty mush similar,
 # only the runtime differ, so from a theory point of view
-# that's what we want for a mental model.
+# that's what we want for a clear mental model.
 
 # Define some ascii terminal colors
 yellow = "\x1b[33m"
