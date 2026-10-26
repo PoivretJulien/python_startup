@@ -63,9 +63,7 @@ def main() -> int:
         [1, -1, 0],
         [0, 0, 1],
         
-    ]
-    # note: if we remap the orthogonal axis in diagonal 
-    # the determinant grow about 30% 
+    ] 
     
 
     # Inverse of square root of 2 -> (1/math.sqrt(2))
