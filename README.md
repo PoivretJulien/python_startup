@@ -14,7 +14,7 @@ and clearer mathematical definitions, math are already serious enough as a whole
 
 Python is slow, clear, easy, algorithmic solid, no memory issue, open source friendly, preserving
 "community asset" (is that still mean something at the hour of IA ?) allowing to share knowledge 
-in harmony and stimulate the world in evolving pattern around the world beyond any kind of obscurantism, python is 
+in harmony and stimulate the world in evolving pattern around it beyond any kind of obscurantism, python is 
 the right fit for prototype and theory and should be more than enough for rendering a simple cube.
 peace for every one.
 
