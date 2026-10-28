@@ -85,6 +85,8 @@ def main() -> int:
     # but that the price to pay for a better performances directly driven from python.
     # ( but i'm there for clarity not performance. even if the demonstration worth it 
     # it's another layer of technicality over the math and geometry theory)
+    # pragmatically, better to focus on real math theory and let ia make the optimal 
+    # choice it's where ia driven by python may be the optimal choice.
     # -------------------------------------------------------------
     rng = np.random.default_rng(0)                                                                                    
                                                                                                                      
