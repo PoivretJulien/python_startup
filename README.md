@@ -28,11 +28,8 @@ and finally successfully duplicate local success where it deserve in other local
 to improve the process again and the world by this simple iterative behavior.
 
 
-
-
-
-
 https://www.python.org/
+https://docs.arduino.cc/
 
 </pre>
 </body>
