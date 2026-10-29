@@ -1,0 +1,19 @@
+# Modern tutorial stack (works on Linux / macOS / Windows, Python >= 3.11).
+# All of these ship binary wheels for cp311+ on the three platforms.
+
+# Windowing + input + GL context creation. The wheel bundles the GLFW C library,
+# so no system-level "glfw-devel" package is required.
+glfw>=2.7,<3
+
+# Python bindings for OpenGL (2.x/3.x entry points used by the tutorials).
+PyOpenGL>=3.1.7
+
+# Vector/matrix math used by every non-legacy script.
+numpy>=1.26
+
+# PNG texture loading (video_10 / video_11).
+Pillow>=10.1
+
+# Optional, strongly recommended on CPython: C-accelerated OpenGL call layer.
+# Falls back to the pure-python path if the wheel is unavailable.
+PyOpenGL-accelerate>=3.1.7; platform_python_implementation == "CPython"
