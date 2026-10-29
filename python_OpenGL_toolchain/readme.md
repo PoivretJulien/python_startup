@@ -3,9 +3,9 @@
 <body>
 <pre>
     The toolchain:  Python, OpenGl, GLF
-          https://www.glfw.org/
-          https://www.opengl.org/
-          https://www.python.org/
+    https://www.glfw.org/
+    https://www.opengl.org/
+    https://www.python.org/
 </pre>
 </body>
 </html>
