@@ -13,8 +13,9 @@ of course at some point python will can't keep up anymore,
 because of it's non compiled nature.
 but this can be specifically managed by a compiled software infrastructure
 when the time will come, with real context, anticipated situation,
-real way to finance the development cost, and the real knowledge of the
-shaders fundamentals programming which are the key of gpu computing.
+real way to finance the development cost, and more importantly 
+the real knowledge of the shaders programming fundamentals 
+which are the key of gpu computing.
 
 no point to start your workout directly with the 'pro' dumbbell
 because this is what's really it is... for instance the low api Vulkan involve
@@ -28,8 +29,8 @@ micro python computing vision ect, even if you are a low level expert in
 the language of you choice, python still a pretty good tool to have
 in you tool box, very complete, very math friendly, fast to deploy,
 for shaping algorithmic prototype, ia agent routines, or simply focusing on
-the math of gpu shader.
-it's a win of time and far more convenient for the mental model 
+the math of gpu shaders.
+it's a win of time and a far more convenient for the mental model 
 which is the real target of effectiveness.
 
 -- the Key force: Easy deployment.
@@ -126,7 +127,7 @@ def main() -> int:
     glClearColor(0.6, 0.3, 0.9, 1.0) # a purple custom clear color.
     frames = 0
     fps_window, fps_frames = 0.5, 0
-    last = glfw.get_time()
+    last = glfw.get_time() # first time stamp in seconds
 
     # 5. The loop: events -> draw -> present. Never busy-wait, never sleep.
     # later a better system will manage power more efficiently but for now 
@@ -138,7 +139,7 @@ def main() -> int:
         # frame counter increment.
         frames += 1
         fps_frames += 1 
-        now = glfw.get_time()
+        now = glfw.get_time() # time stamp in seconds.
         # window and terminal fps display feedback.
         if now - last > fps_window:  # cheap FPS readout, no allocation per frame
             glfw.set_window_title(window, f"step 01 — {fps_frames / (now - last):.0f} fps")
