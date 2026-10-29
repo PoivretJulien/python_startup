@@ -11,6 +11,15 @@ there we are focusing on theory, not effective mass
 computing applications in a nested context.
 
 quotes:"A clear mind worth more than hours of works for nothing more."
+
+what could make the difference is when you implement it yourself 
+an start to draw your tansformed values on you own system
+you need to have pane less means, that let you focus on the 
+methodology and math it will be only there where things could 
+become timeless, make those notions your own some how... 
+
+( in further examples i will establish the means to build this 
+for the sake of our own souls. )
 """
 
 from lib.vec2 import Vec2
