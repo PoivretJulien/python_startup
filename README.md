@@ -19,12 +19,12 @@ Python is slow, clear, easy, algorithmic solid, no memory issue, open source fri
 preserving "community asset" (is that still mean something at the hour of IA ?) allowing 
 community to share knowledge in harmony and stimulate competence to apply and develop locality 
 where at my sense are the only place where money and service feed back should come from, i mean 
-no point to have ia stimulate articulated workflow if no kind of competences can flourish in your 
+no point to have ia to stimulate articulated workflow if no kind of competences can flourish in your 
 locality right ? 
 
 The Clear Objective:
 Leverage python to build complete pedagogical map of virtual reality, unlocking simulation,
-geometry, mathematic interactivity, graphical simulation and measurement to finally build 
+geometry, mathematic interactivity, graphical simulation and measurements to finally build 
 an effective software development probe to map technology and real interactions, 
 synchronized in space and time with the appropriate accuracy 
 and finally successfully duplicate local success where it deserve in other locality, 
