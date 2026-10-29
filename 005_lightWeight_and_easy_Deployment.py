@@ -122,6 +122,7 @@ def main() -> int:
         print(f"  {label:<9} {gl_string(enum)}")
 
     # Set some even loop runtime parameters.
+    # there a custom rgba value from 0.0 to 1.0 mapping from 0 to 255 each. 
     glClearColor(0.6, 0.3, 0.9, 1.0) # a purple custom clear color.
     frames = 0
     fps_window, fps_frames = 0.5, 0
