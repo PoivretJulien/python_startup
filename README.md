@@ -23,11 +23,32 @@ no point to have ia stimulate articulated workflow if no kind of competences can
 locality right ? 
 
 The Clear Objective:
-Leverage python to build complete pedagogical map of virtual reality, unlocking simulation, geometry, mathematic
-interactivity, graphical simulation and measurement to finally build an effective software development probe to 
-map technology and real interactions, synchronized in space and time with the appropriate accuracy 
+Leverage python to build complete pedagogical map of virtual reality, unlocking simulation,
+geometry, mathematic interactivity, graphical simulation and measurement to finally build 
+an effective software development probe to map technology and real interactions, 
+synchronized in space and time with the appropriate accuracy 
 and finally successfully duplicate local success where it deserve in other locality, 
 to improve the process again and the world by this simple iterative behavior.
+
+How to install the toolchain and run the programs:
+
+step 1: 
+       install python, 
+step 2:
+      make a new folder with the name of you choice 
+      ( the current project will run locally embedded
+      inside this runtime folder )
+step 3: 
+      copy and run the install script ( corresponding to you os )
+      from the python_OpenGL_toolchain folder inside you new project folder. 
+      ( run it twice to be sure that everything are well installed )
+      a python check_env.py can be run inside this folder with 
+      ./venv/bin/python check_env.py for self auto diagnostic of the 
+      toolschain of your embedded folder. (simply copy and paste it inside)
+step 4:
+      copy and paste the examples of this repository the '.py' script
+      and run it with the local folder tool chain with:
+      ./.venv/bin/python script_example.py
 
 <a href="https://www.example.com">
   <img src="image/logo.jpg" alt="">
