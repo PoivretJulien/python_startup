@@ -21,7 +21,7 @@
     more than 1000 lines to shade a single triangle. 
     do you really need this for just one triangle or ( 50 objects 3 light one
     camera ? do you have the arms of a vulkan daily body builder to move 
-    irons 3d cubes will you enjoy it without a map of the context ? )
+    irons 3d cubes, will you enjoy it ? (without a map of the context...) )
 
     python is great for ia development Pytorch, TensorFlow, embedded edge IA,
     micro python computing vison ect, even if you are a low level expert in 
