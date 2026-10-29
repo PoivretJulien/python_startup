@@ -5,7 +5,7 @@
 <body>
 <pre>
 
-                           work in progress the current WORK is not ready 
+                      
   
 Quotes: "Working hard without wasting time is Art !"
 
