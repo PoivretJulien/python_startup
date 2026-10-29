@@ -125,7 +125,7 @@ def main() -> int:
     print("Translated square on (3 units on x axis)")
     print_the_square(translated_square, blue)
 
-    # combine transformations together 
+    # Combine transformations together 
     # (reverse order must be apply to recreate the same transformation as the
     # non combined one).
     combined_transform = multiply_matrices(identity, translationA)
