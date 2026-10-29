@@ -26,8 +26,8 @@
     python is great for ia development Pytorch, TensorFlow, embedded edge IA,
     micro python computing vison ect, even if you are a low level expert in 
     the language of you choice, python still a pretty good tool to have 
-    in you tool box, very complete, very math friendly, fast to deploy 
-    shaping algorithmic prototype, ia agent routines, or simply focusing on 
+    in you tool box, very complete, very math friendly, fast to deploy, 
+    for shaping algorithmic prototype, ia agent routines, or simply focusing on 
     the math of gpu shader it's a win of time and for more convenient for the
     mental model which is the real target for being effective.
 
