@@ -2,7 +2,7 @@
     IMPORTANT TO KNOW WHY:
 
     -- 3d space and multi scalars graphical evaluation --
-    from robotic to statical simulation, 3d graphic are the 
+    from robotic to statistical simulation, 3d graphic are the 
     core of the software engineering and any interactions 
     feed back: forces, interactions, spacial orientation, 
     augmented reality...
