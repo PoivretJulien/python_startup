@@ -45,7 +45,7 @@ copy and run the install script ( corresponding to you os )
 from the python_OpenGL_toolchain folder inside you new project folder. 
 ( run it twice to be sure that everything are well installed )
 a python check_env.py can be run inside this folder with 
-./venv/bin/python check_env.py for self auto diagnostic of the 
+./.venv/bin/python check_env.py for self auto diagnostic of the 
 toolschain of your embedded folder. (simply copy and paste it inside)
 
 step 4:
