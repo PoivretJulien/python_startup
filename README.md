@@ -50,7 +50,7 @@ toolschain of your embedded folder. (simply copy and paste it inside)
 
 step 4:
 copy and paste the examples of this repository the '.py' script
-and run it with the local folder tool chain with:
+and run it with the local folder toolschain with:
 ./.venv/bin/python script_example.py
 
 <a href="https://www.example.com">
