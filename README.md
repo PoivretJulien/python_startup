@@ -29,6 +29,9 @@ map technology and real interactions, synchronized in space and time with the ap
 and finally successfully duplicate local success where it deserve in other locality, 
 to improve the process again and the world by this simple iterative behavior.
 
+<a href="https://www.example.com">
+  <img src="image/logo.webp" alt="">
+</a>
 
 https://www.python.org/
 https://docs.arduino.cc/
