@@ -28,8 +28,9 @@ micro python computing vision ect, even if you are a low level expert in
 the language of you choice, python still a pretty good tool to have
 in you tool box, very complete, very math friendly, fast to deploy,
 for shaping algorithmic prototype, ia agent routines, or simply focusing on
-the math of gpu shader it's a win of time and far more convenient for the
-mental model which is the real target of effectiveness.
+the math of gpu shader.
+it's a win of time and far more convenient for the mental model 
+which is the real target of effectiveness.
 
 -- the Key force: Easy deployment.
 height level flexibility open source by nature (not a compiled language)
