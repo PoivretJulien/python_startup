@@ -36,7 +36,7 @@ step 1:
 install python
 
 step 2:
-make a new folder with the name of you choice 
+make a new folder with the name of your choice 
 ( the current project will run locally embedded
 inside this runtime folder )
 
