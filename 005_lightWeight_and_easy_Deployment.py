@@ -24,7 +24,7 @@
     irons 3d cubes, will you enjoy it ? (without a map of the context...) )
 
     python is great for ia development Pytorch, TensorFlow, embedded edge IA,
-    micro python computing vison ect, even if you are a low level expert in 
+    micro python computing vision ect, even if you are a low level expert in 
     the language of you choice, python still a pretty good tool to have 
     in you tool box, very complete, very math friendly, fast to deploy, 
     for shaping algorithmic prototype, ia agent routines, or simply focusing on 
