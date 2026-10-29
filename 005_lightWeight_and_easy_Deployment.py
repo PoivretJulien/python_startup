@@ -12,7 +12,7 @@
     of course at some point python will can't keep up anymore, 
     because of it's non compiled nature.
     but this can be specifically managed by a compiled software infrastructure 
-    when the time will come with real context, anticipated situation, 
+    when the time will come, with real context, anticipated situation, 
     real way to finance the development cost, and the real knowledge of the
     shaders fundamentals programming which are the key of gpu computing.
 
