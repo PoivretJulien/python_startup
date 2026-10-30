@@ -89,7 +89,7 @@ def main() -> int:
         """
         -> update the arrow on terminal console only if a significant move occur
         """
-        # boolean predicate if hypotenuse is bigger or equalt than a threshold
+        # boolean predicate if hypotenuse is bigger or equal than a threshold
         moved = (
             last_printed is None
             or math.hypot(tip[0] - last_printed[0], tip[1] - last_printed[1]) >= PRINT_STEP
