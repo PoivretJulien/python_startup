@@ -34,7 +34,7 @@ from window import close_window, create_window, cursor_world
          
          - blender geometry node is not optimal to 
          play with matrix multiplications at least the python option ( the
-         scripted one ) provide the last degree of freedom. 
+         scripted one ) provide the last degree of freedom needed. 
          
          info: ( the inner GPU acceleration already provide simple shaders 
          quickly compiled from this simple 2d python application ).
