@@ -54,7 +54,7 @@ def analog_display(
     seconds: float,
 ) -> None:
     """
-        Simply draw and analog time watch representation.
+        Simply draw an analog time watch representation.
     """
     seconds_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * seconds)
     number_of_minutes = seconds / 60
