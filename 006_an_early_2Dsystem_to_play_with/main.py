@@ -39,6 +39,7 @@ from window import close_window, create_window, cursor_world
 """
 
 yellow = "\x1b[033m"
+purple = "\x1b[035m"
 rst = "\x1b[0m"
 
 def main() -> int:
@@ -84,7 +85,7 @@ def main() -> int:
         # renderer.draw_arrow((1,1), (3,3), (1,1,0)) 
 
         """
-        -> update the the arrow position on terminal only if a significant move occur
+        -> update the the arrow on terminal only if a significant move occur
         """
         # boolean predicate if hypotenuse is bigger or equalt than a threshold
         moved = (
@@ -95,7 +96,8 @@ def main() -> int:
         if clicked or (PRINT_STEP > 0 and moved):
             px, py = glfw.get_cursor_pos(window)
             sys.stdout.write(
-                f"{yellow}\r\x1b[1;3H\x1b[Karrow ({origin[0]:+.2f}, {origin[1]:+.2f}) -> "
+                    f"{yellow}\r\x1b[4;0H\x1b[K click "
+                    f"state:{purple}{clicked}{yellow} origin ({origin[0]:+.2f}, {origin[1]:+.2f}) -> "
                 f"tip ({tip[0]:+.2f}, {tip[1]:+.2f})   "
                 f"cursor px ({px:.0f}, {py:.0f}) = world ({raw[0]:+.2f},{raw[1]:+.2f}){rst}"
             )
