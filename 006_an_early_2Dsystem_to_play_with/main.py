@@ -46,12 +46,13 @@ def main() -> int:
 
     # Create a window object instance.
     window = create_window()
+
     # Create 2d System app instance.
     # ( not the subject there so the Api abstraction is fine for now)
     # ( we should know already how to create a 2d system in a wished orientation )
     renderer = GridArrowRenderer(window)
 
-    # vector standard 2d coordinates.
+    # Vector standard 2d coordinates.
     origin = (0.0, 0.0)  # arrow tail: edit this coordinate to move the arrow
     arrow_color = ARROW_COLOR  # edit to recolour the arrow, e.g. (1.0, 0.3, 0.1)
 
@@ -85,7 +86,7 @@ def main() -> int:
         # renderer.draw_arrow((1,1), (3,3), (1,1,0)) 
 
         """
-        -> update thearrow on terminal console only if a significant move occur
+        -> update the arrow on terminal console only if a significant move occur
         """
         # boolean predicate if hypotenuse is bigger or equalt than a threshold
         moved = (
