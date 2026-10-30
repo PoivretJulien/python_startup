@@ -112,7 +112,7 @@ def main() -> int:
         glClear(GL_COLOR_BUFFER_BIT)  # the technical location of the buffer bit in memory
         renderer.draw_grid()
        
-       # draw arrow from origin to cursor position
+        # draw arrow from origin to cursor position
         # renderer.draw_arrow(origin, tip, arrow_color)
 
         # draw a circle.
