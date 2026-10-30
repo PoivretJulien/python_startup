@@ -68,7 +68,8 @@ def main() -> int:
     sys.stdout.write("\x1b[2J")  # clear the screen.
     # ------------------------------------------------------------------
     # Events loop shape: events -> clear -> draw -> present.
-    # Everything between clear and swap is the customizable scene.
+    # Everything between clear and swap can be customized and rendered at 
+    # each frames.
     # ------------------------------------------------------------------
     while not glfw.window_should_close(window):
         glfw.poll_events()
