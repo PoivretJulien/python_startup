@@ -129,7 +129,7 @@ def main() -> int:
         analog_display(renderer, elapsed_second)
 
         # create/display an array of vectors pointing in the direction of the cursor
-        # sub optimal some variables may be declared outside the loop for perf boost
+        # sub optimal some variables may be declared outside the events loop for perf boost
         # for the sake of the demonstration it's perfectly fine.
         step = 0.3
         array_x,array_y = (10,5)
