@@ -128,6 +128,19 @@ def main() -> int:
         # the above function, parameters: application instance, origin, seconds...
         analog_display(renderer, elapsed_second)
 
+        # create/display an array of vectors pointing in the direction of the
+        # cursor difference from origin (0,0)
+        cx,cy = tip
+        length = math.sqrt(cx*cx + cy*cy)
+        normalized_dir = (cx/length,cy/length)
+        array_x,array_y = (10,5)
+        anchor_x,anchor_y = (1.2,-1.8)
+        for i in range(0,array_x):
+            for j in range(0,array_y):
+                from_pt = (anchor_x+(i*0.3),anchor_y+(-j*0.3))
+                to_pt = (from_pt[0]+normalized_dir[0],from_pt[1]+normalized_dir[1])
+                renderer.draw_arrow(from_pt,to_pt)
+
         """
         -> update the arrow on terminal console only if a significant move occur
         """
