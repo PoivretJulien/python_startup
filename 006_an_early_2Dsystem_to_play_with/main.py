@@ -78,7 +78,7 @@ def main() -> int:
         tip = clamp_to_grid(raw)  # arrow endpoint, kept inside the grid
         mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
         clicked = mouse_down and not mouse_was_down  # rising edge, not held
-
+        # clear the screen
         glClear(GL_COLOR_BUFFER_BIT) # the technical location of the buffer bits in memory
         renderer.draw_grid()  
         # draw arrow from origin to cursor position
