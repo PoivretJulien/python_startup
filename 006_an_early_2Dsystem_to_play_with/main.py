@@ -51,10 +51,11 @@ OCLOCK = math.pi * 0.5
 
 def analog_display(
     system: GridArrowRenderer,
-    system_origin: tuple[float, float],
     seconds: float,
 ) -> None:
-
+    """
+        Simply draw and analog time watch representation.
+    """
     seconds_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * seconds)
     number_of_minutes = seconds / 60
     minutes_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * number_of_minutes)
@@ -64,10 +65,10 @@ def analog_display(
     sx, sy = (math.cos(seconds_angle), math.sin(seconds_angle))
     mx, my = (math.cos(minutes_angle), math.sin(minutes_angle))
     hx, hy = (math.cos(hours_angle), math.sin(hours_angle))
-
-    system.draw_arrow(system_origin, (sx * 1.7, sy * 1.7), (1, 0, 0))
-    system.draw_arrow(system_origin, (mx * 1.3, my * 1.3), (1, 1, 0))
-    system.draw_arrow(system_origin, (hx, hy), (1, 0, 1))
+    
+    system.draw_arrow((0,0), (sx * 1.7, sy * 1.7), (1, 0, 0))
+    system.draw_arrow((0,0), (mx * 1.3, my * 1.3), (1, 1, 0))
+    system.draw_arrow((0,0), (hx, hy), (1, 0, 1))
 
 
 def main() -> int:
@@ -116,16 +117,16 @@ def main() -> int:
 
         # draw a circle.
         renderer.draw_circle((0, 0), 1.8, (1, 1, 0))
-        # draw hours markers
+        # draw 12 hours markers from a simple loop.
         for i in range(1, 13):
             dx, dy = (math.cos(ONE_HOUR_OFFSET * i) * 1.3, math.sin(ONE_HOUR_OFFSET * i) * 1.3)
             renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0),0.05)
 
-        # get the elapsed seconds
+        # get the elapsed seconds from the program start.
         elapsed_second = glfw.get_time() - start
         elapsed_second *= 100  # speed up the time by this scalar.
-        # the above function application instance, origin, seconds...
-        analog_display(renderer, (0, 0), elapsed_second)
+        # the above function, parameters: application instance, origin, seconds...
+        analog_display(renderer, elapsed_second)
 
         """
         -> update the arrow on terminal console only if a significant move occur
