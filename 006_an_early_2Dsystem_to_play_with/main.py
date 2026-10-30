@@ -23,7 +23,7 @@ from window import close_window, create_window, cursor_world
 
          ( the abstraction embedded in the api there is fine and not relevant at this
          early stage )
-         note:we should already know how to create a 2d system in a 
+         note: we should already know how to create a 2d system in a 
          wished orientation from the geometry node series )
          
          *** 
