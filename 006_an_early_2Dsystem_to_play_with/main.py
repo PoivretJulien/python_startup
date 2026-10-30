@@ -79,7 +79,7 @@ def main() -> int:
         mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
         clicked = mouse_down and not mouse_was_down  # rising edge, not held
         # clear the screen
-        glClear(GL_COLOR_BUFFER_BIT) # the technical location of the buffer bits in memory
+        glClear(GL_COLOR_BUFFER_BIT) # the technical reference of the buffer bits in gpu memory
         renderer.draw_grid()  
         # draw arrow from origin to cursor position
         renderer.draw_arrow(origin, tip, arrow_color) 
