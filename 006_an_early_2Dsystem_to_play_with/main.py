@@ -84,7 +84,7 @@ def main() -> int:
         # renderer.draw_arrow((1,1), (3,3), (1,1,0)) 
 
         """
-        -> update the the arrow only if a significant move occur
+        -> update the the arrow position on terminal only if a significant move occur
         """
         # boolean predicate if hypotenuse is bigger or equalt than a threshold
         moved = (
