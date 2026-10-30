@@ -37,7 +37,7 @@ from window import close_window, create_window, cursor_world
          scripted one ) provide the last degree of freedom. 
          
          info: ( the inner GPU acceleration already provide simple shaders 
-         quickly compiled form this simple 2d python application ).
+         quickly compiled from this simple 2d python application ).
 """
 
 yellow = "\x1b[033m"
