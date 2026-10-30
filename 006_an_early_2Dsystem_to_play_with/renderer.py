@@ -74,6 +74,48 @@ class GridArrowRenderer:
         self._bind_scale()
         self.arrow.draw()
 
+    def draw_line(
+        self,
+        start: geometry.Point,
+        tip: geometry.Point,
+        color: geometry.Color = ARROW_COLOR,
+        thickness: float = 0.0,
+    ) -> None:
+        """Draw a vector without an arrow head (a plain line segment).
+
+        ``thickness`` is in world units; ``0`` keeps the thin GL_LINES path.
+        """
+        if thickness > 0.0:
+            self.arrow.upload(
+                geometry.thick_line_vertices(start, tip, thickness, color=color),
+                GL_DYNAMIC_DRAW,
+            )
+            self._bind_scale()
+            self.arrow.draw_triangles()
+            return
+
+        self.arrow.upload(
+            geometry.line_vertices(start, tip, color=color),
+            GL_DYNAMIC_DRAW,
+        )
+        self._bind_scale()
+        self.arrow.draw()
+
+    def draw_circle(
+        self,
+        center: geometry.Point,
+        radius: float,
+        color: geometry.Color = ARROW_COLOR,
+        segments: int = 64,
+    ) -> None:
+        """Draw a circle outline centered at `center` with `radius` world units."""
+        self.arrow.upload(
+            geometry.circle_vertices(center, radius, color=color, segments=segments),
+            GL_DYNAMIC_DRAW,
+        )
+        self._bind_scale()
+        self.arrow.draw()
+
     def close(self) -> None:
         self.arrow.destroy()
         self.grid.destroy()

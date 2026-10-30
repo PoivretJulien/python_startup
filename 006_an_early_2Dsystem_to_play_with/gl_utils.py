@@ -14,6 +14,7 @@ from OpenGL.GL import (
     GL_LINES,
     GL_LINK_STATUS,
     GL_STATIC_DRAW,
+    GL_TRIANGLES,
     GL_VERTEX_SHADER,
     glAttachShader,
     glBindBuffer,
@@ -102,6 +103,13 @@ class Lines:
             return
         glBindVertexArray(self.vao)
         glDrawArrays(GL_LINES, 0, self.count)
+
+    def draw_triangles(self) -> None:
+        """Draw the uploaded vertices as GL_TRIANGLES instead of GL_LINES."""
+        if not self.count:
+            return
+        glBindVertexArray(self.vao)
+        glDrawArrays(GL_TRIANGLES, 0, self.count)
 
     def destroy(self) -> None:
         glDeleteBuffers(1, [self.vbo])

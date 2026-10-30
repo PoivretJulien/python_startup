@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import math
-import glfw
 import sys
+
+import glfw
 from geometry import clamp_to_grid
 from OpenGL.GL import GL_COLOR_BUFFER_BIT, glClear, glClearColor
 from renderer import GridArrowRenderer
@@ -42,6 +44,32 @@ yellow = "\x1b[033m"
 purple = "\x1b[035m"
 rst = "\x1b[0m"
 
+ONE_HOUR_OFFSET = math.tau / 12
+ONE_SECOND_MINUTE_OFFSET = math.tau / 60
+OCLOCK = math.pi * 0.5
+
+
+def analog_display(
+    system: GridArrowRenderer,
+    system_origin: tuple[float, float],
+    seconds: float,
+) -> None:
+
+    seconds_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * seconds)
+    number_of_minutes = seconds / 60
+    minutes_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * number_of_minutes)
+    number_of_hours = number_of_minutes / 60
+    hours_angle = OCLOCK - (ONE_HOUR_OFFSET * number_of_hours)
+
+    sx, sy = (math.cos(seconds_angle), math.sin(seconds_angle))
+    mx, my = (math.cos(minutes_angle), math.sin(minutes_angle))
+    hx, hy = (math.cos(hours_angle), math.sin(hours_angle))
+
+    system.draw_arrow(system_origin, (sx * 1.7, sy * 1.7), (1, 0, 0))
+    system.draw_arrow(system_origin, (mx * 1.3, my * 1.3), (1, 1, 0))
+    system.draw_arrow(system_origin, (hx, hy), (1, 0, 1))
+
+
 def main() -> int:
 
     # Create a window object instance.
@@ -64,11 +92,12 @@ def main() -> int:
     BACKGROUND = (0.06, 0.06, 0.07)
     # *BACKGOUND mean unpacking the tuple value
     glClearColor(*BACKGROUND, 1.0)
+    start = glfw.get_time()
 
     sys.stdout.write("\x1b[2J")  # clear the screen.
     # ------------------------------------------------------------------
     # Events loop shape: events -> clear -> draw -> present.
-    # Everything between clear and swap can be customized and rendered at 
+    # Everything between clear and swap can be customized and rendered at
     # each frames.
     # ------------------------------------------------------------------
     while not glfw.window_should_close(window):
@@ -78,18 +107,30 @@ def main() -> int:
         tip = clamp_to_grid(raw)  # arrow endpoint, kept inside the grid
         mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
         clicked = mouse_down and not mouse_was_down  # rising edge, not held
-        # clear the screen
-        glClear(GL_COLOR_BUFFER_BIT) # the technical reference of the buffer bits in gpu memory
-        renderer.draw_grid()  
-        # draw arrow from origin to cursor position
-        renderer.draw_arrow(origin, tip, arrow_color) 
-        # a second arrow
-        # renderer.draw_arrow((1,1), (3,3), (1,1,0)) 
+
+        glClear(GL_COLOR_BUFFER_BIT)  # the technical location of the buffer bit in memory
+        renderer.draw_grid()
+       
+       # draw arrow from origin to cursor position
+        # renderer.draw_arrow(origin, tip, arrow_color)
+
+        # draw a circle.
+        renderer.draw_circle((0, 0), 1.8, (1, 1, 0))
+        # draw hours markers
+        for i in range(1, 13):
+            dx, dy = (math.cos(ONE_HOUR_OFFSET * i) * 1.3, math.sin(ONE_HOUR_OFFSET * i) * 1.3)
+            renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0),0.05)
+
+        # get the elapsed seconds
+        elapsed_second = glfw.get_time() - start
+        elapsed_second *= 100  # speed up the time by this scalar.
+        # the above function application instance, origin, seconds...
+        analog_display(renderer, (0, 0), elapsed_second)
 
         """
         -> update the arrow on terminal console only if a significant move occur
         """
-        # boolean predicate if hypotenuse is bigger or equal than a threshold
+        # boolean predicate if hypotenuse is bigger or equalt than a threshold
         moved = (
             last_printed is None
             or math.hypot(tip[0] - last_printed[0], tip[1] - last_printed[1]) >= PRINT_STEP
@@ -98,10 +139,10 @@ def main() -> int:
         if clicked or (PRINT_STEP > 0 and moved):
             px, py = glfw.get_cursor_pos(window)
             sys.stdout.write(
-                    f"{yellow}\r\x1b[4;0H\x1b[KClick "
-                    f"state:{purple}{clicked}{yellow}, Origin: ({origin[0]:+.2f}, {origin[1]:+.2f}) -> "
-                    f"tip: ({tip[0]:+.2f}, {tip[1]:+.2f})   "
-                    f"cursor: px ({px:.0f}, {py:.0f}) = world ({raw[0]:+.2f},{raw[1]:+.2f}){rst}"
+                f"{yellow}\r\x1b[4;0H\x1b[KClick "
+                f"state:{purple}{clicked}{yellow}, Origin: ({origin[0]:+.2f}, {origin[1]:+.2f}) -> "
+                f"tip: ({tip[0]:+.2f}, {tip[1]:+.2f})   "
+                f"cursor: px ({px:.0f}, {py:.0f}) = world ({raw[0]:+.2f},{raw[1]:+.2f}){rst}"
             )
             sys.stdout.flush()
             last_printed = tip

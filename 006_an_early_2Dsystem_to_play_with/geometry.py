@@ -83,6 +83,68 @@ def arrow_vertices(
     return np.array(rows, dtype=np.float32).reshape(-1, 6)
 
 
+def line_vertices(
+    start: Point,
+    tip: Point,
+    *,
+    color: Color = ARROW_COLOR,
+) -> np.ndarray:
+    """A plain segment: no arrow head and no tail marker."""
+    rows = [(*start, 0.0, *color), (*tip, 0.0, *color)]
+    return np.array(rows, dtype=np.float32).reshape(-1, 6)
+
+
+def thick_line_vertices(
+    start: Point,
+    tip: Point,
+    thickness: float,
+    *,
+    color: Color = ARROW_COLOR,
+) -> np.ndarray:
+    """A line segment expanded into a quad (two triangles).
+
+    ``thickness`` is in world units, the same units as ``start`` and ``tip``.
+    """
+    sx, sy = start
+    tx, ty = tip
+    dx, dy = tx - sx, ty - sy
+    length = math.hypot(dx, dy)
+    if length < 1e-9 or thickness <= 0.0:
+        # Degenerate segment: six identical vertices draw nothing.
+        rows = [(*start, 0.0, *color)] * 6
+        return np.array(rows, dtype=np.float32).reshape(-1, 6)
+
+    nx, ny = -dy / length, dx / length
+    half = thickness * 0.5
+    a = (sx + nx * half, sy + ny * half, 0.0, *color)
+    b = (sx - nx * half, sy - ny * half, 0.0, *color)
+    c = (tx + nx * half, ty + ny * half, 0.0, *color)
+    d = (tx - nx * half, ty - ny * half, 0.0, *color)
+    rows = [a, b, d, a, d, c]
+    return np.array(rows, dtype=np.float32).reshape(-1, 6)
+
+
+def circle_vertices(
+    center: Point,
+    radius: float,
+    *,
+    color: Color = ARROW_COLOR,
+    segments: int = 64,
+) -> np.ndarray:
+    """A closed circle outline, as GL_LINES pairs between consecutive points."""
+    cx, cy = center
+    segments = max(3, int(segments))
+    rows: list[tuple[float, ...]] = []
+    for i in range(segments):
+        a = math.tau * i / segments
+        b = math.tau * (i + 1) / segments
+        rows += [
+            (cx + radius * math.cos(a), cy + radius * math.sin(a), 0.0, *color),
+            (cx + radius * math.cos(b), cy + radius * math.sin(b), 0.0, *color),
+        ]
+    return np.array(rows, dtype=np.float32).reshape(-1, 6)
+
+
 def half_extents(width: float, height: float, half: float = HALF) -> tuple[float, float]:
     """World units visible from the centre on x and y — at least `half` on both."""
     aspect = max(width, 1.0) / max(height, 1.0)
