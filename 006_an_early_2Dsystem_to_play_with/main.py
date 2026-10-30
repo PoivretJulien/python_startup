@@ -128,16 +128,18 @@ def main() -> int:
         # the above function, parameters: application instance, origin, seconds...
         analog_display(renderer, elapsed_second)
 
-        # create/display an array of vectors pointing in the direction of the
-        # cursor difference from origin (0,0)
-        cx,cy = tip
-        length = math.sqrt(cx*cx + cy*cy)
-        normalized_dir = (cx/length,cy/length)
+        # create/display an array of vectors pointing in the direction of the cursor
+        step = 0.3
         array_x,array_y = (10,5)
-        anchor_x,anchor_y = (1.2,-1.8)
+        anchor_x,anchor_y = (1.2,-2.6)
+        mid_x,mid_y = (anchor_x+(array_x*0.45*step) ,anchor_y-(array_y*0.4*step))
+        cx,cy = tip
+        dx,dy = (cx-mid_x,cy-mid_y)
+        length = math.sqrt(dx*dx + dy*dy)
+        normalized_dir = (dx/length,dy/length)
         for i in range(0,array_x):
             for j in range(0,array_y):
-                from_pt = (anchor_x+(i*0.3),anchor_y+(-j*0.3))
+                from_pt = (anchor_x+(i*step),anchor_y+(-j*step))
                 to_pt = (from_pt[0]+normalized_dir[0],from_pt[1]+normalized_dir[1])
                 renderer.draw_arrow(from_pt,to_pt)
 
