@@ -7,7 +7,8 @@ import glfw
 from geometry import clamp_to_grid
 from OpenGL.GL import GL_COLOR_BUFFER_BIT, glClear, glClearColor
 from renderer import GridArrowRenderer
-from settings import ARROW_COLOR, PRINT_STEP
+from renderer_aa import AAGridArrowRenderer
+from settings import ARROW_COLOR, PRINT_STEP, TITLE
 from window import close_window, create_window, cursor_world
 
 """
@@ -50,11 +51,11 @@ OCLOCK = math.pi * 0.5
 
 
 def analog_display(
-    system: GridArrowRenderer,
+    system: GridArrowRenderer | AAGridArrowRenderer,
     seconds: float,
 ) -> None:
     """
-        Simply draw an analog time watch representation.
+    Simply draw an analog time watch representation.
     """
     seconds_angle = OCLOCK - (ONE_SECOND_MINUTE_OFFSET * seconds)
     number_of_minutes = seconds / 60
@@ -65,10 +66,10 @@ def analog_display(
     sx, sy = (math.cos(seconds_angle), math.sin(seconds_angle))
     mx, my = (math.cos(minutes_angle), math.sin(minutes_angle))
     hx, hy = (math.cos(hours_angle), math.sin(hours_angle))
-    
-    system.draw_arrow((0,0), (sx * 1.7, sy * 1.7), (1, 0, 0))
-    system.draw_arrow((0,0), (mx * 1.3, my * 1.3), (1, 1, 0))
-    system.draw_arrow((0,0), (hx, hy), (1, 0, 1))
+
+    system.draw_arrow((0, 0), (sx * 1.7, sy * 1.7), (1, 0, 0))
+    system.draw_arrow((0, 0), (mx * 1.3, my * 1.3), (1, 1, 0))
+    system.draw_arrow((0, 0), (hx, hy), (1, 0, 1))
 
 
 def main() -> int:
@@ -79,7 +80,15 @@ def main() -> int:
     # Create 2d System app instance.
     # ( not the subject there so the Api abstraction is fine for now)
     # ( we should know already how to create a 2d system in a wished orientation )
-    renderer = GridArrowRenderer(window)
+    #
+    # Two interchangeable renderers, same API:
+    #   plain_renderer -> GL_LINES, hard edges (the original look)
+    #   aa_renderer    -> stroke quads + per-fragment distance field (GPU AA)
+    # The loop below draws with aa_renderer; every plain call is kept right next
+    # to it as a comment, so switching one shape back is uncommenting one line.
+    plain_renderer = GridArrowRenderer(window)
+    aa_renderer = AAGridArrowRenderer(window)
+    glfw.set_window_title(window, f"{TITLE} — GPU anti-aliased")
 
     # Vector standard 2d coordinates.
     origin = (0.0, 0.0)  # arrow tail: edit this coordinate to move the arrow
@@ -110,40 +119,44 @@ def main() -> int:
         clicked = mouse_down and not mouse_was_down  # rising edge, not held
 
         glClear(GL_COLOR_BUFFER_BIT)  # the technical location of the buffer bit in memory
-        renderer.draw_grid()
-       
+        # plain GL_LINES grid: plain_renderer.draw_grid()
+        aa_renderer.draw_grid()
+
         # draw arrow from origin to cursor position
-        # renderer.draw_arrow(origin, tip, arrow_color)
+        # plain GL_LINES arrow: plain_renderer.draw_arrow(origin, tip, arrow_color)
+        # aa_renderer.draw_arrow(origin, tip, arrow_color)
 
         # draw a circle.
-        renderer.draw_circle((0, 0), 1.8, (1, 1, 0))
+        # plain GL_LINES circle: plain_renderer.draw_circle((0, 0), 1.8, (1, 1, 0))
+        aa_renderer.draw_circle((0, 0), 1.8, (1, 1, 0))
         # draw 12 hours markers from a simple loop.
         for i in range(1, 13):
             dx, dy = (math.cos(ONE_HOUR_OFFSET * i) * 1.3, math.sin(ONE_HOUR_OFFSET * i) * 1.3)
-            renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0),0.05)
+            # plain: plain_renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0), 0.05)
+            aa_renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0), 0.05)
 
         # get the elapsed seconds from the program start.
         elapsed_second = glfw.get_time() - start
         elapsed_second *= 100  # speed up the time by this scalar.
         # the above function, parameters: application instance, origin, seconds...
-        analog_display(renderer, elapsed_second)
+        # plain GL_LINES clock: analog_display(plain_renderer, elapsed_second)
+        analog_display(aa_renderer, elapsed_second)
 
         # create/display an array of vectors pointing in the direction of the cursor
-        # sub optimal some variables may be declared outside the events loop for perf boost
-        # for the sake of the demonstration it's perfectly fine.
         step = 0.3
-        array_x,array_y = (10,5)
-        anchor_x,anchor_y = (1.2,-2.6)
-        mid_x,mid_y = (anchor_x+(array_x*0.45*step) ,anchor_y-(array_y*0.4*step))
-        cx,cy = tip
-        dx,dy = (cx-mid_x,cy-mid_y)
-        length = math.sqrt(dx*dx + dy*dy)
-        normalized_dir = (dx/length,dy/length)
-        for i in range(0,array_x):
-            for j in range(0,array_y):
-                from_pt = (anchor_x+(i*step),anchor_y+(-j*step))
-                to_pt = (from_pt[0]+normalized_dir[0],from_pt[1]+normalized_dir[1])
-                renderer.draw_arrow(from_pt,to_pt)
+        array_x, array_y = (10, 5)
+        anchor_x, anchor_y = (1.2, -2.6)
+        mid_x, mid_y = (anchor_x + (array_x * 0.45 * step), anchor_y - (array_y * 0.4 * step))
+        cx, cy = tip
+        dx, dy = (cx - mid_x, cy - mid_y)
+        length = math.sqrt(dx * dx + dy * dy)
+        normalized_dir = (dx / length, dy / length)
+        for i in range(0, array_x):
+            for j in range(0, array_y):
+                from_pt = (anchor_x + (i * step), anchor_y + (-j * step))
+                to_pt = (from_pt[0] + normalized_dir[0], from_pt[1] + normalized_dir[1])
+                # plain: plain_renderer.draw_arrow(from_pt, to_pt)
+                aa_renderer.draw_arrow(from_pt, to_pt)
 
         """
         -> update the arrow on terminal console only if a significant move occur
@@ -169,7 +182,8 @@ def main() -> int:
         glfw.swap_buffers(window)
     # ------------------------------------------------------------------
 
-    renderer.close()
+    aa_renderer.close()
+    plain_renderer.close()
     close_window(window)
     return 0
 

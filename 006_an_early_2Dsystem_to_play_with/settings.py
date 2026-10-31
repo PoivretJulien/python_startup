@@ -21,3 +21,13 @@ ARROW_HEAD_LENGTH = 0.35
 ARROW_HEAD_ANGLE = 28.0  # degrees, half-opening of the head
 TAIL_MARKER = 0.12  # half-size of the cross at the arrow tail
 PRINT_STEP = 0.25  # world units between automatic terminal prints
+
+# --- GPU anti-aliased renderer (renderer_aa.py) --------------------------
+# Stroke widths are in *pixels* here, so lines stay the same on-screen weight
+# whatever the window size or DPI is. The plain renderer has no width at all:
+# it is stuck at the ONE pixel GL_LINES gives it.
+AA_GRID_WIDTH_PX = 1.2
+AA_ARROW_WIDTH_PX = 1.4
+AA_CIRCLE_WIDTH_PX = 1.8
+AA_LINE_WIDTH_PX = 1.8  # used by draw_line when thickness == 0
+AA_FEATHER_PX = 1.5  # quad padding around a stroke that holds the AA fade

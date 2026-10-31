@@ -8,6 +8,7 @@ import numpy as np
 from OpenGL.GL import (
     GL_ARRAY_BUFFER,
     GL_COMPILE_STATUS,
+    GL_DYNAMIC_DRAW,
     GL_FALSE,
     GL_FLOAT,
     GL_FRAGMENT_SHADER,
@@ -38,6 +39,63 @@ from OpenGL.GL import (
     glShaderSource,
     glVertexAttribPointer,
 )
+
+
+class Strokes:
+    """A VAO/VBO for one anti-aliased stroke batch, drawn as GL_TRIANGLES.
+
+    One vertex is 10 float32 (see ``geometry_aa``): ``x, y | r, g, b |
+    ax, ay | bx, by | half_width``. The extra segment endpoints are what let the
+    fragment shader compute a distance field per pixel instead of relying on the
+    rasteriser's hard-edged line rules.
+    """
+
+    STRIDE = 10 * 4  # xyz-less positions, srgb colour, a, b, half width
+
+    ATTRIBUTES = (
+        (0, 2, 0),  # position (world)
+        (1, 3, 2),  # colour
+        (2, 2, 5),  # segment start (world)
+        (3, 2, 7),  # segment end (world)
+        (4, 1, 9),  # stroke half width (world)
+    )
+
+    def __init__(self) -> None:
+        self.vao = glGenVertexArrays(1)
+        self.vbo = glGenBuffers(1)
+        if not self.vao or not self.vbo:
+            raise RuntimeError("could not create the stroke buffers")
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        for location, size, float_offset in self.ATTRIBUTES:
+            glVertexAttribPointer(
+                location,
+                size,
+                GL_FLOAT,
+                GL_FALSE,
+                self.STRIDE,
+                ctypes.c_void_p(float_offset * 4),
+            )
+            glEnableVertexAttribArray(location)
+        glBindVertexArray(0)
+        self.count = 0
+
+    def upload(self, vertices: np.ndarray, usage: int = GL_DYNAMIC_DRAW) -> None:
+        vertices = np.ascontiguousarray(vertices, dtype=np.float32)
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, usage)
+        self.count = vertices.shape[0]
+
+    def draw(self) -> None:
+        if not self.count:
+            return
+        glBindVertexArray(self.vao)
+        glDrawArrays(GL_TRIANGLES, 0, self.count)
+
+    def destroy(self) -> None:
+        glDeleteBuffers(1, [self.vbo])
+        glDeleteVertexArrays(1, [self.vao])
 
 
 def _compile_shader(source: str, kind: int) -> int:
