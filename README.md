@@ -47,6 +47,8 @@ from the python_OpenGL_toolchain folder inside you new project folder.
 a python check_env.py can be run inside this folder with 
 ./.venv/bin/python check_env.py for self auto diagnostic of the 
 toolschain of your embedded folder. (simply copy and paste it inside)
+requirements.txt must be copied alongside the install script for a full
+diagnostic.
 
 step 4:
 copy and paste the examples of this repository the '.py' script
