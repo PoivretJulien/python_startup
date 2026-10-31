@@ -68,7 +68,7 @@ def analog_display(
     hx, hy = (math.cos(hours_angle), math.sin(hours_angle))
 
     system.draw_arrow((0, 0), (sx * 1.7, sy * 1.7), (1, 0, 0))
-    system.draw_arrow((0, 0), (mx * 1.3, my * 1.3), (1, 1, 0))
+    system.draw_arrow((0, 0), (mx * 1.25, my * 1.25), (1, 1, 0))
     system.draw_arrow((0, 0), (hx, hy), (1, 0, 1))
 
 
@@ -166,6 +166,7 @@ def main() -> int:
             last_printed is None
             or math.hypot(tip[0] - last_printed[0], tip[1] - last_printed[1]) >= PRINT_STEP
         )
+
         # update position on terminal only if a click or a significant move occur.
         if clicked or (PRINT_STEP > 0 and moved):
             px, py = glfw.get_cursor_pos(window)
