@@ -30,4 +30,5 @@ AA_GRID_WIDTH_PX = 1.2
 AA_ARROW_WIDTH_PX = 1.4
 AA_CIRCLE_WIDTH_PX = 1.8
 AA_LINE_WIDTH_PX = 1.8  # used by draw_line when thickness == 0
+AA_TEXT_WIDTH_PX = 1.6  # stroke weight of the built-in font (font.py)
 AA_FEATHER_PX = 1.5  # quad padding around a stroke that holds the AA fade

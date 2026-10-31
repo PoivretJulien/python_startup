@@ -1,8 +1,8 @@
 """The anti-aliased twin of ``renderer.GridArrowRenderer``.
 
 Same public API — ``draw_grid``, ``draw_arrow``, ``draw_line``, ``draw_circle``,
-``close`` — so ``main.py`` can swap one for the other without touching the scene
-code. What changes is *how* a stroke becomes pixels:
+``draw_text``, ``close`` — so ``main.py`` can swap one for the other without
+touching the scene code. What changes is *how* a stroke becomes pixels:
 
 * the plain renderer uploads ``GL_LINES``: one specific pixel-wide rasteriser
   rule, no width control, hard edges (the stair-steps);
@@ -18,6 +18,7 @@ supersampled framebuffer, no post-process pass, and the widths are stated in
 
 from __future__ import annotations
 
+import font
 import geometry
 import geometry_aa
 import glfw
@@ -41,6 +42,7 @@ from settings import (
     AA_FEATHER_PX,
     AA_GRID_WIDTH_PX,
     AA_LINE_WIDTH_PX,
+    AA_TEXT_WIDTH_PX,
     ARROW_COLOR,
 )
 
@@ -209,6 +211,46 @@ class AAGridArrowRenderer:
                 pad=self._feather(),
             )
         )
+
+    def draw_text(
+        self,
+        anchor: geometry.Point,
+        text: str,
+        size: float = 0.30,
+        color: geometry.Color = ARROW_COLOR,
+        tracking: float = font.TRACKING,
+        width_px: float = AA_TEXT_WIDTH_PX,
+    ) -> float:
+        """Draw anti-aliased `text` starting at `anchor` (left end of the baseline).
+
+        `size` is the cap height in world units, so text scales with the scene
+        rather than with the window. `tracking` adds extra letter spacing in em
+        units, `width_px` is the stroke weight in pixels. Returns the advance
+        width in world units — handy for anchoring something after the string
+        (``anchor[0] + draw_text(...)``).
+
+        Each glyph is a polyline from `font.py`, so the same capsule pipeline that
+        draws the arrows draws the letters: no texture atlas, no extra shader.
+        """
+        vertices = geometry_aa.text_vertices(anchor, text, size, color=color, tracking=tracking)
+        if vertices.shape[0]:
+            self._draw_strokes(
+                geometry_aa.stroke_vertices(
+                    vertices,
+                    self._half_width(width_px),
+                    pad=self._feather(),
+                )
+            )
+        return geometry_aa.text_width(text, size, tracking)
+
+    def measure_text(
+        self,
+        text: str,
+        size: float = 0.30,
+        tracking: float = font.TRACKING,
+    ) -> float:
+        """Advance width of `text` in world units, for layout before drawing."""
+        return geometry_aa.text_width(text, size, tracking)
 
     def draw_circle(
         self,

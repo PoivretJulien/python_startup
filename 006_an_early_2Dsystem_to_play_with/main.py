@@ -135,6 +135,18 @@ def main() -> int:
             # plain: plain_renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0), 0.05)
             aa_renderer.draw_line((dx, dy), (dx * 1.3, dy * 1.3), (1, 1, 0), 0.05)
 
+            # text is AA-only (font.py has no GL_LINES twin): `size` is the cap
+            # height in world units, and draw_text returns the advance width so a
+            # label can be centred on its hour.
+            label = str(i)
+            label_size = 0.30
+            label_x = math.cos(OCLOCK - ONE_HOUR_OFFSET * i) * 2.05
+            label_y = math.sin(OCLOCK - ONE_HOUR_OFFSET * i) * 2.05
+            label_half = aa_renderer.measure_text(label, label_size) * 0.5
+            aa_renderer.draw_text(
+                (label_x - label_half, label_y - label_size * 0.36), label, label_size, (1, 1, 0)
+            )
+
         # get the elapsed seconds from the program start.
         elapsed_second = glfw.get_time() - start
         elapsed_second *= 100  # speed up the time by this scalar.
@@ -157,6 +169,14 @@ def main() -> int:
                 to_pt = (from_pt[0] + normalized_dir[0], from_pt[1] + normalized_dir[1])
                 # plain: plain_renderer.draw_arrow(from_pt, to_pt)
                 aa_renderer.draw_arrow(from_pt, to_pt)
+
+        # anti-aliased text readout, anchored bottom-left of the grid.
+        aa_renderer.draw_text(
+            (-4.72, -4.58),
+            f"tip ≈ ({tip[0]:+.2f}, {tip[1]:+.2f})",
+            0.26,
+            (0.85, 0.92, 1.0),
+        )
 
         """
         -> update the arrow on terminal console only if a significant move occur

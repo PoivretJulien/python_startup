@@ -17,9 +17,10 @@ Like ``geometry.py`` this module is pure math: no GLFW, no OpenGL, no shaders.
 
 from __future__ import annotations
 
+import font
 import geometry
 import numpy as np
-from settings import HALF
+from settings import ARROW_COLOR, HALF
 
 STRIDE_FLOATS = 10  # x, y | r, g, b | ax, ay | bx, by | half_width
 
@@ -80,6 +81,36 @@ def stroke_vertices(
     out[:, 7:9] = np.repeat(end, 6, axis=0)
     out[:, 9] = np.repeat(half, 6)
     return out
+
+
+def text_vertices(
+    anchor: geometry.Point,
+    text: str,
+    size: float,
+    *,
+    color: geometry.Color = ARROW_COLOR,
+    tracking: float = font.TRACKING,
+) -> np.ndarray:
+    """Lay out `text` as a GL_LINES batch, ready for :func:`stroke_vertices`.
+
+    `anchor` is the left end of the baseline in world units and `size` is the cap
+    height, also in world units (so ``size = 0.4`` means digits are 0.4 units
+    tall). The font itself (`font.py`) only knows em units; this is where they
+    become world space, which is why text scales with the camera the same way the
+    arrows do.
+    """
+    ax, ay = anchor
+    rows: list[tuple[float, ...]] = []
+    for shape in font.outline(text, tracking):
+        for (x0, y0), (x1, y1) in zip(shape, shape[1:]):
+            rows.append((ax + x0 * size, ay + y0 * size, 0.0, *color))
+            rows.append((ax + x1 * size, ay + y1 * size, 0.0, *color))
+    return np.array(rows, dtype=np.float32).reshape(-1, 6)
+
+
+def text_width(text: str, size: float, tracking: float = font.TRACKING) -> float:
+    """Advance width of `text` in world units, i.e. where the next glyph starts."""
+    return font.advance(text, tracking) * size
 
 
 def world_units_per_pixel(width: float, height: float, half: float = HALF) -> float:
