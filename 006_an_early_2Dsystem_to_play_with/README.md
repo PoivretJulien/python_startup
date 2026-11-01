@@ -14,10 +14,6 @@ note: (this involve vec3, the third dimension act as translation for fast 3x3 ma
 
 -> At first stay simple !
 focus on the 'main.py' file only and customize the event loop only:
-# 2D Geometry & Math Experimentation
-
-Here is the main rendering loop using GLFW and custom 2D drawing logic inspired by Blender geometry nodes:
-
 ```python
 while not glfw.window_should_close(window):
         glfw.poll_events()
