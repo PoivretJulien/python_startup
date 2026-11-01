@@ -5,13 +5,16 @@
 <body>
 <pre>
 -> Here a minimal python 2d runtime coordinate system (GPU accelerated)
-(no pointer) (no advance memory management) just the minimal context 
-needed to focus on the essential math for a 2d screen (the base of any screen interaction)
+(no pointer) (no advance memory management) just the minimal context needed to focus
+on the essential math for a simple 2d screen (the base of any screen interaction)
 when importing vec2 and vec3 from the folder lib, we can easily experiment matrix 3x3 transformations
-of simple 2d system (rotation_x + rotation_y + translation), (this involve vec3, 
-the third dimension act as translation for fast 3x3 matrix multiplications)
+of simple 2d system (rotation_x + rotation_y + translation),
+        
+note: (this involve vec3, the third dimension act as translation for fast 3x3 matrix multiplications)
 
-at first stay simple, focus on the 'main.py' file only and customize the even loop only 
+-> At first stay simple !
+focus on the 'main.py' file only and customize the even loop only:
+
 while not glfw.window_should_close(window):
         glfw.poll_events()
         aa_renderer.draw_grid()
