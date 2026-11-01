@@ -27,7 +27,6 @@ while not glfw.window_should_close(window):
         # your code 2d experimentation
         # like circle intersection line intersection ect...
         # take inspiration from the blender geometrynode series
-        # to there
         glfw.swap_buffers(window)
 ```
 
