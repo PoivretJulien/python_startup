@@ -13,7 +13,7 @@ of simple 2d system (rotation_x + rotation_y + translation),
 note: (this involve vec3, the third dimension act as translation for fast 3x3 matrix multiplications)
 
 -> At first stay simple !
-focus on the 'main.py' file only and customize the even loop only:
+focus on the 'main.py' file only and customize the event loop only:
 
 while not glfw.window_should_close(window):
         glfw.poll_events()
