@@ -32,8 +32,8 @@ this may not even needed.
 
 overall the perfect setup for learning vectors transformations on a minimal application.
 and don't worry about low level language just yet, clean your mind first with the true 
-mathematical notions with the less friction as you can 
-(no zero cost abstraction in python so fancy api does'not worth it python for graphical computing).
+mathematical notions with the less frictions as you can (there are no zero cost abstraction in python 
+so fancy api does'not worth it python for graphical computing).
 
 This can can be run with ./venv/bin/python main.py
 </pre>
