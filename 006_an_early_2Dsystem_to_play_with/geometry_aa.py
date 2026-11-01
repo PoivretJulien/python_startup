@@ -20,7 +20,7 @@ from __future__ import annotations
 import font
 import geometry
 import numpy as np
-from settings import ARROW_COLOR, HALF
+from settings import ARROW_COLOR
 
 STRIDE_FLOATS = 10  # x, y | r, g, b | ax, ay | bx, by | half_width
 
@@ -40,7 +40,7 @@ def stroke_vertices(
 
     ``half_width`` is in world units. ``pad`` grows the quad past the stroke by
     that many world units so the shader keeps room for its one-pixel fade; pass
-    ``2 * world_units_per_pixel(...)`` and no visible edge gets clipped.
+    ``2 * camera.world_units_per_pixel(height)`` and no visible edge gets clipped.
     """
     batch = np.ascontiguousarray(vertices, dtype=np.float32).reshape(-1, 6)
     count = batch.shape[0] - batch.shape[0] % 2
@@ -111,14 +111,3 @@ def text_vertices(
 def text_width(text: str, size: float, tracking: float = font.TRACKING) -> float:
     """Advance width of `text` in world units, i.e. where the next glyph starts."""
     return font.advance(text, tracking) * size
-
-
-def world_units_per_pixel(width: float, height: float, half: float = HALF) -> float:
-    """How much world space one framebuffer pixel covers (same on x and y).
-
-    ``geometry.world_to_clip`` already corrects for aspect, so the x and y scales
-    agree: a stroke can be sized in pixels and the shader can turn its distance
-    field into pixel units with a single scalar.
-    """
-    _, half_y = geometry.half_extents(width, height, half)
-    return 2.0 * half_y / max(height, 1.0)

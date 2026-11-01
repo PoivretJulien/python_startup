@@ -56,8 +56,14 @@ def close_window(window) -> None:
     glfw.terminate()
 
 
-def cursor_world(window) -> geometry.Point:
-    """Cursor in window pixels -> the same 2D world the renderer uses."""
+def cursor_world(window, camera: geometry.Camera) -> geometry.Point:
+    """Cursor in window pixels -> the world the camera is currently showing.
+
+    Uses the *window* size (screen coordinates) because that is the unit
+    ``glfw.get_cursor_pos`` reports in; ``Camera`` only needs the aspect ratio,
+    which is the same in points and framebuffer pixels, so this stays correct on
+    HiDPI framebuffers.
+    """
     px, py = glfw.get_cursor_pos(window)
     width, height = glfw.get_window_size(window)
-    return geometry.screen_to_world(px, py, width, height)
+    return camera.screen_to_world(px, py, width, height)

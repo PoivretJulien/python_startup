@@ -9,7 +9,7 @@ from OpenGL.GL import (
     GL_DYNAMIC_DRAW,
     glDeleteProgram,
     glGetUniformLocation,
-    glUniform2f,
+    glUniform4f,
     glUseProgram,
 )
 from settings import ARROW_COLOR
@@ -18,12 +18,12 @@ VERTEX_SHADER = """#version 330 core
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 color;
 
-uniform vec2 world_to_clip;      // 2D orthographic scale, aspect-corrected
+uniform vec4 camera;            // xy = world->clip scale, zw = world->clip offset
 
 out vec3 v_color;
 
 void main() {
-    gl_Position = vec4(position.xy * world_to_clip, 0.0, 1.0);
+    gl_Position = vec4(position.xy * camera.xy + camera.zw, 0.0, 1.0);
     v_color = color;
 }
 """
@@ -39,25 +39,41 @@ void main() {
 
 
 class GridArrowRenderer:
-    """Owns the GL objects; the window supplies the current size for the scale."""
+    """Owns the GL objects; the window supplies the size, the camera the view."""
 
-    def __init__(self, window) -> None:
+    def __init__(self, window, camera: geometry.Camera) -> None:
         self.window = window
+        self.camera = camera
         self.program = build_program(VERTEX_SHADER, FRAGMENT_SHADER)
-        self.scale_location = glGetUniformLocation(self.program, "world_to_clip")
+        self.camera_location = glGetUniformLocation(self.program, "camera")
 
         self.grid = Lines()
-        self.grid.upload(geometry.grid_vertices())
+        self.grid_key: tuple | None = None
         self.arrow = Lines()
         glUseProgram(self.program)
 
-    def _bind_scale(self) -> None:
+    def _bind_camera(self) -> None:
         glUseProgram(self.program)
         width, height = glfw.get_framebuffer_size(self.window)
-        glUniform2f(self.scale_location, *geometry.world_to_clip(width, height))
+        glUniform4f(self.camera_location, *self.camera.world_to_clip(width, height))
+
+    def _upload_grid_if_needed(self) -> None:
+        """Re-upload the grid when the visible rectangle or the adaptive step changed."""
+        size = glfw.get_framebuffer_size(self.window)
+        step = self.camera.grid_step(*size)
+        key = (size, step, self.camera.center, self.camera.view_half_y)
+        if key == self.grid_key:
+            return
+        min_x, min_y, max_x, max_y = self.camera.visible_rect(*size)
+        self.grid.upload(
+            geometry.grid_vertices(min_x, min_y, max_x, max_y, step),
+            GL_DYNAMIC_DRAW,
+        )
+        self.grid_key = key
 
     def draw_grid(self) -> None:
-        self._bind_scale()
+        self._upload_grid_if_needed()
+        self._bind_camera()
         self.grid.draw()
 
     def draw_arrow(
@@ -71,7 +87,7 @@ class GridArrowRenderer:
             geometry.arrow_vertices(start, tip, color=color),
             GL_DYNAMIC_DRAW,
         )
-        self._bind_scale()
+        self._bind_camera()
         self.arrow.draw()
 
     def draw_line(
@@ -90,7 +106,7 @@ class GridArrowRenderer:
                 geometry.thick_line_vertices(start, tip, thickness, color=color),
                 GL_DYNAMIC_DRAW,
             )
-            self._bind_scale()
+            self._bind_camera()
             self.arrow.draw_triangles()
             return
 
@@ -98,7 +114,7 @@ class GridArrowRenderer:
             geometry.line_vertices(start, tip, color=color),
             GL_DYNAMIC_DRAW,
         )
-        self._bind_scale()
+        self._bind_camera()
         self.arrow.draw()
 
     def draw_circle(
@@ -113,7 +129,7 @@ class GridArrowRenderer:
             geometry.circle_vertices(center, radius, color=color, segments=segments),
             GL_DYNAMIC_DRAW,
         )
-        self._bind_scale()
+        self._bind_camera()
         self.arrow.draw()
 
     def close(self) -> None:

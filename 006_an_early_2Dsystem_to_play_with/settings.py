@@ -1,7 +1,8 @@
 """Tunable constants for the experimental 2D mid-step.
 
 Everything you are likely to tweak lives here: window size, grid extent and
-spacing, colours, arrow-head shape, and the terminal readout interval.
+spacing, colours, arrow-head shape, the camera's zoom/pan feel, and the terminal
+readout interval.
 """
 
 from __future__ import annotations
@@ -21,6 +22,32 @@ ARROW_HEAD_LENGTH = 0.35
 ARROW_HEAD_ANGLE = 28.0  # degrees, half-opening of the head
 TAIL_MARKER = 0.12  # half-size of the cross at the arrow tail
 PRINT_STEP = 0.25  # world units between automatic terminal prints
+
+# --- camera: zoom & pan (geometry.Camera) --------------------------------
+# `view_half_y` is how many world units fit between the viewport centre and its
+# top edge, so zoom = HALF / view_half_y (1.0 at startup).
+CAMERA_MIN_HALF = 0.05  # closest zoom-in: 100x, ~0.005 world units per pixel
+CAMERA_MAX_HALF = 400.0  # furthest zoom-out: ~1/80x
+
+WHEEL_ZOOM_STEP = 0.18  # exp() sensitivity per wheel notch (dy = +/-1)
+PINCH_ZOOM_STEP = 6.0  # exp() sensitivity per unit of macOS `magnification`
+# GLFW divides trackpad scroll deltas by 10; multiplying back restores point-sized
+# deltas so a two-finger pan moves the content 1:1 with the fingers.
+PAN_PIXELS_PER_SCROLL = 10.0
+# A wheel notch is a unit-less +/-1, so shift+wheel panning needs its own scale.
+WHEEL_PAN_PIXELS = 40.0
+# Flip either sign to invert a two-finger trackpad pan (macOS has both "natural"
+# scrolling and per-app expectation; middle-drag panning is unaffected).
+SCROLL_PAN_SIGN_X = 1.0
+SCROLL_PAN_SIGN_Y = 1.0
+
+# --- adaptive grid -------------------------------------------------------
+# Grid squares target this many pixels on screen, so the step stays 1 world unit
+# at 1:1 zoom on a normal window and only changes when zooming makes squares
+# unreadably small/large. Chosen from the 1/2/5 x 10^k ladder, so on-screen
+# spacing lands in roughly [GRID_MAX_SPACING_PX / 5, GRID_MAX_SPACING_PX].
+GRID_MAX_SPACING_PX = 110.0
+GRID_MAX_LINES = 400  # total segments, a safety cap at extreme aspect ratios
 
 # --- GPU anti-aliased renderer (renderer_aa.py) --------------------------
 # Stroke widths are in *pixels* here, so lines stay the same on-screen weight

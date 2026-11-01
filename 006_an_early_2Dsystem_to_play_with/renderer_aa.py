@@ -28,12 +28,11 @@ from OpenGL.GL import (
     GL_DYNAMIC_DRAW,
     GL_ONE_MINUS_SRC_ALPHA,
     GL_SRC_ALPHA,
-    GL_STATIC_DRAW,
     glBlendFunc,
     glDeleteProgram,
     glEnable,
     glGetUniformLocation,
-    glUniform2f,
+    glUniform4f,
     glUseProgram,
 )
 from settings import (
@@ -53,7 +52,7 @@ layout(location = 2) in vec2 segment_start; // the stroke this quad belongs to
 layout(location = 3) in vec2 segment_end;
 layout(location = 4) in float half_width;   // world units
 
-uniform vec2 world_to_clip;      // 2D orthographic scale, aspect-corrected
+uniform vec4 camera;             // xy = world->clip scale, zw = world->clip offset
 
 out vec3 v_color;
 out vec2 v_position;
@@ -62,7 +61,7 @@ out vec2 v_segment_end;
 out float v_half_width;
 
 void main() {
-    gl_Position = vec4(position * world_to_clip, 0.0, 1.0);
+    gl_Position = vec4(position * camera.xy + camera.zw, 0.0, 1.0);
     v_color = color;
     v_position = position;
     v_segment_start = segment_start;
@@ -111,17 +110,18 @@ void main() {
 
 
 class AAGridArrowRenderer:
-    """GPU anti-aliased renderer; the window supplies the size for the scale."""
+    """GPU anti-aliased renderer; the window supplies the size, the camera the view."""
 
-    def __init__(self, window) -> None:
+    def __init__(self, window, camera: geometry.Camera) -> None:
         self.window = window
+        self.camera = camera
         self.program = build_program(VERTEX_SHADER, FRAGMENT_SHADER)
-        self.scale_location = glGetUniformLocation(self.program, "world_to_clip")
+        self.camera_location = glGetUniformLocation(self.program, "camera")
 
-        # The grid only changes when the framebuffer does, so it gets its own batch.
+        # The grid only changes when the framebuffer, the zoom or the pan does.
         self.grid = Strokes()
         self.strokes = Strokes()
-        self.grid_size = (0, 0)
+        self.grid_key: tuple | None = None
 
         # Coverage arrives as alpha, so the stencil-free way to apply it is blending.
         glEnable(GL_BLEND)
@@ -134,8 +134,8 @@ class AAGridArrowRenderer:
         return glfw.get_framebuffer_size(self.window)
 
     def _world_units_per_pixel(self) -> float:
-        width, height = self._framebuffer()
-        return geometry_aa.world_units_per_pixel(width, height)
+        _width, height = self._framebuffer()
+        return self.camera.world_units_per_pixel(height)
 
     def _half_width(self, width_px: float) -> float:
         """Turn a wanted on-screen width in pixels into world units."""
@@ -145,35 +145,44 @@ class AAGridArrowRenderer:
         """Quad padding that keeps the AA fade band inside the geometry."""
         return AA_FEATHER_PX * self._world_units_per_pixel()
 
-    def _bind_scale(self) -> None:
+    def _bind_camera(self) -> None:
         glUseProgram(self.program)
         width, height = self._framebuffer()
-        glUniform2f(self.scale_location, *geometry.world_to_clip(width, height))
+        glUniform4f(self.camera_location, *self.camera.world_to_clip(width, height))
 
-    def _upload_grid_if_resized(self) -> None:
+    def _upload_grid_if_needed(self) -> None:
+        """Rebuild the grid only when the viewport, the zoom or the pan changed.
+
+        The visible rectangle follows the camera, so panning slides the grid (the
+        lines stay on world-space multiples of the step) and zooming snaps the
+        step to a 1/2/5 x 10^k value that keeps squares readable.
+        """
         size = self._framebuffer()
-        if size == self.grid_size:
+        step = self.camera.grid_step(*size)
+        key = (size, step, self.camera.center, self.camera.view_half_y)
+        if key == self.grid_key:
             return
+        min_x, min_y, max_x, max_y = self.camera.visible_rect(*size)
         self.grid.upload(
             geometry_aa.stroke_vertices(
-                geometry.grid_vertices(),
+                geometry.grid_vertices(min_x, min_y, max_x, max_y, step),
                 self._half_width(AA_GRID_WIDTH_PX),
                 pad=self._feather(),
             ),
-            GL_STATIC_DRAW,
+            GL_DYNAMIC_DRAW,
         )
-        self.grid_size = size
+        self.grid_key = key
 
     def _draw_strokes(self, vertices) -> None:
         self.strokes.upload(vertices, GL_DYNAMIC_DRAW)
-        self._bind_scale()
+        self._bind_camera()
         self.strokes.draw()
 
     # -- the renderer API shared with renderer.GridArrowRenderer -----------
 
     def draw_grid(self) -> None:
-        self._upload_grid_if_resized()
-        self._bind_scale()
+        self._upload_grid_if_needed()
+        self._bind_camera()
         self.grid.draw()
 
     def draw_arrow(
