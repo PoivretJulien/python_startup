@@ -31,7 +31,7 @@ system without anti aliasing but honestly unless running on raspberry pi
 this may not even needed.
 
 overall the perfect setup for learning vectors transformations on a minimal application.
-and don't worry about low level language just yet, clean your mind first with the true 
+and don't worry about low level languages just yet, clean your mind first with the true 
 mathematical notions with the less frictions as you can (there are no zero cost abstraction in python 
 so fancy api does'not worth it for graphical computing).
 
