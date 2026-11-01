@@ -40,7 +40,7 @@ This can can be run with ./venv/bin/python main.py
 
 
 <a href="https://www.example.com">
-  <img src="../image/compas.jpg" alt="">
+  <img src="../image/compass.jpeg" alt="">
 </a>
 </pre>
 </body>
