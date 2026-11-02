@@ -12,7 +12,7 @@ Quotes: "educational code as no value unless if it's read,
                       
 python is not Zero cost abstraction, any js code for a simple ia prompt provide 
 this value already with a more complex syntax (and better perf also). 
-the point there is non technical syntax and focus on math first !
+the point there is a non technical syntax and focus on math first !
 for relatively light and small demonstrative project.
 
 Teaching need clear syntax color feedback, open source code (non compiled one),
