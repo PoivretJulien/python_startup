@@ -66,11 +66,11 @@ My though about micro-controller for future generation in this edge&violent time
 
 At the era of automation, micro controller sim to be a crucial way to put action and effect 
 on the "intelligence surrounding" this will have inevitably positive and negative imprint,
-even if we consider a garden programmer watering system like threat the biggest effect is to 
-provide action and mechanical interaction with the connectivity capability which lead to hope, 
-owning your environment and be able to import knowledge, exchange goods, skills an restructure 
-chaos in locality, but inevitably what is destined to burn will and what destined to biggest 
-ambition will eventually prosper as any changing world.
+even if we consider a garden programmer watering system like a threat...
+the biggest effect is to provide action and mechanical interactions with the connectivity
+capability which lead to hope, owning your environment and be able to import knowledge,
+exchange goods, skills an restructure chaos in locality, but inevitably what is destined 
+to burn will and what destined to biggest ambition will eventually prosper as any changing world.
 
 The hope for the designer scale and optimization:
 https://en.wikipedia.org/wiki/Neural_processing_unit
