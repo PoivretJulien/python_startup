@@ -23,7 +23,7 @@ IA do mostly all the stuff today should we suffer to understand it ?
 
 A vec2 and vec3 class is already imported in the main ready to play with.
 this system provide time space and color with interactive input zoom in/zoom out
-full python syntax compatibility.
+and full python syntax compatibility.
 
 now grab your book and become the designer of tomorrow,
 Introduction to Linear Algebra Book:
