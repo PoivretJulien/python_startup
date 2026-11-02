@@ -33,9 +33,10 @@ from settings3d import (
     TAIL_MARKER,
 )
 
-Point3 = tuple[float, float, float]
 Color = tuple[float, float, float]
 Vector3 = Sequence[float] | np.ndarray
+# Tuples, lists, NumPy arrays and sequence-like vector classes all work.
+Point3 = Vector3
 
 _X = np.array((1.0, 0.0, 0.0), dtype=np.float64)
 _Y = np.array((0.0, 1.0, 0.0), dtype=np.float64)

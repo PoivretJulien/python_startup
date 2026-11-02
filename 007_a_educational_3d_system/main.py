@@ -67,6 +67,8 @@ from settings3d import (
     TITLE,
     WHEEL_PAN_PIXELS,
 )
+from vec2 import Vec2
+from vec3 import Vec3
 from window3d import close_window, create_window
 
 yellow = "\x1b[033m"
@@ -96,11 +98,11 @@ def analog_display(
     hours_angle = OCLOCK - (ONE_HOUR_OFFSET * number_of_hours)
 
     def hand(angle: float, length: float, color: tuple[float, float, float]) -> None:
-        # z is up, so the dial is the xy plane: 2D (x, y) -> 3D (x, y, CLOCK_Z).
-        x, y = math.cos(angle), math.sin(angle)
+        # Vec2 for the dial direction, promoted to Vec3 for the 3D API.
+        direction = Vec2(math.cos(angle), math.sin(angle)) * length
         system.draw_arrow(
-            (0.0, 0.0, CLOCK_Z),
-            (x * length, y * length, CLOCK_Z),
+            Vec3(0.0, 0.0, CLOCK_Z),
+            Vec3(direction.x, direction.y, CLOCK_Z),
             color,
         )
 
@@ -133,15 +135,20 @@ def draw_clock(
 ) -> None:
     """The 2D clock scene, reinterpreted on the xy floor with a z axis normal."""
     # plain GL_LINES circle: plain_renderer.draw_circle((0, 0, 0), 1.8, ...)
-    system.draw_circle((0.0, 0.0, CLOCK_Z), CLOCK_RADIUS, CLOCK_COLOR, (0.0, 0.0, 1.0))
+    system.draw_circle(
+        Vec3(0.0, 0.0, CLOCK_Z),
+        CLOCK_RADIUS,
+        CLOCK_COLOR,
+        Vec3(0.0, 0.0, 1.0),
+    )
 
     for i in range(1, 13):
         angle = ONE_HOUR_OFFSET * i
         dx, dy = math.cos(angle) * 1.3, math.sin(angle) * 1.3
         # plain: plain_renderer.draw_line((dx, dy, CLOCK_Z), (dx * 1.3, dy * 1.3, CLOCK_Z), CLOCK_COLOR, 0.05)
         system.draw_line(
-            (dx, dy, CLOCK_Z),
-            (dx * 1.3, dy * 1.3, CLOCK_Z),
+            Vec3(dx, dy, CLOCK_Z),
+            Vec3(dx * 1.3, dy * 1.3, CLOCK_Z),
             CLOCK_COLOR,
             0.05,
         )
@@ -156,7 +163,7 @@ def draw_clock(
         label_y = math.sin(OCLOCK - ONE_HOUR_OFFSET * i) * 2.05
         label_half = aa.measure_text(label, label_size) * 0.5
         aa.draw_text(
-            (label_x - label_half, label_y - label_half, CLOCK_Z),
+            Vec3(label_x - label_half, label_y - label_half, CLOCK_Z),
             label,
             label_size,
             CLOCK_COLOR,
@@ -167,8 +174,8 @@ def draw_clock(
 
 def draw_cursor_arrow(
     system: GridArrowRenderer | AAGridArrowRenderer,
-    start: tuple[float, float, float],
-    tip: tuple[float, float, float],
+    start: Vec3 | tuple[float, float, float],
+    tip: Vec3 | tuple[float, float, float],
 ) -> None:
     # plain GL_LINES arrow: plain_renderer.draw_arrow(start, tip, ARROW_COLOR)
     system.draw_arrow(start, tip, ARROW_COLOR)
@@ -191,10 +198,10 @@ def draw_vector_array(
 
     for i in range(array_x):
         for j in range(array_y):
-            from_pt = (anchor_x + (i * step), anchor_y + (-j * step), CLOCK_Z)
-            to_pt = (
-                from_pt[0] + normalized_dir[0],
-                from_pt[1] + normalized_dir[1],
+            from_pt = Vec3(anchor_x + (i * step), anchor_y + (-j * step), CLOCK_Z)
+            to_pt = Vec3(
+                from_pt.x + normalized_dir[0],
+                from_pt.y + normalized_dir[1],
                 CLOCK_Z,
             )
             # plain: plain_renderer.draw_arrow(from_pt, to_pt)
@@ -285,7 +292,7 @@ def main() -> int:
 
     # Vector standard 3D coordinates. The arrow tail: edit this point to move
     # the cursor arrow without moving the floor clock.
-    origin = (0.0, 0.0, CLOCK_Z)
+    origin = Vec3(0.0, 0.0, CLOCK_Z)
 
     # A 3d system involve depth management, which object display first from the
     # camera point of view, in this early system there is no geometry just raw
