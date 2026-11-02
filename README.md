@@ -75,6 +75,8 @@ ambition will eventually prosper as any changing world.
 The hope for the designer scale and optimization:
 https://en.wikipedia.org/wiki/Neural_processing_unit
 
+Quotes: accurate instructions need clarity and precision everything else is projection.
+
 </pre>
 </body>
 </html>
