@@ -92,6 +92,18 @@ class OrbitCamera:
         """Accumulate wheel scroll from the GLFW callback; consumed per frame."""
         self._scroll += dy
 
+    def zoom_by(self, factor: float) -> None:
+        """Scale the view by `factor` (>1 zooms in) — used by macOS pinch events.
+
+        The orbit camera's zoom is inverse to its distance from the pivot, so a
+        pinch that spreads the fingers (positive magnification) passes a factor
+        above 1 and moves the eye closer.
+        """
+        if factor <= 0.0:
+            return
+        self.distance = float(np.clip(self.distance / factor, self.min_distance, self.max_distance))
+        self.changed = True
+
     def handle(self, window) -> bool:
         """Apply one frame of left-drag orbit, middle-drag pan and wheel zoom."""
         self.changed = False

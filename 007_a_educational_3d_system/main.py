@@ -39,6 +39,8 @@ import sys
 import glfw
 import numpy as np
 from camera3d import OrbitCamera
+from macos_gestures3d import install as install_macos_gestures
+from macos_gestures3d import scroll_is_precise
 from OpenGL.GL import (
     GL_COLOR_BUFFER_BIT,
     GL_DEPTH_BUFFER_BIT,
@@ -53,15 +55,17 @@ from renderer3d import GridArrowRenderer
 from renderer_aa3d import AAGridArrowRenderer
 from settings3d import (
     ARROW_COLOR,
-    AXIS_X_COLOR,
-    AXIS_Y_COLOR,
-    AXIS_Z_COLOR,
     BACKGROUND,
     CLOCK_COLOR,
     HALF,
+    PAN_PIXELS_PER_SCROLL,
+    PINCH_ZOOM_STEP,
     PRINT_STEP,
     SCENE_Z,
+    SCROLL_PAN_SIGN_X,
+    SCROLL_PAN_SIGN_Y,
     TITLE,
+    WHEEL_PAN_PIXELS,
 )
 from window3d import close_window, create_window
 
@@ -260,24 +264,24 @@ def main() -> int:
     window = create_window()
     glfw.set_window_title(window, f"{TITLE} — GPU anti-aliased, orbit + pan + zoom")
 
-    # Two interchangeable renderers, same API 
+    # Two interchangeable renderers, same API
     # (one antialiased the other not(faster)):
     #   plain_renderer -> GL_LINES, hard one-pixel edges (fastest poor quality)
     #   aa_renderer    -> screen-space capsules + per-fragment distance field (smooth slightly slower)
     # Both read the *same* OrbitCamera, so orbit/pan/zoom is one shared view
 
     camera = OrbitCamera()
-    plain_renderer = GridArrowRenderer(window, camera) # no AA faster
+    plain_renderer = GridArrowRenderer(window, camera)  # no AA faster
     aa_renderer = AAGridArrowRenderer(window, camera)
 
     # Swap this one line to render the whole scene with the aliased GL_LINES twin.
     # (The plain calls stay commented next to every AA call, exactly like the 2D app.)
     system: GridArrowRenderer | AAGridArrowRenderer = aa_renderer
-    #system: GridArrowRenderer | AAGridArrowRenderer = plain_renderer
+    # system: GridArrowRenderer | AAGridArrowRenderer = plain_renderer
 
     # Some function are aa only so an aa_render instance is
     # always needed.
-    aa = aa_renderer 
+    aa = aa_renderer
 
     # Vector standard 3D coordinates. The arrow tail: edit this point to move
     # the cursor arrow without moving the floor clock.
@@ -285,7 +289,7 @@ def main() -> int:
 
     # A 3d system involve depth management, which object display first from the
     # camera point of view, in this early system there is no geometry just raw
-    # pixel color at a 3d point coordinate in camera space before screen projection 
+    # pixel color at a 3d point coordinate in camera space before screen projection
     # which mean that usually the camera forward matrix value act as depth
     # and use to define which pixel stroke to draw last on screen.
 
@@ -299,14 +303,39 @@ def main() -> int:
     # The wheel callback accumulates; camera.handle() consumes it once per
     # frame, so several notches in one poll still produce one coherent zoom.
     # note: a callback, is a function that pass a specific runtime to be
-    # executed in a specific api context at specific planned time trigger. 
-    def on_scroll(_window, _dx: float, dy: float) -> None:
+    # executed in a specific api context at specific planned time trigger.
+    def on_scroll(_window, dx: float, dy: float) -> None:
+        if scroll_is_precise():
+            # Trackpad two-finger scroll: pan the pivot, like dragging the scene.
+            camera.pan(
+                dx * PAN_PIXELS_PER_SCROLL * SCROLL_PAN_SIGN_X,
+                dy * PAN_PIXELS_PER_SCROLL * SCROLL_PAN_SIGN_Y,
+            )
+            return
+
+        shift = (
+            glfw.get_key(window, glfw.KEY_LEFT_SHIFT) == glfw.PRESS
+            or glfw.get_key(window, glfw.KEY_RIGHT_SHIFT) == glfw.PRESS
+        )
+        if shift:
+            # Shift + wheel: pan, for wheels without a horizontal axis.
+            camera.pan(dx * WHEEL_PAN_PIXELS, dy * WHEEL_PAN_PIXELS)
+            return
+
+        # Wheel notch (or a pinch on platforms without the native bridge): zoom.
         camera.scroll_by(dy)
 
     # Pass the callback to the glfw api
     glfw.set_scroll_callback(window, on_scroll)
 
-    # Plane the some keys runtime further execution. 
+    def on_pinch(magnification: float) -> None:
+        # macOS magnification is a per-event delta (fingers spread > 0), so the
+        # exponential keeps the gesture smooth and always positive.
+        camera.zoom_by(math.exp(magnification * PINCH_ZOOM_STEP))
+
+    native_gestures = install_macos_gestures(window, on_pinch)
+
+    # Plane the some keys runtime further execution.
     def on_key(_window, key: int, _scancode: int, action: int, _mods: int) -> None:
         if action != glfw.PRESS:
             return
@@ -327,8 +356,10 @@ def main() -> int:
     # print on terminal the control input keyboard programmed function
     sys.stdout.write("\x1b[2J")  # clear the screen.
     sys.stdout.write(
-        f"{yellow}controls: left-drag = orbit, middle-drag = pan, wheel = zoom, "
-        f"R/Home = reset, Esc = quit{rst}\n"
+        f"{yellow}controls: left-drag = orbit, middle-drag = pan, "
+        f"wheel/pinch = zoom, two-finger scroll = pan, "
+        f"R/Home = reset, Esc = quit "
+        f"(native gestures: {native_gestures}){rst}\n"
     )
     sys.stdout.flush()
 
@@ -379,9 +410,11 @@ def main() -> int:
         # A field of arrows pointing at the cursor, in the floor plane.
         draw_vector_array(system, tip)
 
-        # This commented code block represent a gizmo 
-        # representing the 3d systems basis axis orientation 
+        # This commented code block represent a gizmo
+        # representing the 3d systems basis axis orientation
         # those are draw from the selected system variant.
+        # (re-add AXIS_X_COLOR, AXIS_Y_COLOR, AXIS_Z_COLOR to the settings3d
+        #  import list if you uncomment this block)
         """
         gizmo = (-3.7, 3.4, CLOCK_Z)
         for direction, color in (
@@ -397,7 +430,7 @@ def main() -> int:
             system.draw_arrow(gizmo, end, color)
         """
 
-        # The draw_screen_text is aa only. 
+        # The draw_screen_text is aa only.
         # Draw an anti-aliased text on screen space.
         if aa is not None:
             aa.draw_screen_text(

@@ -43,6 +43,17 @@ CAMERA_ORBIT_SPEED = 0.008  # radians per pixel of left-drag
 CAMERA_ZOOM_SPEED = 0.5  # world units per wheel notch
 CAMERA_PAN_SPEED = 0.0012  # fraction of the pivot distance per pixel of middle-drag
 
+# --- macOS trackpad gestures (macos_gestures3d.py) -----------------------
+# GLFW divides trackpad scroll deltas by 10; multiplying back restores
+# point-sized deltas so two-finger panning moves the scene 1:1 with the fingers.
+PAN_PIXELS_PER_SCROLL = 10.0
+# A wheel notch is a unit-less +/-1, so shift+wheel panning needs its own scale.
+WHEEL_PAN_PIXELS = 40.0
+# Flip either sign to invert a two-finger trackpad pan.
+SCROLL_PAN_SIGN_X = 1.0
+SCROLL_PAN_SIGN_Y = 1.0
+PINCH_ZOOM_STEP = 6.0  # exp() sensitivity per unit of macOS `magnification`
+
 CAMERA_START_YAW = 0.6
 CAMERA_START_PITCH = 0.4
 CAMERA_START_DISTANCE = 6.5
