@@ -86,8 +86,14 @@ while not glfw.window_should_close(window):
 
         glClear(int(GL_COLOR_BUFFER_BIT) | int(GL_DEPTH_BUFFER_BIT))
         system.draw_grid()
-
+        
         draw_2D_rectangle(system,(3,2),(5,3),(1,1,0))
+
+        # or with the Vec2 class
+        pt1 = Vec2(7,7)
+        pt2 = Vec2(10,10)
+        draw_2D_rectangle(system,pt1,pt2,(1,1,0))
+
 
         if aa is not None:
             aa.draw_screen_text(
