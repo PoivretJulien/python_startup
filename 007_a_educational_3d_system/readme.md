@@ -65,6 +65,12 @@ it's a trick but this should not be "optimized out" since it force to experiment
 the projection matrix issue of the z depth (camera matrix forward) priority in 
 the renderer... introducing with elegance the notion of objects entity.
 
+-> another example of a minimal event loop:
+this loop provide the cursor projection position on the XY plane 
+on the screen space.
+( now you have a builtin terminal print console on the screen window )
+(note that the grid dimension is dynamically relative to the zoom state)
+
 ```python
 while not glfw.window_should_close(window):
         glfw.poll_events()
