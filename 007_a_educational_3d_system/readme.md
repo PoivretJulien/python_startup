@@ -83,8 +83,6 @@ while not glfw.window_should_close(window):
 
         draw_2D_rectangle(system,(3,2),(5,3),(1,1,0))
 
-        # The draw_screen_text is aa only.
-        # Draw an anti-aliased text on screen space.
         if aa is not None:
             aa.draw_screen_text(
                 16.0,
