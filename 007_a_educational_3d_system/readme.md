@@ -21,11 +21,61 @@ talk collectively about science and technology (the most complex one).
 
 IA do mostly all the stuff today should we suffer to understand it ?
 
+Minimal (howto?):
+an easy 2d rectangle two points function:
+
+-> first write this function in the main.py
+```python
+def draw_2D_rectangle(
+                   system: GridArrowRenderer | AAGridArrowRenderer,
+                   corner_a:tuple[float,float],
+                   corner_b:tuple[float,float],
+                   color:tuple[float,float,float]
+                   )->None:
+    """
+        Draw a 2D rectangle from base component lines.
+        (a small increment on z avoid z fight with the 2d grid)
+    """
+    # first define the rectangle corners.
+    a = (corner_a[0],corner_a[1],0.04)
+    b = (corner_b[0],corner_a[1],0.04)
+    c = (corner_b[0],corner_b[1],0.04)
+    d = (corner_a[0],corner_b[1],0.04)
+    # draw the 4 lines.
+    system.draw_line(a,b,color)
+    system.draw_line(b,c,color)
+    system.draw_line(c,d,color)
+    system.draw_line(d,a,color)
+```
+-> then in then main function replace the event loop simply by this:
+```python
+while not glfw.window_should_close(window):
+        glfw.poll_events()
+        camera.handle(window)
+        glClear(int(GL_COLOR_BUFFER_BIT) | int(GL_DEPTH_BUFFER_BIT))
+        system.draw_grid()
+        draw_2D_rectangle(system,(3,2),(5,3),(1,1,0))
+
+        glfw.swap_buffers(window)
+```
+-> now you get a minimal customizable rectangle function with all the important 
+notions that you may need...
+for instance the rectangle function draw in 3d with a tiny offset on z, for now 
+it's a trick but this should not be "optimized out" since it force to experiment 
+the projection matrix issue of the z depth (camera matrix forward) priority in 
+the renderer... introducing with elegance the notion of objects entity.
+
+Info:
+( Rust bevy engine introduce a beautiful ECS entity component system game engine 
+that manage all those entity very efficiently in space and time but that's an eavy
+production machine. )
+but math is the focus there crazy would be to play instead of studding.
+
 A vec2 and vec3 class is already imported in the main ready to play with.
 this system provide time space and color with interactive input zoom in/zoom out
 and full python syntax compatibility.
 
-now grab your book and become the designer of tomorrow,
+Now grab your book and become the designer of tomorrow,
 Introduction to Linear Algebra Book:
 https://wellesleycambridge.com/
 
