@@ -65,6 +65,44 @@ it's a trick but this should not be "optimized out" since it force to experiment
 the projection matrix issue of the z depth (camera matrix forward) priority in 
 the renderer... introducing with elegance the notion of objects entity.
 
+```python
+while not glfw.window_should_close(window):
+        glfw.poll_events()
+        camera.handle(window)
+
+        width, height = glfw.get_window_size(window)
+        cursor_x, cursor_y = glfw.get_cursor_pos(window)
+
+        floor_hit = camera.floor_point(cursor_x, cursor_y, width, height)
+        if floor_hit is not None:
+            last_tip = (float(floor_hit[0]), float(floor_hit[1]), CLOCK_Z)
+        tip = clamp_ground(last_tip, camera)
+
+        glClear(int(GL_COLOR_BUFFER_BIT) | int(GL_DEPTH_BUFFER_BIT))
+        system.draw_grid()
+
+        draw_2D_rectangle(system,(3,2),(5,3),(1,1,0))
+
+        # The draw_screen_text is aa only.
+        # Draw an anti-aliased text on screen space.
+        if aa is not None:
+            aa.draw_screen_text(
+                16.0,
+                24.0,
+                f"cursor px ({cursor_x:.0f}, {cursor_y:.0f})   "
+                f"world ({tip[0]:+.2f}, {tip[1]:+.2f})   "
+                f"yaw {math.degrees(camera.yaw):+.0f}  "
+                f"pitch {math.degrees(camera.pitch):+.0f}  "
+                f"dist {camera.distance:.2f}",
+                14.0,
+                SCREEN_HUD_COLOR,
+            )
+
+        glfw.swap_buffers(window)
+```
+
+
+
 Info:
 ( Rust bevy engine introduce a beautiful ECS entity component system game engine 
 that manage all those entities very efficiently in space and time but that's an heavy
