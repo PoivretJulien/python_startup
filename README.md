@@ -77,6 +77,28 @@ https://en.wikipedia.org/wiki/Neural_processing_unit
 
 Quotes: accurate instructions need clarity and precision everything else is projection.
 
+python know it's place, for those who need heavy workload 
+you can still always trigger a compiled binary by the language of you choice 
+and pass arguments or address with memory mapping if needed but don't have you 
+something more urgent to do ? play time and working time ... we know the drill.
+
+```python
+import subprocess
+
+# Example: Running the ping command with arguments
+# Equivalent terminal command: ping -c 3 google.com
+result = subprocess.run(["ping", "-c", "3", "google.com"], capture_output=True, text=True)
+
+# Print the output from the command
+print("Output:\n", result.stdout)
+
+# Check if the command was successful (exit code 0)
+if result.returncode == 0:
+    print("Process finished successfully!")
+else:
+    print(f"Process failed with error code {result.returncode}")
+```
+
 </pre>
 </body>
 </html>
