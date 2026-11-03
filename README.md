@@ -77,10 +77,10 @@ https://en.wikipedia.org/wiki/Neural_processing_unit
 
 Quotes: accurate instructions need clarity and precision everything else is projection.
 
-python know it's place, for those who need heavy workload 
-you can still always trigger a compiled binary by the language of you choice 
-and pass arguments or address with memory mapping if needed but don't have you 
-something more urgent to do ? play time and working time ... we know the drill.
+python know it's place, for those who need heavy workload you can still always 
+trigger a compiled binary by the language of you choice and pass arguments or 
+address with memory mapping if needed but don't have you something more urgent 
+to do ? play time and working time ... we know the drill.
 
 ```python
 import subprocess
