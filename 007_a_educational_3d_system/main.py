@@ -379,8 +379,7 @@ def main() -> int:
     while not glfw.window_should_close(window):
         glfw.poll_events()
 
-        # Orbit (left), pan (middle), zoom (wheel). The camera remembers the
-        # previous cursor so the deltas are exactly step06's mouse_delta.
+        # Orbit (left), pan (middle), zoom (wheel).
         camera.handle(window)
 
         width, height = glfw.get_window_size(window)
