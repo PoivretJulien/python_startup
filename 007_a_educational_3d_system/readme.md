@@ -67,7 +67,7 @@ the renderer... introducing with elegance the notion of objects entity.
 
 Info:
 ( Rust bevy engine introduce a beautiful ECS entity component system game engine 
-that manage all those entity very efficiently in space and time but that's an eavy
+that manage all those entity very efficiently in space and time but that's an heavy
 production machine. )
 but math is the focus there crazy would be to play instead of studding.
 
