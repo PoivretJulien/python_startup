@@ -20,7 +20,6 @@ but articulation is a king value at my sense and that's what python is designed 
 -> python has almost no compile time energy cost.
 -> and the maths are program language agnostic anyway.
 
-
 launch the program with:  
 
 ./.venv/bin/python main.py --poll (non reactive)
