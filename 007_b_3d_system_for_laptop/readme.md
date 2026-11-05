@@ -18,6 +18,8 @@ but articulation is a king value at my sense and that's what python is designed 
 -> python has almost no compile time energy cost.
 -> and the maths are program language agnostic anyway.
 
+https://www.youtube.com/watch?v=lgLBnNtvlq8
+
 </pre>
 </body>
 </html>
