@@ -4,16 +4,16 @@ establish a 3d system to draw line circle text and particles
 support anti aliasing and GPU acceleration.
 
 The event loop is reactive, it draws one frame when a callback notify an event.
-No input means no wake-ups, no frames, no CPU and no GPU work — 
+No input means no wake-ups, no frames, no CPU and no GPU work —
 the window keeps its last presented frame until the user
-touches something. 
+touches something.
 
 -> ``--poll`` passed as argument on launch runs the naive always-redraw loop
 this constitute a solid universal graphical user interface for any linear
 algebra study on a laptop battery driven.
 
 this main.py leverage a function ( defined just before the main() ) that draw 1000000 particles,
-it's an ia generated function that leverage numpy quite well, (numpy is a whole 
+it's an ia generated function that leverage numpy quite well, (numpy is a whole
 topic by itself), but basically it's an array of particles on X an Y with a Z
 modulated by a factorized Sinus function. it's pretty nice. ( the color variation is
 defined in the function body itself from rgb value )
@@ -22,6 +22,7 @@ defined in the function body itself from rgb value )
 from __future__ import annotations
 
 import argparse
+import functools
 import math
 import signal
 import sys
@@ -286,6 +287,55 @@ def draw_2D_rectangle(
     system.draw_line(d, a, color)
 
 
+@functools.lru_cache(maxsize=4)
+def wave_lattice(nx: int, ny: int, spacing: float) -> tuple[np.ndarray, np.ndarray]:
+    """Offsets of an ``nx`` by ``ny`` sheet centred on the origin, in xy.
+
+    Cached because the lattice is the same every frame: at 1 M particles the
+    meshgrid alone is 8 MB of float32, and both wave variants would otherwise
+    build it twice per frame. The arrays are read-only by convention.
+    """
+    columns = (np.arange(nx, dtype=np.float32) - (nx - 1) * 0.5) * spacing
+    rows = (np.arange(ny, dtype=np.float32) - (ny - 1) * 0.5) * spacing
+    return np.meshgrid(columns, rows)  # both are (ny, nx)
+
+
+def particle_wave_points(
+    anchor: tuple[float, float, float],
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    amplitude: float = 0.35,
+    wavelength: float = 1.6,
+    speed: float = 2.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The ``nx`` by ``ny`` travelling-wave sheet as ``(points, colours)``.
+
+    Pure NumPy, no GL: two ``(N, 3)`` float32 arrays that are already flat, so a
+    caller hands them straight to a renderer. The geometry is described in
+    ``draw_particle_wave``; this function is what both variants share.
+    """
+    dx, dy = wave_lattice(nx, ny, spacing)
+
+    phase = math.tau * (dx + dy) / wavelength - elapsed * speed
+    wave = np.sin(phase)
+
+    points = np.stack(
+        (anchor[0] + dx, anchor[1] + dy, anchor[2] + amplitude * wave),
+        axis=-1,
+    )
+
+    # 0 = trough (cyan), 1 = crest (warm): the colour is the wave's height.
+    height = 0.5 + 0.5 * wave
+    colors = np.stack(
+        (0.15 + 0.85 * height, 0.55 + 0.35 * height, 0.95 - 0.75 * height),
+        axis=-1,
+    )
+    return points.reshape(-1, 3), colors.reshape(-1, 3)
+
+
 def draw_particle_wave(
     system: GridArrowRenderer | AAGridArrowRenderer,
     anchor: tuple[float, float, float],
@@ -315,27 +365,114 @@ def draw_particle_wave(
     ``nx * ny`` particles are one ``draw_points`` call: one vertex per particle,
     one upload, one draw. Nothing is called per particle, so the field stays
     cheap (a 32 x 16 sheet is 512 particles, a fraction of a millisecond here).
+
+    Draw order is the array order. For correct layering under the AA renderer
+    (its sprites ignore the depth buffer) use ``draw_particle_wave_sorted``,
+    which is the same sheet with a back-to-front permutation.
     """
-    columns = (np.arange(nx, dtype=np.float32) - (nx - 1) * 0.5) * spacing
-    rows = (np.arange(ny, dtype=np.float32) - (ny - 1) * 0.5) * spacing
-    dx, dy = np.meshgrid(columns, rows)  # both are (ny, nx)
-
-    phase = math.tau * (dx + dy) / wavelength - elapsed * speed
-    wave = np.sin(phase)
-
-    points = np.stack(
-        (anchor[0] + dx, anchor[1] + dy, anchor[2] + amplitude * wave),
-        axis=-1,
+    points, colors = particle_wave_points(
+        anchor,
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        amplitude=amplitude,
+        wavelength=wavelength,
+        speed=speed,
     )
+    system.draw_points(points, size, colors)
 
-    # 0 = trough (cyan), 1 = crest (warm): the colour is the wave's height.
-    height = 0.5 + 0.5 * wave
-    colors = np.stack(
-        (0.15 + 0.85 * height, 0.55 + 0.35 * height, 0.95 - 0.75 * height),
-        axis=-1,
+
+# One cached permutation is enough: it is valid until the camera pose or the
+# wave advances past its tolerance, and a new one replaces it rather than
+# accumulating 8 MB per frame. Stored as (lattice key, pose, elapsed, order).
+_wave_order_state: tuple[tuple, np.ndarray, float, np.ndarray] | None = None
+
+
+def _wave_order(
+    camera: OrbitCamera,
+    points: np.ndarray,
+    lattice: tuple,
+    elapsed: float,
+    pose_step: float,
+    time_step: float,
+) -> np.ndarray:
+    """Back-to-front permutation of ``points``, reused while nothing moved.
+
+    The permutation is computed on the sheet that is actually drawn, so it is
+    exact rather than approximate: the wave lifts particles by up to
+    ``amplitude``, which is as large as the lattice's own depth spacing (~48% of
+    neighbouring pairs would swap if the order came from the flat sheet).
+
+    Reuse is a hysteresis on both inputs, not a bucket: the cached order is
+    returned while no pose component (eye in world units, forward as a unit
+    vector) moved more than ``pose_step`` **and** the wave advanced by less than
+    ``time_step`` seconds. Both default to ``0``, which sorts every frame — the
+    exact path, and the one to use unless ``N`` is large.
+    """
+    global _wave_order_state
+
+    pose = np.concatenate((camera.eye(), camera.forward()))
+    if _wave_order_state is not None:
+        cached_lattice, cached_pose, cached_elapsed, cached_order = _wave_order_state
+        if (
+            cached_lattice == lattice
+            and float(np.abs(pose - cached_pose).max()) <= pose_step
+            and abs(elapsed - cached_elapsed) <= time_step
+        ):
+            return cached_order
+
+    order = camera.depth_order(points)
+    _wave_order_state = (lattice, pose, float(elapsed), order)
+    return order
+
+
+def draw_particle_wave_sorted(
+    system: GridArrowRenderer | AAGridArrowRenderer,
+    camera: OrbitCamera,
+    anchor: tuple[float, float, float],
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    size: float = 0.03,
+    amplitude: float = 0.35,
+    wavelength: float = 1.6,
+    speed: float = 2.0,
+    pose_step: float = 0.0,
+    time_step: float = 0.0,
+) -> None:
+    """``draw_particle_wave``, drawn back-to-front for ``camera``.
+
+    Same sheet, same single draw call, but the particles are ordered far to near
+    on **view depth** ``dot(p - eye, forward)``, so the ones closest to the
+    camera are painted last. That matters where the depth buffer cannot help:
+    the AA renderer's sprites are screen-space quads pinned to ``NDC z = 0``, and
+    transparent particles need painter's order everywhere. With ``renderer3d``'s
+    opaque squares the depth test already resolves them and this only costs the
+    sort.
+
+    Cost is one ``O(N log N)`` sort per frame (one ``draw_points`` upload and
+    draw call around it): ~1.6 ms at 20 k particles, ~18 ms at 200 k, ~100 ms at
+    1 M here. ``pose_step`` / ``time_step`` reuse the previous permutation while
+    the camera and the wave stay within those tolerances, which is what keeps a
+    large sheet affordable — but a *stale* order is an approximation, so leave
+    both at ``0`` unless you need the speed.
+    """
+    points, colors = particle_wave_points(
+        anchor,
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        amplitude=amplitude,
+        wavelength=wavelength,
+        speed=speed,
     )
-
-    system.draw_points(points.reshape(-1, 3), size, colors.reshape(-1, 3))
+    lattice = (nx, ny, spacing, anchor)
+    order = _wave_order(camera, points, lattice, elapsed, pose_step, time_step)
+    system.draw_points_sorted(points, size, colors, order=order)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -498,7 +635,9 @@ def main(argv: list[str] | None = None) -> int:
     # Readout state: the last printed tip, the previous mouse-button state, and
     # the last valid floor hit (used while the cursor ray misses the floor).
     last_printed: tuple[float, float, float] | None = None
-    mouse_was_down = False
+    # parked together with the click readout in draw_frame: uncomment both, and
+    # add them to the `nonlocal` line there, to bring the click state back
+    # mouse_was_down = False
     last_tip: tuple[float, float, float] = (1.5, 1.5, CLOCK_Z)
 
     # print on terminal the control input keyboard programmed function
@@ -518,10 +657,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # ------------------------------------------------------------------
     # One frame: clear -> draw.
-    # this is typically a callback to draw a frame it will clear 
-    # the screen automatically at first and draw the frame on the callback 
+    # this is typically a callback to draw a frame it will clear
+    # the screen automatically at first and draw the frame on the callback
     # function exit
-    # the callback is linked to the call loop3d.run() in the last try and 
+    # the callback is linked to the call loop3d.run() in the last try and
     # catch block.
     # ------------------------------------------------------------------
     def draw_frame() -> None:
@@ -542,8 +681,8 @@ def main(argv: list[str] | None = None) -> int:
             last_tip = (float(floor_hit[0]), float(floor_hit[1]), CLOCK_Z)
         tip = clamp_ground(last_tip, camera)
 
-        #mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
-        #clicked = mouse_down and not mouse_was_down  # rising edge, not held
+        # mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
+        # clicked = mouse_down and not mouse_was_down  # rising edge, not held
         glClear(CLEAR_ALL)
 
         # plain GL_LINES grid: plain_renderer.draw_grid()
@@ -559,18 +698,37 @@ def main(argv: list[str] | None = None) -> int:
         elapsed_second *= 100  # speed up the time by this scalar.
         draw_clock(system, aa, elapsed_second)
 
-        
-        # draw 1M particles. 
-        draw_particle_wave(
-            system,
-            anchor=(0.0, -3.5, 0.45),
-            nx=1000,
-            ny=1000,
-            elapsed=glfw.get_time() - start,
-            spacing=0.0022,
-            size=0.03,
-            amplitude=0.35,
-        )
+        # set it to True to sort the particle from the z depth.
+        sort_particule_order = False
+
+        spacing_v = 0.0022 # increase this value to sens the scale.
+        # spacing_v = 0.22
+
+        # sort the particle for the renderer.
+        if not sort_particule_order:
+            draw_particle_wave(
+                system,
+                anchor=(0.0, -3.5, 0.45),
+                nx=1000,
+                ny=1000,
+                elapsed=glfw.get_time() - start,
+                spacing=spacing_v,
+                size=0.03,
+                amplitude=0.35,
+            )
+        else:
+            draw_particle_wave_sorted(
+                system,
+                camera,
+                anchor=(0.0, -3.5, 0.45),
+                nx=1000,
+                ny=1000,
+                elapsed=glfw.get_time() - start,
+                spacing=spacing_v,
+                size=0.03,
+                amplitude=0.35,
+            )
+
         '''
 
         # The cursor arrow: the 3D analogue of the 2D arrow-to-cursor.

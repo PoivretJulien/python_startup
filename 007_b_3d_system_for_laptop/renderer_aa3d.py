@@ -465,6 +465,35 @@ class AAGridArrowRenderer:
         """Draw one anti-aliased particle; ``size`` is the radius in world units."""
         self.draw_points(center, size, color)
 
+    def draw_points_sorted(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.Color | np.ndarray = ARROW_COLOR,
+        *,
+        order: np.ndarray | None = None,
+    ) -> None:
+        """Draw particles back-to-front, so the nearest one covers the rest.
+
+        The AA sprites are screen-space quads pinned to ``NDC z = 0``, so the
+        depth buffer cannot resolve them: **draw order is the layering**. Sorting
+        by view depth (``OrbitCamera.depth_order``) makes the nearest particle
+        win every overlap, which is what makes a dense cloud read as 3D.
+
+        Same batch, upload and single draw call as ``draw_points``, plus one
+        ``O(N log N)`` argsort and one gather of the packed vertices. If the
+        field is static that is wasted work every frame: compute the order when
+        the camera moves and pass it back in as ``order=``.
+        """
+        batch = geometry3d.point_vertices(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        if order is None:
+            order = self.camera.depth_order(batch[:, :3])
+        self.points.upload(batch[order])
+        self._bind_points()
+        self.points.draw()
+
     def draw_text(
         self,
         anchor: geometry3d.Point3,

@@ -259,6 +259,36 @@ class GridArrowRenderer:
         """Draw one particle; ``size`` is the radius in world units."""
         self.draw_points(center, size, color)
 
+    def draw_points_sorted(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.Color | np.ndarray = ARROW_COLOR,
+        *,
+        order: np.ndarray | None = None,
+    ) -> None:
+        """Draw particles back-to-front, so the nearest one is painted last.
+
+        Same batch, same upload, same single draw call as ``draw_points``, plus
+        one view-depth sort (``OrbitCamera.depth_order``) and one gather of the
+        packed vertices. Pass ``order`` to reuse a permutation computed earlier
+        — e.g. recompute only when the camera moves.
+
+        The plain renderer already depth-tests its points, so for opaque
+        particles this changes nothing visually: sorting here exists so the call
+        site works with either renderer and stays correct if you turn blending
+        on (transparent particles need painter's order, since the depth buffer
+        cannot resolve them).
+        """
+        batch = geometry3d.point_vertices(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        if order is None:
+            order = self.camera.depth_order(batch[:, :3])
+        self.points.upload(batch[order])
+        self._bind_points()
+        self.points.draw()
+
     def close(self) -> None:
         self.points.destroy()
         self.lines.destroy()
