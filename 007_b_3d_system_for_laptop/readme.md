@@ -21,6 +21,12 @@ but articulation is a king value at my sense and that's what python is designed 
 -> and the maths are program language agnostic anyway.
 
 
+launch the program with:  
+
+./.venv/bin/python main.py --poll (non reactive)
+./.venv/bin/python main.py  (reactive default)
+
+
 
 </pre>
 </body>
