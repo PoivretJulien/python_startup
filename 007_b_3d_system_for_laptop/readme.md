@@ -16,7 +16,7 @@ This is a reactive variant of the 3d system API,
 simply one function decide what to draw in the frame only when an event trigger.
 the app does not drain battery when idle.
 
-support line, arrow, circle, point, images, text in (3d fields) and text on screen space.
+support line, arrow, circle, point, point(with rgba value), images, text in (3d fields) and text on screen space.
 (except for text) an anti-aliased version exist for each methods
 
 Supported images format:
