@@ -19,7 +19,7 @@ the app does not drain battery when idle.
 support line, arrow, circle, point, images, text in (3d fields) and text on screen space.
 (except for text) an anti-aliased version exist for each methods
 
-supported images format:
+Supported images format:
    PNG  JPEG/JPG/JPE/JFIF  BMP/DIB  GIF/APNG  WebP  TIFF/TIF  TGA  PSD
    ICO/CUR/ICNS  PCX  PPM/PGM/PBM/PNM  XBM/XPM  SGI/RGB/RGBA  RAS  QOI
    DDS  JP2/J2K/JPX/J2C/JPC  AVIF/AVIFS  FITS  HDF5  GRIB  EPS/PS/PDF
