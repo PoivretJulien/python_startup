@@ -1,8 +1,9 @@
 """OpenGL helpers for the 3D experiment: program builder and the batch VAOs.
 
-Three batch shapes cover the drawing API: ``Lines`` (``GL_LINES`` /
-``GL_TRIANGLES`` for strokes and ribbons), ``Strokes`` (screen-space AA quads)
-and ``Points`` (``GL_POINTS`` particles, one vertex each).
+Three batch shapes cover the drawing API plus one for pictures: ``Lines``
+(``GL_LINES`` / ``GL_TRIANGLES`` for strokes and ribbons), ``Quads`` (textured
+``GL_TRIANGLES``: ``x, y, z, u, v``), ``Strokes`` (screen-space AA quads) and
+``Points`` (``GL_POINTS`` particles, one vertex each).
 """
 
 from __future__ import annotations
@@ -170,6 +171,47 @@ class Lines:
 
     def draw_triangles(self) -> None:
         """Draw the uploaded vertices as GL_TRIANGLES (used by thick plain lines)."""
+        if not self.count:
+            return
+        glBindVertexArray(self.vao)
+        glDrawArrays(GL_TRIANGLES, 0, self.count)
+
+    def destroy(self) -> None:
+        glDeleteBuffers(1, [self.vbo])
+        glDeleteVertexArrays(1, [self.vao])
+
+
+class Quads:
+    """A VAO/VBO for one textured GL_TRIANGLES batch: ``x, y, z, u, v``.
+
+    Used by ``texture3d.ImageBatch`` for pictures: six vertices (two triangles)
+    per draw, so the buffer is uploaded per picture rather than accumulated.
+    """
+
+    STRIDE = 5 * 4  # xyz + uv, float32
+
+    def __init__(self) -> None:
+        self.vao = glGenVertexArrays(1)
+        self.vbo = glGenBuffers(1)
+        if not self.vao or not self.vbo:
+            raise RuntimeError("could not create the quad buffers")
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, self.STRIDE, ctypes.c_void_p(0))
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, self.STRIDE, ctypes.c_void_p(3 * 4))
+        glEnableVertexAttribArray(1)
+        glBindVertexArray(0)
+        self.count = 0
+
+    def upload(self, vertices: np.ndarray, usage: GLenum = GL_DYNAMIC_DRAW) -> None:
+        vertices = np.ascontiguousarray(vertices, dtype=np.float32)
+        glBindVertexArray(self.vao)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, usage)
+        self.count = int(vertices.shape[0])
+
+    def draw(self) -> None:
         if not self.count:
             return
         glBindVertexArray(self.vao)

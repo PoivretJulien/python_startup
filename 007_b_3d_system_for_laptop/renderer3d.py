@@ -12,6 +12,7 @@ from __future__ import annotations
 import geometry3d
 import glfw
 import numpy as np
+import texture3d
 from gl_utils3d import (
     POINT_VERTEX_SHADER,
     Lines,
@@ -99,6 +100,11 @@ class GridArrowRenderer:
         self.point_feather_location = glGetUniformLocation(self.point_program, "feather")
         self.max_point_px = min(POINT_MAX_PX, max_point_size())
         glEnable(GL_PROGRAM_POINT_SIZE)
+
+        # Pictures: one textured-quad program plus the texture cache that keeps
+        # a source from being uploaded again every frame.
+        self.images = texture3d.ImageBatch()
+        self.textures = texture3d.TextureStore()
 
     # -- internals ---------------------------------------------------------
     def _bind_camera(self) -> None:
@@ -289,7 +295,53 @@ class GridArrowRenderer:
         self._bind_points()
         self.points.draw()
 
+    def draw_image(
+        self,
+        anchor: geometry3d.Point3,
+        source: texture3d.ImageSource,
+        right: geometry3d.Vector3 = (1.0, 0.0, 0.0),
+        up: geometry3d.Vector3 = (0.0, 1.0, 0.0),
+        width: float = 1.0,
+        height: float | None = None,
+        *,
+        tint: texture3d.Tint = (1.0, 1.0, 1.0, 1.0),
+        depth_write: bool | None = None,
+    ) -> None:
+        """Draw a picture (texture) in an arbitrary 3D plane.
+
+        ``anchor`` is the picture's **bottom-left** corner, ``right`` and ``up``
+        are its own axes (only their direction matters), and ``width`` /
+        ``height`` are its size in world units along those axes. ``height=None``
+        keeps the source's pixel aspect ratio from ``width``.
+
+        ``source`` is a file path, a Pillow image, an ``(H, W, 3)`` /
+        ``(H, W, 4)`` NumPy array, or an already-uploaded
+        ``texture3d.Texture``. Paths and in-memory images are cached by
+        ``texture3d.TextureStore``, so the same source drawn every frame uploads
+        once (a different array per frame is the exception — build one
+        ``Texture`` and reuse it).
+
+        ``tint`` multiplies the texel: an ``(r, g, b)`` colour tints the picture
+        and an RGBA fades it. ``depth_write`` defaults to ``True`` for an opaque
+        picture and ``False`` when it has transparency, so blended fragments can
+        see what is behind them.
+        """
+        texture = self.textures.get(source)
+        if height is None:
+            height = width * texture.height / max(texture.width, 1)
+        vertices = geometry3d.image_quad_vertices(anchor, right, up, width, height)
+        width_px, height_px = glfw.get_framebuffer_size(self.window)
+        self.images.draw(
+            vertices,
+            texture,
+            self.camera.mvp(width_px / max(height_px, 1)),
+            tint,
+            depth_write=depth_write,
+        )
+
     def close(self) -> None:
+        self.textures.close()
+        self.images.close()
         self.points.destroy()
         self.lines.destroy()
         self.grid.destroy()

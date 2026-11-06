@@ -196,6 +196,44 @@ def circle_vertices(
     return np.array(rows, dtype=np.float32).reshape(-1, 6)
 
 
+# --------------------------------------------------------------------- pictures
+def image_quad_vertices(
+    anchor: Point3,
+    right: Vector3 = (1.0, 0.0, 0.0),
+    up: Vector3 = (0.0, 1.0, 0.0),
+    width: float = 1.0,
+    height: float = 1.0,
+) -> np.ndarray:
+    """Two textured triangles for a picture in an arbitrary 3D plane.
+
+    Layout is ``x, y, z, u, v`` (5 float32 per vertex, 6 vertices), which is
+    what ``texture3d.ImageBatch`` uploads as ``GL_TRIANGLES``. ``anchor`` is
+    the picture's **bottom-left** corner; ``right`` and ``up`` are its own axes
+    (normalised here, so only their direction matters); ``width`` and
+    ``height`` are its size in world units along those axes.
+
+    ``v = 0`` is the **top** row of the source pixels (Pillow row 0), so the
+    bottom edge carries ``v = 1`` and a picture drawn with ``up`` pointing up
+    appears upright. A negative ``width`` or ``height`` mirrors the picture.
+    """
+    origin = np.asarray(anchor, dtype=np.float64)
+    r = _normalized(right) * width
+    u = _normalized(up) * height
+    bottom_left = origin
+    bottom_right = origin + r
+    top_right = origin + r + u
+    top_left = origin + u
+    rows = [
+        (*bottom_left, 0.0, 1.0),
+        (*bottom_right, 1.0, 1.0),
+        (*top_right, 1.0, 0.0),
+        (*bottom_left, 0.0, 1.0),
+        (*top_right, 1.0, 0.0),
+        (*top_left, 0.0, 0.0),
+    ]
+    return np.array(rows, dtype=np.float32).reshape(-1, 5)
+
+
 # ------------------------------------------------------------------------ arrows
 def _screen_frame(direction: np.ndarray, view_dir: Vector3) -> tuple[np.ndarray, np.ndarray]:
     """Screen-plane ``(along, across)`` unit vectors for a 3D direction.

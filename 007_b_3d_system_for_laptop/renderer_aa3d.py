@@ -31,6 +31,7 @@ import geometry3d
 import geometry_aa3d
 import glfw
 import numpy as np
+import texture3d
 from camera3d import OrbitCamera
 from gl_utils3d import (
     POINT_VERTEX_SHADER,
@@ -281,6 +282,11 @@ class AAGridArrowRenderer:
         self.screen_program = build_program(SCREEN_VERTEX_SHADER, FRAGMENT_SHADER)
         self.screen_size_location = glGetUniformLocation(self.screen_program, "screen_size")
         self.screen_feather_location = glGetUniformLocation(self.screen_program, "feather")
+
+        # Pictures: one textured-quad program plus the texture cache that keeps
+        # a source from being uploaded again every frame.
+        self.images = texture3d.ImageBatch()
+        self.textures = texture3d.TextureStore()
 
         # Coverage arrives as alpha, so the stencil-free way to apply it is blending.
         glEnable(GL_BLEND)
@@ -594,7 +600,54 @@ class AAGridArrowRenderer:
         """Advance width of screen-space `text` in window pixels."""
         return geometry_aa3d.text_width(text, size_px, tracking)
 
+    def draw_image(
+        self,
+        anchor: geometry3d.Point3,
+        source: texture3d.ImageSource,
+        right: geometry3d.Vector3 = (1.0, 0.0, 0.0),
+        up: geometry3d.Vector3 = (0.0, 1.0, 0.0),
+        width: float = 1.0,
+        height: float | None = None,
+        *,
+        tint: texture3d.Tint = (1.0, 1.0, 1.0, 1.0),
+        depth_write: bool | None = None,
+    ) -> None:
+        """Draw a picture (texture) in an arbitrary 3D plane.
+
+        ``anchor`` is the picture's **bottom-left** corner, ``right`` and ``up``
+        are its own axes (only their direction matters), and ``width`` /
+        ``height`` are its size in world units along those axes. ``height=None``
+        keeps the source's pixel aspect ratio from ``width``.
+
+        ``source`` is a file path, a Pillow image, an ``(H, W, 3)`` /
+        ``(H, W, 4)`` NumPy array, or an already-uploaded
+        ``texture3d.Texture``. Paths and in-memory images are cached by
+        ``texture3d.TextureStore``, so the same source drawn every frame uploads
+        once (a different array per frame is the exception — build one
+        ``Texture`` and reuse it).
+
+        The quad is real 3D geometry: it is depth-tested and depth-written like
+        the strokes, and because it is a texture it can show detail no stroke
+        batch can. ``tint`` multiplies the texel (RGBA fades the picture), and
+        ``depth_write`` defaults to opaque pictures only, so a transparent
+        picture is composited over what is behind it.
+        """
+        texture = self.textures.get(source)
+        if height is None:
+            height = width * texture.height / max(texture.width, 1)
+        vertices = geometry3d.image_quad_vertices(anchor, right, up, width, height)
+        width_px, height_px = self._framebuffer()
+        self.images.draw(
+            vertices,
+            texture,
+            self.camera.mvp(width_px / max(height_px, 1)),
+            tint,
+            depth_write=depth_write,
+        )
+
     def close(self) -> None:
+        self.textures.close()
+        self.images.close()
         self.points.destroy()
         self.screen_strokes.destroy()
         self.strokes.destroy()

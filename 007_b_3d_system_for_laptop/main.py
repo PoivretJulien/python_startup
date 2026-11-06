@@ -86,6 +86,32 @@ SCREEN_HUD_COLOR = (1.0, 0.85, 0.40)
 HAND_COLORS = ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.0, 1.0))
 
 
+def make_demo_picture(width: int = 320, height: int = 200) -> np.ndarray:
+    """A procedural test card, so ``draw_image`` needs no picture file.
+
+    It is built once at import time and drawn every frame from the same array,
+    which is what the texture cache keys on: the image reaches the GPU once.
+    """
+    u = np.linspace(0.0, 1.0, width, dtype=np.float32)[None, :]
+    v = np.linspace(0.0, 1.0, height, dtype=np.float32)[:, None]
+    checker = (np.floor(u * 8.0) + np.floor(v * 5.0)) % 2.0
+
+    red = 0.15 + 0.75 * u
+    green = 0.20 + 0.70 * v
+    blue = 0.85 - 0.45 * u
+    channels = np.broadcast_arrays(red, green, blue)
+    rgb = np.clip(np.stack(channels, axis=2) + 0.10 * checker[..., None], 0.0, 1.0)
+
+    # A bright border and a dark centre disc make the orientation obvious.
+    rgb[(u < 0.03) | (u > 0.97) | (v < 0.04) | (v > 0.96)] = (0.95, 0.95, 0.85)
+    disc = (u - 0.5) ** 2 + (v - 0.5) ** 2 < 0.035
+    rgb[np.broadcast_to(disc, rgb.shape[:2])] = (0.08, 0.08, 0.10)
+    return (rgb * 255.0).astype(np.uint8)
+
+
+DEMO_PICTURE = make_demo_picture()
+
+
 def analog_display(
     system: GridArrowRenderer | AAGridArrowRenderer,
     seconds: float,
@@ -690,6 +716,24 @@ def main(argv: list[str] | None = None) -> int:
 
         draw_2D_rectangle(system, (3, 2), (5, 3), (1, 1, 0))
 
+        # A picture (texture) standing on the floor next to the clock:
+        # `anchor` is the bottom-left corner, `right` / `up` are the picture's
+        # own axes (only their direction matters) and `width` / `height` are its
+        # size in world units along them. Both renderers implement the call.
+        
+        #    PNG  JPEG/JPG/JPE/JFIF  BMP/DIB  GIF/APNG  WebP  TIFF/TIF  TGA  PSD
+        #    ICO/CUR/ICNS  PCX  PPM/PGM/PBM/PNM  XBM/XPM  SGI/RGB/RGBA  RAS  QOI
+        #    DDS  JP2/J2K/JPX/J2C/JPC  AVIF/AVIFS  FITS  HDF5  GRIB  EPS/PS/PDF
+        #    WMF/EMF  MPO  PCD  PXR  FLC/FLI  BUFR  MSP  PALM  ... 
+        system.draw_image(
+            anchor=(-3.7, -0.4, 0.05),
+            source=DEMO_PICTURE,
+            right=(1.0, 0.0, 0.0),
+            up=(0.0, 0.0, 1.0),
+            width=1.8,
+            height=1.15,
+        )
+
         pt1 = Vec2(7, 7)
         pt2 = Vec2(10, 10)
         draw_2D_rectangle(system, pt1, pt2, (1, 1, 0))
@@ -702,7 +746,7 @@ def main(argv: list[str] | None = None) -> int:
         sort_particule_order = False
 
         spacing_v = 0.0022 # increase this value to sens the scale.
-        # spacing_v = 0.22
+        # spacing_v = 0.22 # just like that.
 
         # sort the particle for the renderer.
         if not sort_particule_order:
