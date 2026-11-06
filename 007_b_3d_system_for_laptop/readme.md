@@ -3,11 +3,6 @@
 <body>
 <pre>
 
-Quotes: "You may be surprise about what can be efficiently interpolated,
-         without loosing the taste"
-         
-https://www.youtube.com/watch?v=lgLBnNtvlq8
-
 This is a reactive variant of the 3d system API,
 simply one function decide what to draw in the frame only when an event trigger.
 the app does not drain battery when idle.
@@ -29,12 +24,17 @@ but articulation is a king value at my sense and that's what python is designed 
 -> and the maths are program language agnostic anyway.
 
 -> copy and paste the install script .sh or .ps1 + requirement.txt 
-run the install script, then launch the program with:  
 
-./.venv/bin/python main.py --poll (non reactive)
-or
-./.venv/bin/python main.py  (reactive default)
+run the install script, then launch the program with: 
 
+(non reactive)
+```
+$ ./.venv/bin/python main.py --poll 
+```
+or (reactive default)
+```
+$ ./.venv/bin/python main.py  
+```
 edit the main.py at you convenience and play Vec2 and Vec3 in the function:
 
 ```python
