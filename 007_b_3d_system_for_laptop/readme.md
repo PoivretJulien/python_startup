@@ -2,10 +2,12 @@
 <html lang="en">
 <body>
 <pre>
+      
 Quotes: 
       "IA accelerate things but should not forbid ourself to learn an share enthusiasm
 in a more practical way to aboard the contemporary context with pragmatism,justness and 
 numerical church community"
+
 
 
 A real multi usage display that offer many possibility for all day feedback:
