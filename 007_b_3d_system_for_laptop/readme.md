@@ -3,7 +3,7 @@
 <body>
 <pre>
 
-A real cool cyber display that offer many possibility:
+A real cool "cyber" display that offer many possibility:
    
 This is a reactive variant of the 3d system API,
 simply one function decide what to draw in the frame only when an event trigger.
