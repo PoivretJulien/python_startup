@@ -692,8 +692,7 @@ def main(argv: list[str] | None = None) -> int:
     def draw_frame() -> None:
         nonlocal last_tip
 
-        # Orbit (left), pan (middle), zoom (wheel). The camera remembers the
-        # previous cursor so the deltas are exactly step06's mouse_delta.
+        # Orbit (left), pan (middle), zoom (wheel).
         camera.handle(window)
 
         width, height = glfw.get_window_size(window)
@@ -720,7 +719,6 @@ def main(argv: list[str] | None = None) -> int:
         # `anchor` is the bottom-left corner, `right` / `up` are the picture's
         # own axes (only their direction matters) and `width` / `height` are its
         # size in world units along them. Both renderers implement the call.
-        
         #    PNG  JPEG/JPG/JPE/JFIF  BMP/DIB  GIF/APNG  WebP  TIFF/TIF  TGA  PSD
         #    ICO/CUR/ICNS  PCX  PPM/PGM/PBM/PNM  XBM/XPM  SGI/RGB/RGBA  RAS  QOI
         #    DDS  JP2/J2K/JPX/J2C/JPC  AVIF/AVIFS  FITS  HDF5  GRIB  EPS/PS/PDF
