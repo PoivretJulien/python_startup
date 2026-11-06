@@ -44,12 +44,10 @@ or (reactive default)
 ```
 $ ./.venv/bin/python main.py  
 ```
-
 Edit the main.py at you convenience and play Vec2 and Vec3 in the function callback draw_frame(), 
 just by tweaking the 1M particles system python show that it can achieve good 
 enough performance for shading and linear algebra learning without unnecessary 
 heavy machinery.  learning need workload strategy right ?
-
 ```python
 def draw_frame() -> None:
       #custom code there.
