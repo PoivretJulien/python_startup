@@ -11,6 +11,13 @@ one upload and one draw call::
 
     x, y, z, r, g, b, radius_px     (7 float32 per particle)
 
+``point_vertices_rgba`` is a second, separate packer for particles that need a
+coverage channel (a life-time fade): it emits 8 float32 per particle
+(``x, y, z, r, g, b, a, radius_world``) and pairs with ``PointsRGBA``, a second
+VAO. Keeping it out of ``point_vertices`` means the opaque ``(r, g, b)`` path
+keeps exactly the packing loop, stride and upload it always had: it writes no
+extra column and uploads no extra byte.
+
 Draw helpers take plain 3-tuples, so the public API stays as small as the 2D
 one: ``draw_arrow(start, tip, color)``, ``draw_line(start, tip, color)``,
 ``draw_circle(center, radius, color, axis)``, ``draw_point(center, size, color)``.
@@ -39,6 +46,8 @@ from settings3d import (
 )
 
 Color = tuple[float, float, float]
+# Particles may add a coverage channel, e.g. a life-time fade: (r, g, b, a).
+PointColor = tuple[float, float, float] | tuple[float, float, float, float]
 Vector3 = Sequence[float] | np.ndarray
 # Tuples, lists, NumPy arrays and sequence-like vector classes all work.
 Point3 = Vector3
@@ -291,6 +300,9 @@ def point_vertices(
     writes — no per-frame depth math, no mask, no square root. Points behind the
     eye are clipped by the pipeline (``w <= 0``) instead of being filtered here,
     which is what keeps a 200 k particle field affordable on the CPU.
+
+    This is the hot, opaque path and it is deliberately untouched: alpha lives
+    in ``point_vertices_rgba``, not behind a branch here.
     """
     pts = np.asarray(points, dtype=np.float32).reshape(-1, 3)
     count = pts.shape[0]
@@ -309,6 +321,61 @@ def point_vertices(
     out[:, 0:3] = pts
     out[:, 3:6] = colors
     out[:, 6] = sizes
+    return out
+
+
+def point_vertices_rgba(
+    points: Points3,
+    size: float | Sequence[float] | np.ndarray,
+    *,
+    color: PointColor | np.ndarray,
+) -> np.ndarray:
+    """A particle batch with a coverage channel: ``x, y, z, r, g, b, a, radius_world``.
+
+    Same arguments as ``point_vertices``, except ``color`` may carry a fourth
+    channel: one ``(r, g, b, a)`` for the batch or an ``(N, 4)`` array. ``(r, g,
+    b)`` / ``(N, 3)`` is still accepted and packs ``a = 1.0``, i.e. the sprite is
+    opaque.
+
+    ``a`` is coverage (0..1). Both renderers multiply it into the sprite's own
+    coverage — the flat square in the plain one, the anti-aliased disc in the AA
+    one — so driving it towards ``0`` over a particle's life is the whole
+    life-time effect. The fade costs one multiply in a shader that already runs
+    per fragment, and no extra draw call, upload or state change.
+
+    This is a separate function on purpose: it is the 8-float variant, so the
+    opaque 7-float ``point_vertices`` keeps its exact old cost. Here the extra
+    column is one more strided write, and the 32-byte stride stays aligned so the
+    upload is still one contiguous memcpy.
+    """
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+    count = pts.shape[0]
+
+    sizes = np.asarray(size, dtype=np.float32)
+    if sizes.ndim:
+        sizes = np.broadcast_to(sizes.reshape(-1), (count,))
+
+    colors = np.asarray(color, dtype=np.float32)
+    colors = colors.reshape(1, -1) if colors.ndim == 1 else colors.reshape(-1, colors.shape[-1])
+    channels = colors.shape[1]
+    if channels != 3 and channels != 4:
+        raise ValueError(
+            f"color must have 3 (r, g, b) or 4 (r, g, b, a) components, got {channels}"
+        )
+
+    # One allocation, one strided write per channel group, in the order the
+    # shader reads them (x, y, z, r, g, b, a, radius_world). The alpha column is
+    # the caller's fourth channel or the constant opaque value — the same cost
+    # as any other column — and it lands next to the radius column, so the last
+    # two passes share cache lines.
+    out = np.empty((count, 8), dtype=np.float32)
+    out[:, 0:3] = pts
+    out[:, 3:6] = np.broadcast_to(colors[:, 0:3], (count, 3))
+    if channels == 4:
+        out[:, 6:7] = np.broadcast_to(colors[:, 3:4], (count, 1))
+    else:
+        out[:, 6] = 1.0
+    out[:, 7] = sizes
     return out
 
 

@@ -35,7 +35,9 @@ import texture3d
 from camera3d import OrbitCamera
 from gl_utils3d import (
     POINT_VERTEX_SHADER,
+    POINT_VERTEX_SHADER_RGBA,
     Points,
+    PointsRGBA,
     Strokes,
     build_program,
     max_point_size,
@@ -44,15 +46,19 @@ from math3d import to_gl
 from OpenGL.GL import (
     GL_BLEND,
     GL_DEPTH_TEST,
+    GL_DEPTH_WRITEMASK,
     GL_DYNAMIC_DRAW,
     GL_FALSE,
     GL_ONE_MINUS_SRC_ALPHA,
     GL_PROGRAM_POINT_SIZE,
     GL_SRC_ALPHA,
+    GL_TRUE,
     glBlendFunc,
     glDeleteProgram,
+    glDepthMask,
     glDisable,
     glEnable,
+    glGetBooleanv,
     glGetUniformLocation,
     glIsEnabled,
     glUniform1f,
@@ -199,6 +205,18 @@ void main() {
 }
 """
 
+# The same disc with a coverage channel: the particle's own alpha (a life-time
+# fade) multiplies into the anti-aliased disc coverage. One extra multiply in a
+# shader that already runs per fragment; used only by draw_points_rgba.
+POINT_FRAGMENT_SHADER_RGBA = POINT_FRAGMENT_SHADER.replace(
+    "in vec3 v_color;", "in vec4 v_color;"
+).replace(
+    "frag_color = vec4(v_color, coverage);",
+    "frag_color = vec4(v_color.rgb, v_color.a * coverage);",
+)
+if "v_color.a * coverage" not in POINT_FRAGMENT_SHADER_RGBA:
+    raise RuntimeError("POINT_FRAGMENT_SHADER_RGBA derivation failed: check the markers")
+
 SCREEN_VERTEX_SHADER = """#version 330 core
 layout(location = 0) in vec3 segment_a;    // pixel-space first endpoint
 layout(location = 1) in vec3 segment_b;    // pixel-space second endpoint
@@ -276,6 +294,34 @@ class AAGridArrowRenderer:
         self.point_feather_location = glGetUniformLocation(self.point_program, "feather")
         self.max_point_px = min(POINT_MAX_PX, max_point_size())
         glEnable(GL_PROGRAM_POINT_SIZE)
+
+        # The alpha-carrying particle twin: the same vertex shader with a vec4
+        # colour, its own 8-float VAO (PointsRGBA) and its own program, so the
+        # opaque path above keeps its exact buffers, attributes and shader.
+        # Blending is already on globally (see below), so this path adds no
+        # state change at all.
+        self.points_rgba = PointsRGBA()
+        self.point_program_rgba = build_program(
+            POINT_VERTEX_SHADER_RGBA, POINT_FRAGMENT_SHADER_RGBA
+        )
+        self.point_rgba_mvp_location = glGetUniformLocation(self.point_program_rgba, "mvp")
+        self.point_rgba_eye_location = glGetUniformLocation(self.point_program_rgba, "eye")
+        self.point_rgba_forward_location = glGetUniformLocation(self.point_program_rgba, "forward")
+        self.point_rgba_scale_location = glGetUniformLocation(
+            self.point_program_rgba, "pixel_scale"
+        )
+        self.point_rgba_min_location = glGetUniformLocation(
+            self.point_program_rgba, "min_radius_px"
+        )
+        self.point_rgba_max_location = glGetUniformLocation(
+            self.point_program_rgba, "max_radius_px"
+        )
+        self.point_rgba_flat_depth_location = glGetUniformLocation(
+            self.point_program_rgba, "flat_depth"
+        )
+        self.point_rgba_feather_location = glGetUniformLocation(
+            self.point_program_rgba, "feather"
+        )
 
         # Screen-space text has its own tiny vertex shader: same pixel-distance
         # fragment shader, but pixel coordinates instead of a 3D MVP.
@@ -363,6 +409,55 @@ class AAGridArrowRenderer:
         # grid; particles therefore layer with the strokes in draw order.
         glUniform1i(self.point_flat_depth_location, 1)
         glUniform1f(self.point_feather_location, AA_FEATHER_PX)
+
+    # -- the alpha-carrying particle internals (new; the opaque path above is
+    #    untouched, so it keeps its exact buffers, attributes and shader) ----
+    def _bind_points_rgba(self) -> None:
+        """Bind the alpha-carrying point program; ``_bind_points`` is untouched."""
+        glUseProgram(self.point_program_rgba)
+        width, height = self._framebuffer()
+        glUniformMatrix4fv(
+            self.point_rgba_mvp_location,
+            1,
+            GL_FALSE,
+            to_gl(self.camera.mvp(width / max(height, 1))),
+        )
+        eye = self.camera.eye()
+        forward = self.camera.forward()
+        glUniform3f(
+            self.point_rgba_eye_location, float(eye[0]), float(eye[1]), float(eye[2])
+        )
+        glUniform3f(
+            self.point_rgba_forward_location,
+            float(forward[0]),
+            float(forward[1]),
+            float(forward[2]),
+        )
+        glUniform1f(self.point_rgba_scale_location, self.camera.pixel_scale(height))
+        glUniform1f(self.point_rgba_min_location, POINT_MIN_PX)
+        glUniform1f(self.point_rgba_max_location, 0.5 * self.max_point_px)
+        # Same flat-depth rule as _bind_points: AA sprites layer in draw order.
+        glUniform1i(self.point_rgba_flat_depth_location, 1)
+        glUniform1f(self.point_rgba_feather_location, AA_FEATHER_PX)
+
+    def _draw_points_rgba(self, batch: np.ndarray, depth_write: bool = True) -> None:
+        """Upload + draw one 8-float batch; blending is already on globally.
+
+        The depth mask is saved and restored the same way
+        ``texture3d.ImageBatch.draw`` does it, so nothing outside the call
+        inherits a changed state.
+        """
+        self.points_rgba.upload(batch)
+        self._bind_points_rgba()
+
+        depth_mask = bool(np.asarray(glGetBooleanv(GL_DEPTH_WRITEMASK)).ravel()[0])
+        if not depth_write and depth_mask:
+            glDepthMask(GL_FALSE)
+
+        self.points_rgba.draw()
+
+        if not depth_write and depth_mask:
+            glDepthMask(GL_TRUE)
 
     # -- the renderer API shared with renderer3d.GridArrowRenderer ---------
     def draw_grid(self) -> None:
@@ -454,6 +549,10 @@ class AAGridArrowRenderer:
         feathered at any radius. The vertex shader converts the world-space
         radius to pixels and clamps it to the driver's sprite limit; points
         behind the eye are clipped by the pipeline.
+
+        For per-particle transparency (a life-time fade) use ``draw_points_rgba``,
+        which is a separate method on a separate 8-float buffer so this opaque
+        path stays exactly as fast as it was.
         """
         batch = geometry3d.point_vertices(points, size, color=color)
         if not batch.shape[0]:
@@ -499,6 +598,82 @@ class AAGridArrowRenderer:
         self.points.upload(batch[order])
         self._bind_points()
         self.points.draw()
+
+    # -- particles with alpha: separate buffer, program and methods ---------
+    def draw_points_rgba(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.PointColor | np.ndarray = ARROW_COLOR,
+        *,
+        depth_write: bool = True,
+    ) -> None:
+        """``draw_points`` with a coverage channel: a per-particle life-time fade.
+
+        Same one-vertex-per-particle batch, except ``color`` may be one
+        ``(r, g, b, a)`` or an ``(N, 4)`` array (``(r, g, b)`` is still accepted
+        and packs ``a = 1.0``). ``a`` is the particle's coverage: the fragment
+        shader multiplies it into the disc's anti-aliased coverage, so ``0`` makes
+        the particle invisible and ``1`` is the old opaque disc. Driving it
+        towards ``0`` over a particle's life is the whole life-time effect.
+
+        This is a separate method on a separate 8-float VAO and program, so the
+        opaque ``draw_points`` path keeps its exact old cost. Here the batch is
+        one extra float column (32-byte aligned stride) and the fade costs one
+        more multiply in a shader that already runs per fragment: still one
+        upload, one draw call and no additional state change (blending is already
+        enabled for the AA renderer).
+
+        ``depth_write`` defaults to ``True``. The AA sprites are pinned to
+        ``NDC z = 0`` anyway, so the depth buffer already cannot order them: draw
+        order is the layering, which is what ``draw_points_rgba_sorted`` exists
+        for. Pass ``depth_write=False`` if a faded batch must not leave
+        footprints for the depth-tested geometry behind it.
+        """
+        batch = geometry3d.point_vertices_rgba(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        self._draw_points_rgba(batch, depth_write)
+
+    def draw_point_rgba(
+        self,
+        center: geometry3d.Point3,
+        size: float,
+        color: geometry3d.PointColor = ARROW_COLOR,
+        *,
+        depth_write: bool = True,
+    ) -> None:
+        """Draw one anti-aliased particle with coverage; ``size`` is the radius.
+
+        ``size`` is in world units; ``color`` may be ``(r, g, b)`` or
+        ``(r, g, b, a)`` (see ``draw_points_rgba``).
+        """
+        self.draw_points_rgba(center, size, color, depth_write=depth_write)
+
+    def draw_points_rgba_sorted(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.PointColor | np.ndarray = ARROW_COLOR,
+        *,
+        order: np.ndarray | None = None,
+        depth_write: bool = True,
+    ) -> None:
+        """``draw_points_rgba`` painted back-to-front, the layering a fade needs.
+
+        Faded particles are transparent, and the AA sprites are pinned to ``NDC
+        z = 0``, so draw order *is* the layering: sorting on view depth
+        (``OrbitCamera.depth_order``) makes the nearest particle composite last.
+        Same batch, upload and one blended draw call as ``draw_points_rgba``, plus
+        one ``O(N log N)`` argsort and one gather; pass ``order`` to reuse a
+        permutation computed earlier.
+        """
+        batch = geometry3d.point_vertices_rgba(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        if order is None:
+            order = self.camera.depth_order(batch[:, :3])
+        self._draw_points_rgba(batch[order], depth_write)
 
     def draw_text(
         self,
@@ -648,10 +823,12 @@ class AAGridArrowRenderer:
     def close(self) -> None:
         self.textures.close()
         self.images.close()
+        self.points_rgba.destroy()
         self.points.destroy()
         self.screen_strokes.destroy()
         self.strokes.destroy()
         self.grid.destroy()
+        glDeleteProgram(self.point_program_rgba)
         glDeleteProgram(self.point_program)
         glDeleteProgram(self.screen_program)
         glDeleteProgram(self.program)

@@ -501,6 +501,186 @@ def draw_particle_wave_sorted(
     system.draw_points_sorted(points, size, colors, order=order)
 
 
+# ---------------------------------------------------------------------------
+# alpha test: the same sheet, with a per-particle life-time coverage channel
+# ---------------------------------------------------------------------------
+def particle_lifetime_alpha(
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    wavelength: float = 1.6,
+    fade_rate: float = 0.35,
+    power: float = 1.0,
+) -> np.ndarray:
+    """Per-particle coverage in ``0..1``: a life-time pulse crossing the sheet.
+
+    Every particle owns a private clock, offset by its lattice position, so the
+    sheet is not one global fade: a diagonal front of *just born* particles
+    (alpha 1) sweeps towards +x / +y while the ones behind it have already given
+    their alpha back::
+
+        life  = frac(elapsed * fade_rate + (dx + dy) / wavelength)
+        alpha = (1 - life) ** power
+
+    ``power`` > 1 holds the particle visible longer and then drops it faster;
+    ``power`` < 1 fades early and leaves a long tail of near-invisible dots —
+    which is exactly what makes a wrong blend or a missing alpha column obvious.
+
+    Pure NumPy over the cached lattice: two whole-array passes, no per-particle
+    Python loop, no allocation per particle. Returns a flat ``(N,)`` float32
+    column, ready to sit next to the ``(N, 3)`` colours from
+    ``particle_wave_points``.
+    """
+    dx, dy = wave_lattice(nx, ny, spacing)
+    life = (elapsed * fade_rate + (dx + dy) / wavelength) % 1.0
+    alpha = 1.0 - life
+    if power != 1.0:
+        alpha = alpha**power
+    return alpha.reshape(-1).astype(np.float32, copy=False)
+
+
+def particle_lifetime_points(
+    anchor: tuple[float, float, float],
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    amplitude: float = 0.35,
+    wavelength: float = 1.6,
+    speed: float = 0.35,
+    fade_rate: float = 0.35,
+    power: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The wave sheet as ``(points, (N, 4) colours)``: same geometry, plus alpha.
+
+    Geometry and rgb come from ``particle_wave_points`` unchanged, so the two
+    sheets can be compared side by side; only the fourth channel is new. That
+    column is what ``draw_points_rgba`` multiplies into the sprite coverage.
+    """
+    points, colors = particle_wave_points(
+        anchor,
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        amplitude=amplitude,
+        wavelength=wavelength,
+        speed=speed,
+    )
+    alpha = particle_lifetime_alpha(
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        wavelength=wavelength,
+        fade_rate=fade_rate,
+        power=power,
+    )
+    return points, np.column_stack((colors, alpha))
+
+
+def draw_particle_lifetime(
+    system: GridArrowRenderer | AAGridArrowRenderer,
+    anchor: tuple[float, float, float],
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    size: float = 0.06,
+    amplitude: float = 0.35,
+    wavelength: float = 1.6,
+    speed: float = 0.35,
+    fade_rate: float = 0.35,
+    power: float = 1.0,
+    depth_write: bool = True,
+) -> None:
+    """Alpha test: draw the wave sheet with a per-particle life-time fade.
+
+    This is the exercise for the ``*_rgba`` particle path — the same call shape
+    as ``draw_particle_wave``, but the colour array carries an alpha column, so
+    each particle is born opaque and dies transparent as the front sweeps over
+    it. What to check, in order:
+
+    * **alpha column arrives**: the sheet shows a diagonal soft edge, not a hard
+      line; particles at alpha 0 are gone, not black.
+    * **both renderers agree**: the plain one shows fading squares, the AA one
+      fading discs with the same coverage ramp (swap `system` in ``main``).
+    * **the opaque path is untouched**: comment this call out and the wave call
+      above renders exactly as before — the rgba path is a separate buffer,
+      program and draw call.
+    * **ordering**: every particle is blended in draw (array) order here. If the
+      overlap looks flat, use ``draw_particle_lifetime_sorted``, which paints
+      back-to-front like a stack of glass, or pass ``depth_write=False`` so the
+      faded particles leave no depth footprints.
+
+    Cost is one ``draw_points_rgba`` call: one upload of an 8-float-per-vertex
+    batch and one blended draw, with the fade done by a multiply in the fragment
+    shader. Nothing in this file loops per particle.
+    """
+    points, colors = particle_lifetime_points(
+        anchor,
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        amplitude=amplitude,
+        wavelength=wavelength,
+        speed=speed,
+        fade_rate=fade_rate,
+        power=power,
+    )
+    system.draw_points_rgba(points, size, colors, depth_write=depth_write)
+
+
+def draw_particle_lifetime_sorted(
+    system: GridArrowRenderer | AAGridArrowRenderer,
+    camera: OrbitCamera,
+    anchor: tuple[float, float, float],
+    nx: int,
+    ny: int,
+    elapsed: float,
+    *,
+    spacing: float = 0.22,
+    size: float = 0.06,
+    amplitude: float = 0.35,
+    wavelength: float = 1.6,
+    speed: float = 0.35,
+    fade_rate: float = 0.35,
+    power: float = 1.0,
+    order: np.ndarray | None = None,
+    depth_write: bool = True,
+) -> None:
+    """``draw_particle_lifetime`` painted back-to-front, the layering a fade needs.
+
+    Transparent sprites cannot be resolved by the depth buffer, and the AA
+    renderer pins them to ``NDC z = 0`` anyway, so **draw order is the
+    layering**: the whole batch is sorted on view depth and the nearest particle
+    composites last. Same upload, same single blended draw call as the unsorted
+    variant, plus one ``O(N log N)`` sort — pass ``order`` to reuse a permutation
+    computed when the camera moved instead of sorting every frame (this demo
+    sheet is small, so it sorts each call).
+    """
+    points, colors = particle_lifetime_points(
+        anchor,
+        nx,
+        ny,
+        elapsed,
+        spacing=spacing,
+        amplitude=amplitude,
+        wavelength=wavelength,
+        speed=speed,
+        fade_rate=fade_rate,
+        power=power,
+    )
+    if order is None:
+        order = camera.depth_order(points)
+    system.draw_points_rgba_sorted(points, size, colors, order=order, depth_write=depth_write)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """The loop's knobs, all of them about *when* a frame is drawn."""
     parser = argparse.ArgumentParser(
@@ -552,7 +732,7 @@ def main(argv: list[str] | None = None) -> int:
         running = False
         print("\n  Ctrl+C (signal) — exiting")
 
-    # set an interrupt linked to callback.
+    # Set an interrupt linked to callback.
     signal.signal(signal.SIGINT, on_sigint)
 
     # Create a window object instance. A resize is a visible change but not an
@@ -692,7 +872,8 @@ def main(argv: list[str] | None = None) -> int:
     def draw_frame() -> None:
         nonlocal last_tip
 
-        # Orbit (left), pan (middle), zoom (wheel).
+        # Orbit (left), pan (middle), zoom (wheel). The camera remembers the
+        # previous cursor so the deltas are exactly
         camera.handle(window)
 
         width, height = glfw.get_window_size(window)
@@ -707,7 +888,7 @@ def main(argv: list[str] | None = None) -> int:
         tip = clamp_ground(last_tip, camera)
 
         # mouse_down = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
-        # clicked = mouse_down and not mouse_was_down  # rising edge, not held
+        # clicked = mouse_down and not mouse_was_down  # rising edge, not heldcyber display
         glClear(CLEAR_ALL)
 
         # plain GL_LINES grid: plain_renderer.draw_grid()
@@ -719,6 +900,7 @@ def main(argv: list[str] | None = None) -> int:
         # `anchor` is the bottom-left corner, `right` / `up` are the picture's
         # own axes (only their direction matters) and `width` / `height` are its
         # size in world units along them. Both renderers implement the call.
+        
         #    PNG  JPEG/JPG/JPE/JFIF  BMP/DIB  GIF/APNG  WebP  TIFF/TIF  TGA  PSD
         #    ICO/CUR/ICNS  PCX  PPM/PGM/PBM/PNM  XBM/XPM  SGI/RGB/RGBA  RAS  QOI
         #    DDS  JP2/J2K/JPX/J2C/JPC  AVIF/AVIFS  FITS  HDF5  GRIB  EPS/PS/PDF
@@ -743,8 +925,8 @@ def main(argv: list[str] | None = None) -> int:
         # set it to True to sort the particle from the z depth.
         sort_particule_order = False
 
-        #spacing_v = 0.0022 # increase this value to sens the scale.
-        spacing_v = 0.22 # just like that.
+        spacing_v = 0.0022 # increase this value to sens the scale.
+        # spacing_v = 0.22 # just like that.
 
         # sort the particle for the renderer.
         if not sort_particule_order:
@@ -770,6 +952,28 @@ def main(argv: list[str] | None = None) -> int:
                 size=0.03,
                 amplitude=0.35,
             )
+
+        # --- alpha test: a small sheet with a per-particle life-time fade ----
+        # draw_points_rgba is a separate method on a separate buffer/program, so
+        # this call cannot slow the wave above down. Left of the clock, above
+        # the wave plane so it stays visible: each particle is born opaque and
+        # dies transparent as the fade front sweeps diagonally over the sheet.
+        # Comment it out to compare, or swap in draw_particle_lifetime_sorted
+        # (which also takes `camera`) to layer the faded particles back-to-front.
+        draw_particle_lifetime(
+            system,
+            anchor=(-3.0, 3.0, 0.75),
+            nx=24,
+            ny=24,
+            elapsed=glfw.get_time() - start,
+            spacing=0.16,
+            size=0.07,
+            amplitude=0.18,
+            wavelength=0.9,
+            speed=0.25,
+            fade_rate=0.30,
+            power=1.6,
+        )
 
         '''
 

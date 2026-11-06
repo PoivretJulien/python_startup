@@ -3,7 +3,8 @@
 Three batch shapes cover the drawing API plus one for pictures: ``Lines``
 (``GL_LINES`` / ``GL_TRIANGLES`` for strokes and ribbons), ``Quads`` (textured
 ``GL_TRIANGLES``: ``x, y, z, u, v``), ``Strokes`` (screen-space AA quads) and
-``Points`` (``GL_POINTS`` particles, one vertex each).
+``Points`` (``GL_POINTS`` particles, one vertex each). ``PointsRGBA`` is
+``Points`` with one extra float: the particle's own coverage channel.
 """
 
 from __future__ import annotations
@@ -97,6 +98,16 @@ void main() {
     v_radius_px = radius_px;
 }
 """
+
+# The same program for the 8-float particle layout (``PointsRGBA``), where the
+# colour attribute carries the coverage channel: vec4 in, vec4 out. Only the two
+# declarations differ, and they are derived from the shader above so the two
+# variants cannot drift apart. The opaque path keeps the vec3 program untouched.
+POINT_VERTEX_SHADER_RGBA = POINT_VERTEX_SHADER.replace(
+    "in vec3 color;", "in vec4 color;"
+).replace("out vec3 v_color;", "out vec4 v_color;")
+if "in vec4 color;" not in POINT_VERTEX_SHADER_RGBA:
+    raise RuntimeError("POINT_VERTEX_SHADER_RGBA derivation failed: check the vec3 markers")
 
 
 def max_point_size() -> float:
@@ -334,3 +345,23 @@ class Points:
     def destroy(self) -> None:
         glDeleteBuffers(1, [self.vbo])
         glDeleteVertexArrays(1, [self.vao])
+
+
+class PointsRGBA(Points):
+    """The 8-float twin of ``Points``, for particles that carry a coverage channel.
+
+    Layout: ``x, y, z, r, g, b, a, radius_world``. Only the layout constants
+    differ, so upload/draw stay the same one-upload-one-draw-call code. It is a
+    separate VAO on purpose: the opaque 7-float ``Points`` keeps its exact
+    stride and attribute set, and the extra column is paid only by batches that
+    ask for it (32 bytes per vertex, still aligned). Pair it with
+    ``POINT_VERTEX_SHADER_RGBA``.
+    """
+
+    STRIDE = 8 * 4  # xyz + rgba + radius_world, float32
+
+    ATTRIBUTES = (
+        (0, 3, 0),  # position
+        (1, 4, 3),  # colour, including the coverage channel
+        (2, 1, 7),  # particle radius in world units
+    )

@@ -15,19 +15,31 @@ import numpy as np
 import texture3d
 from gl_utils3d import (
     POINT_VERTEX_SHADER,
+    POINT_VERTEX_SHADER_RGBA,
     Lines,
     Points,
+    PointsRGBA,
     build_program,
     max_point_size,
 )
 from math3d import to_gl
 from OpenGL.GL import (
+    GL_BLEND,
+    GL_DEPTH_WRITEMASK,
     GL_DYNAMIC_DRAW,
     GL_FALSE,
+    GL_ONE_MINUS_SRC_ALPHA,
     GL_PROGRAM_POINT_SIZE,
+    GL_SRC_ALPHA,
+    GL_TRUE,
+    glBlendFunc,
     glDeleteProgram,
+    glDepthMask,
+    glDisable,
     glEnable,
+    glGetBooleanv,
     glGetUniformLocation,
+    glIsEnabled,
     glUniform1f,
     glUniform1i,
     glUniform3f,
@@ -69,6 +81,18 @@ void main() {
 }
 """
 
+# The same square with the coverage channel: the particle's own alpha (e.g. a
+# life-time fade) is written straight through, one assignment in a shader that
+# already runs per fragment. Used only by draw_points_rgba.
+POINT_FRAGMENT_SHADER_RGBA = """#version 330 core
+in vec4 v_color;
+out vec4 frag_color;
+
+void main() {
+    frag_color = v_color;
+}
+"""
+
 
 class GridArrowRenderer:
     """Owns the GL objects; the window supplies the size, the camera the view."""
@@ -100,6 +124,32 @@ class GridArrowRenderer:
         self.point_feather_location = glGetUniformLocation(self.point_program, "feather")
         self.max_point_px = min(POINT_MAX_PX, max_point_size())
         glEnable(GL_PROGRAM_POINT_SIZE)
+
+        # The alpha-carrying particle twin: the same vertex shader with a vec4
+        # colour, its own 8-float VAO (PointsRGBA) and its own program, so the
+        # opaque path above keeps its exact buffers, attributes and shader.
+        self.points_rgba = PointsRGBA()
+        self.point_program_rgba = build_program(
+            POINT_VERTEX_SHADER_RGBA, POINT_FRAGMENT_SHADER_RGBA
+        )
+        self.point_rgba_mvp_location = glGetUniformLocation(self.point_program_rgba, "mvp")
+        self.point_rgba_eye_location = glGetUniformLocation(self.point_program_rgba, "eye")
+        self.point_rgba_forward_location = glGetUniformLocation(self.point_program_rgba, "forward")
+        self.point_rgba_scale_location = glGetUniformLocation(
+            self.point_program_rgba, "pixel_scale"
+        )
+        self.point_rgba_min_location = glGetUniformLocation(
+            self.point_program_rgba, "min_radius_px"
+        )
+        self.point_rgba_max_location = glGetUniformLocation(
+            self.point_program_rgba, "max_radius_px"
+        )
+        self.point_rgba_flat_depth_location = glGetUniformLocation(
+            self.point_program_rgba, "flat_depth"
+        )
+        self.point_rgba_feather_location = glGetUniformLocation(
+            self.point_program_rgba, "feather"
+        )
 
         # Pictures: one textured-quad program plus the texture cache that keeps
         # a source from being uploaded again every frame.
@@ -161,6 +211,61 @@ class GridArrowRenderer:
         glUniform1f(self.point_max_location, 0.5 * self.max_point_px)
         glUniform1i(self.point_flat_depth_location, 0)  # depth-correct, like GL_LINES
         glUniform1f(self.point_feather_location, 0.0)
+
+    # -- the alpha-carrying particle internals (new; the opaque path above is
+    #    untouched, so it keeps its exact buffers, attributes and shader) ----
+    def _bind_points_rgba(self) -> None:
+        """Bind the alpha-carrying point program; ``_bind_points`` is untouched."""
+        glUseProgram(self.point_program_rgba)
+        width, height = glfw.get_framebuffer_size(self.window)
+        glUniformMatrix4fv(
+            self.point_rgba_mvp_location,
+            1,
+            GL_FALSE,
+            to_gl(self.camera.mvp(width / max(height, 1))),
+        )
+        eye = self.camera.eye()
+        forward = self.camera.forward()
+        glUniform3f(
+            self.point_rgba_eye_location, float(eye[0]), float(eye[1]), float(eye[2])
+        )
+        glUniform3f(
+            self.point_rgba_forward_location,
+            float(forward[0]),
+            float(forward[1]),
+            float(forward[2]),
+        )
+        glUniform1f(self.point_rgba_scale_location, self.camera.pixel_scale(height))
+        glUniform1f(self.point_rgba_min_location, POINT_MIN_PX)
+        glUniform1f(self.point_rgba_max_location, 0.5 * self.max_point_px)
+        glUniform1i(self.point_rgba_flat_depth_location, 0)  # depth-correct, like GL_LINES
+        glUniform1f(self.point_rgba_feather_location, 0.0)
+
+    def _draw_points_rgba(self, batch: np.ndarray, depth_write: bool = True) -> None:
+        """Upload + draw one 8-float batch, blended over the scene.
+
+        The blend switch and the depth mask are saved and restored the same way
+        ``texture3d.ImageBatch.draw`` does it, so nothing outside this call
+        inherits a changed state and the opaque path keeps its exact cost.
+        """
+        self.points_rgba.upload(batch)
+        self._bind_points_rgba()
+
+        blend_was_enabled = bool(glIsEnabled(GL_BLEND))
+        if not blend_was_enabled:
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        depth_mask = bool(np.asarray(glGetBooleanv(GL_DEPTH_WRITEMASK)).ravel()[0])
+        if not depth_write and depth_mask:
+            glDepthMask(GL_FALSE)
+
+        self.points_rgba.draw()
+
+        if not depth_write and depth_mask:
+            glDepthMask(GL_TRUE)
+        if not blend_was_enabled:
+            glDisable(GL_BLEND)
 
     # -- the renderer API shared with renderer_aa3d.AAGridArrowRenderer ----
     def draw_grid(self) -> None:
@@ -248,6 +353,10 @@ class GridArrowRenderer:
         other aliased draw. The vertex shader converts the world-space radius to
         pixels per point, clamps it to the driver's sprite limit, and the
         pipeline clips anything behind the eye.
+
+        For per-particle transparency (a life-time fade) use ``draw_points_rgba``,
+        which is a separate method on a separate 8-float buffer so this opaque
+        path stays exactly as fast as it was.
         """
         batch = geometry3d.point_vertices(points, size, color=color)
         if not batch.shape[0]:
@@ -284,7 +393,8 @@ class GridArrowRenderer:
         particles this changes nothing visually: sorting here exists so the call
         site works with either renderer and stays correct if you turn blending
         on (transparent particles need painter's order, since the depth buffer
-        cannot resolve them).
+        cannot resolve them). Transparent batches use
+        ``draw_points_rgba_sorted``, the same permutation on the alpha path.
         """
         batch = geometry3d.point_vertices(points, size, color=color)
         if not batch.shape[0]:
@@ -294,6 +404,79 @@ class GridArrowRenderer:
         self.points.upload(batch[order])
         self._bind_points()
         self.points.draw()
+
+    # -- particles with alpha: separate buffer, program and methods ---------
+    def draw_points_rgba(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.PointColor | np.ndarray = ARROW_COLOR,
+        *,
+        depth_write: bool = True,
+    ) -> None:
+        """``draw_points`` with a coverage channel: a per-particle life-time fade.
+
+        Same one-vertex-per-particle batch, except ``color`` may be one
+        ``(r, g, b, a)`` or an ``(N, 4)`` array (``(r, g, b)`` is still accepted
+        and packs ``a = 1.0``). ``a`` is the particle's coverage and the fragment
+        shader writes it straight through, so ``0`` makes the sprite invisible and
+        ``1`` is the old opaque square. Driving it towards ``0`` over a particle's
+        life is the whole life-time effect.
+
+        This is a separate method on a separate 8-float VAO and program, so the
+        opaque ``draw_points`` path keeps its exact old cost. Here the batch is
+        one extra float column (32-byte aligned stride), the draw is still one
+        upload and one draw call, and blending is switched on around that call
+        only (then restored). Fading therefore costs no extra pass and no extra
+        draw call.
+
+        ``depth_write`` defaults to ``True``: a nearly invisible particle then
+        still writes depth like an opaque one. Pass ``depth_write=False`` to
+        composite the batch like glass (the mask is saved and restored), or use
+        ``draw_points_rgba_sorted`` when the field has to layer back-to-front.
+        """
+        batch = geometry3d.point_vertices_rgba(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        self._draw_points_rgba(batch, depth_write)
+
+    def draw_point_rgba(
+        self,
+        center: geometry3d.Point3,
+        size: float,
+        color: geometry3d.PointColor = ARROW_COLOR,
+        *,
+        depth_write: bool = True,
+    ) -> None:
+        """Draw one particle with coverage; ``size`` is the radius in world units.
+
+        ``color`` may be ``(r, g, b)`` or ``(r, g, b, a)`` (see
+        ``draw_points_rgba``).
+        """
+        self.draw_points_rgba(center, size, color, depth_write=depth_write)
+
+    def draw_points_rgba_sorted(
+        self,
+        points: geometry3d.Points3,
+        size: float | np.ndarray,
+        color: geometry3d.PointColor | np.ndarray = ARROW_COLOR,
+        *,
+        order: np.ndarray | None = None,
+        depth_write: bool = True,
+    ) -> None:
+        """``draw_points_rgba`` painted back-to-front for glass-like layering.
+
+        Same batch, upload and single blended draw call, plus one view-depth sort
+        (``OrbitCamera.depth_order``) and one gather of the packed vertices. Pass
+        ``order`` to reuse a permutation computed earlier, e.g. only when the
+        camera moves — the same contract as ``draw_points_sorted``.
+        """
+        batch = geometry3d.point_vertices_rgba(points, size, color=color)
+        if not batch.shape[0]:
+            return
+        if order is None:
+            order = self.camera.depth_order(batch[:, :3])
+        self._draw_points_rgba(batch[order], depth_write)
 
     def draw_image(
         self,
@@ -342,9 +525,11 @@ class GridArrowRenderer:
     def close(self) -> None:
         self.textures.close()
         self.images.close()
+        self.points_rgba.destroy()
         self.points.destroy()
         self.lines.destroy()
         self.grid.destroy()
+        glDeleteProgram(self.point_program_rgba)
         glDeleteProgram(self.point_program)
         glDeleteProgram(self.program)
 
