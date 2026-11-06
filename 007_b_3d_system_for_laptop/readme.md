@@ -10,7 +10,7 @@ numerical church community"
 
 
 
-A real multi usage display that offer many possibility for all day feedback:
+A real multi usage display that offer many possibility for a all day feedback:
    
 This is a reactive variant of the 3d system API,
 simply one function decide what to draw in the frame only when an event trigger.
