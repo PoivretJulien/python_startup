@@ -48,6 +48,7 @@ edit the main.py at you convenience and play Vec2 and Vec3 in the function:
 
 ```python
 def draw_frame() -> None:
+      #custom code there.
    ...
 ```
 
