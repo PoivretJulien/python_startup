@@ -743,8 +743,8 @@ def main(argv: list[str] | None = None) -> int:
         # set it to True to sort the particle from the z depth.
         sort_particule_order = False
 
-        spacing_v = 0.0022 # increase this value to sens the scale.
-        # spacing_v = 0.22 # just like that.
+        #spacing_v = 0.0022 # increase this value to sens the scale.
+        spacing_v = 0.22 # just like that.
 
         # sort the particle for the renderer.
         if not sort_particule_order:
