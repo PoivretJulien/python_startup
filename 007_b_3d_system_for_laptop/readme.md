@@ -34,14 +34,12 @@ but articulation is a king value at my sense and that's what python is designed 
 
 -> copy and paste the install script .sh or .ps1 + requirement.txt 
 
-run the install script, then launch the program with: 
+run the install script, then launch the program with:
+```
+# (non reactive)
+$ ./.venv/bin/python main.py --poll
 
-(non reactive)
-```
-$ ./.venv/bin/python main.py --poll 
-```
-or (reactive default)
-```
+# or reactive (by default)
 $ ./.venv/bin/python main.py  
 ```
 Edit the main.py at you convenience and play Vec2 and Vec3 in the function callback draw_frame(), 
