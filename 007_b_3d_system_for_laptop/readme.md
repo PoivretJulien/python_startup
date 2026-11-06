@@ -2,8 +2,12 @@
 <html lang="en">
 <body>
 <pre>
+Quotes: 
+      "IA accelerate things but should not forbid ourself to learn an share enthusiasm
+and a more practical way to aboard the contemporary context with pragmatism and justness"
 
-A real cool "cyber" display that offer many possibility:
+
+A real multi usage display that offer many possibility for all day feedback:
    
 This is a reactive variant of the 3d system API,
 simply one function decide what to draw in the frame only when an event trigger.
@@ -43,6 +47,7 @@ edit the main.py at you convenience and play Vec2 and Vec3 in the function:
 def draw_frame() -> None:
    ...
 ```
+
 </pre>
 </body>
 </html>
