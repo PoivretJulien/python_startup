@@ -47,6 +47,7 @@ GPU backend (wgpu, no OpenGL):
 -> copy and paste the install script .sh or .ps1 + requirement.txt 
 
    macOS: ./setup-macos.sh      Linux: ./setup-linux.sh
+   Windows (PowerShell): powershell -ExecutionPolicy Bypass -File .\setup-windows.ps1
    check: ./.venv/bin/python check_env.py --window
 
 run the install script, then launch the program with:
