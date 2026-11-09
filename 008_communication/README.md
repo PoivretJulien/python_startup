@@ -23,8 +23,8 @@ and maybe start to produce some gardening goods monitored with reproducible reci
 the peoples and their daily first needs it's far more tangible than selling home made software...
 
 So Device communications are very important and have to be done with the less friction possible 
-the heavy lifting is producing goods and reproducible process with our devices agent can pick up 
-repository and expand them if it's a proved solution.
+the heavy lifting is producing goods and reproducible process with our devices agents can pick up 
+as repository and expand them from a proved working solution.
 
 </pre>
 </body>
