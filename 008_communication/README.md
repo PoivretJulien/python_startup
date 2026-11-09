@@ -34,9 +34,9 @@ and maybe start to produce some gardening goods monitored with reproducible reci
 to serve the peoples and their daily first needs.
 
 Of course people need to be involved but with ia, it's have never been so easy to put our hands 
-in the dirt and work really for ourself.
+in the dirt and work really for ourself by following proved and shared procedure.
 it simply might be the hope that any one need now a days, being able to grow my own foods
-is healthy, responsive and educative an make us really independent as society more commercially 
+is healthy, responsive and educative an make us really independent as society and more commercially 
 related locally.
 
 </pre>
