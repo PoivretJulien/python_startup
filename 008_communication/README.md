@@ -18,7 +18,7 @@ I mean as owner i deserve to have the means to check the source of what I'm runn
 specially when this may involve potentialy my family.
 
 this module is a bit less ambitious than a video streaming but with just text we can start to synchronize 
-stuff in a real useful way and maybe start to produce some gardening goods monitored with reproducible recipies
+stuff in a real useful way and maybe start to produce some gardening goods monitored with reproducible recipes
 
 
 
