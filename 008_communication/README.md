@@ -12,6 +12,9 @@ the process of thinking, planing, interacting with low level hardware is needed 
 but this cyber culture is very important, else what our boots will walk over ourselves in the most pathetic way if we are not 
 educated to the consequence of our wishes.
 
+in the Aladdin myth the genie became slave of it's own power and finish to be trap in the consequence bottle of the
+lamp (the enlightenment) and obey to it's master, the owner of the lamp.
+
 ### Contextual Sensitivity:
 
 <!DOCTYPE html>
