@@ -2,8 +2,8 @@
 
 ### Objective:
 
-Use python to establish a software self awareness mesh in our property customizable and in a total 
-LEGITIMATE privacy, with secure (non compiled) open source scripts that allow us to "SENSE" different part 
+Use python to establish a software self awareness mesh in our property fully customizable by human and IA and 
+in a total LEGITIMATE privacy, with secure (non compiled) open source scripts that allow us to "SENSE" different part 
 of our property.
 
 At the era of IA antigenic management staying active by scripting/planing our environment is very IMPORTANT to stay close
