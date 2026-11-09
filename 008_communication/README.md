@@ -40,7 +40,7 @@ So Devices communications are very important and not an easy topic and have to b
 as possible syncing two device over a private Network should not be an obscure science an python is the good balance 
 between software engineering and user customization. 
 
-Articulating functionality with ease the real goal.
+Articulating functionality with ease is the real goal.
 
 </pre>
 </body>
