@@ -3,8 +3,9 @@
 <html lang="en">
 <body>
 <pre>
+```
 Quotes: "We love only what we understand."
-
+```
   
 Python to server Home Network Communication.
 
