@@ -6,10 +6,11 @@ Use python to establish a software self awareness mesh in our property fully cus
 in a total LEGITIMATE privacy, with secure (non compiled) open source scripts that allow us to "SENSE" different part 
 of our property.
 
-At the era of IA agentic management staying active by scripting/planing our environment is very IMPORTANT to stay close
-to the mathematics and a stimulating daily routine, who want an humanity where humans are just cow in fields ?  
+At the era of IA agentic management, staying active by scripting/planing our environment is very IMPORTANT to stay close
+of the mathematics and a stimulating daily routine that make us dream, who want an humanity where humans are just cow in fields ?  
 the process of thinking, planing, interacting with low level hardware is needed and will be controlled by agent anyway
-but this cyber culture is very important, else what our boots will walk over ourselves in the most pathetic way.
+but this cyber culture is very important, else what our boots will walk over ourselves in the most pathetic way if we are not 
+educated to the consequence of our wishes.
 
 ### Contextual Sensitivity:
 
