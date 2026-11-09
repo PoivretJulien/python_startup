@@ -23,8 +23,10 @@ log = logging.getLogger("video_client")
 
 
 async def report(client: VideoClient, every: float = 5.0) -> None:
+    """Log the stream statistics every `every` seconds, only while video arrives."""
     last_frames = last_bytes = 0
     while True:
+        await client.wait_for_frame()  # sleeps while no video arrives
         await asyncio.sleep(every)
         s = client.stats
         frames, received = s.frames - last_frames, s.bytes - last_bytes

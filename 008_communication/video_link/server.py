@@ -65,6 +65,8 @@ class VideoServer:
         self._cookie_secret = secrets.token_bytes(32)
         self._frame_id = 0
         self._transport: asyncio.DatagramTransport | None = None
+        self._last_publish: float | None = None  # monotonic time of the last publish() call
+        self._has_subscriber = asyncio.Event()
 
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> Addr:
@@ -105,6 +107,14 @@ class VideoServer:
         transport = self._require()
         if len(jpeg) > self.video.max_frame_bytes:
             raise ValueError(f"frame is {len(jpeg)} bytes, max_frame_bytes is {self.video.max_frame_bytes}")
+        now = time.monotonic()
+        if self._last_publish is None or now - self._last_publish > self.video.subscriber_ttl:
+            # We weren't streaming: silence during that pause doesn't count
+            # against subscribers (an idle-mode client only re-subscribes while
+            # it receives video). A dead one is dropped subscriber_ttl from now.
+            for addr in self.subscribers:
+                self.subscribers[addr] = now
+        self._last_publish = now
         self._prune()
         if not self.subscribers:
             return 0
@@ -123,6 +133,16 @@ class VideoServer:
         self.stats.bytes_sent += sum(map(len, packets)) * len(targets)
         await asyncio.sleep(0)  # let the loop flush and handle incoming SUBs
         return len(targets)
+
+    async def wait_for_subscriber(self) -> None:
+        """Sleep until at least one client is subscribed (returns at once if one is).
+
+        No polling: it wakes only when a subscription arrives. run_server uses
+        it to switch the camera off while nobody is watching.
+        """
+        while not self.subscribers:
+            self._has_subscriber.clear()
+            await self._has_subscriber.wait()
 
     # ------------------------------------------------------------------ subscriptions
     def _on_datagram(self, data: bytes, addr: Addr) -> None:
@@ -150,6 +170,8 @@ class VideoServer:
                 log.info("subscriber %s:%d left", *addr)
             return
 
+        transport = self._require()
+
         if addr not in self.subscribers:
             self._prune()
             if len(self.subscribers) >= self.video.max_subscribers:
@@ -157,6 +179,10 @@ class VideoServer:
                 return
             log.info("new subscriber %s:%d", *addr)
         self.subscribers[addr] = time.monotonic()
+        self._has_subscriber.set()
+        # Confirm, same size as the SUB: no amplification.
+        ack = Chunk(Kind.SUBACK, self.session, ts=time.time(), payload=chunk.payload)
+        transport.sendto(encode(ack, self._key), addr)
 
     def _cookie(self, addr: Addr, age: int) -> bytes:
         bucket = int(time.monotonic() // _COOKIE_PERIOD) - age

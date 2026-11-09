@@ -9,8 +9,11 @@ secret    = "CHANGE-ME-run-python3-m-udp_link-keygen"
 # Optional tuning
 # ack_timeout        = 0.3
 # max_retries        = 5
-# heartbeat_interval = 5.0
-# peer_ttl           = 20.0
+# heartbeat_interval = 5.0     # 0 = no heartbeat
+# peer_ttl           = 20.0    # 0 = never forget clients on a timer
+#   Low power, same values on both machines (see "Idle mode" in README):
+#     idle mode:            heartbeat_interval = 0,  peer_ttl = 0
+#     listen-only clients:  heartbeat_interval = 50, peer_ttl = 180
 # max_clock_skew     = 120.0   # set 0 if the machines have no NTP / internet
 # allowed_hosts      = ["192.168.1.20"]   # server: only accept these client IPs
 
@@ -18,3 +21,4 @@ secret    = "CHANGE-ME-run-python3-m-udp_link-keygen"
 # [video]
 # port            = 50556
 # max_subscribers = 4
+# subscribe_interval = 1.0   # 0 = idle mode (see video_link/README.md), 50 = slow keep-alive

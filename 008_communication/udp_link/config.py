@@ -76,8 +76,10 @@ class LinkConfig:
     max_in_flight: int = 64  # concurrent un-ACKed sends per endpoint
 
     # --- liveness ---
-    heartbeat_interval: float = 5.0  # client PING period (s)
-    peer_ttl: float = 20.0  # server forgets silent clients after this (s)
+    # Idle mode (low power): set BOTH to 0. No timer then runs while nothing
+    # is sent; see "Idle mode" in README.md for the trade-offs.
+    heartbeat_interval: float = 5.0  # client PING period (s); 0 = no heartbeat
+    peer_ttl: float = 20.0  # server forgets silent clients after this (s); 0 = never
 
     # --- security / resource limits ---
     max_clock_skew: float = 120.0  # replay window (s); 0 disables (no NTP on LAN)
@@ -96,15 +98,26 @@ class LinkConfig:
                 "(set UDP_LINK_SECRET or 'secret' in the config file; "
                 "generate one with: python -m udp_link keygen)"
             )
-        for name in ("ack_timeout", "max_backoff", "heartbeat_interval", "peer_ttl"):
+        for name in ("ack_timeout", "max_backoff"):
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be > 0")
-        for name in ("max_retries", "max_clock_skew"):
+        for name in ("max_retries", "max_clock_skew", "heartbeat_interval", "peer_ttl"):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be >= 0")
         for name in ("max_in_flight", "max_peers", "inbox_limit"):
             if getattr(self, name) < 1:
                 raise ValueError(f"{name} must be >= 1")
+        if 0 < self.peer_ttl <= self.heartbeat_interval:
+            # The server would forget clients between two of their PINGs.
+            raise ValueError(
+                f"peer_ttl ({self.peer_ttl}) must be longer than heartbeat_interval "
+                f"({self.heartbeat_interval}); 3 to 4 times longer is a good choice"
+            )
+        if self.heartbeat_interval == 0 and self.peer_ttl > 0:
+            log.warning(
+                "heartbeat_interval = 0 but peer_ttl = %s: clients that only listen will be "
+                "forgotten after %s s. For idle mode set peer_ttl = 0 too.", self.peer_ttl, self.peer_ttl
+            )
         object.__setattr__(self, "allowed_hosts", frozenset(self.allowed_hosts))
         object.__setattr__(self, "key", derive_key(self.secret))
 

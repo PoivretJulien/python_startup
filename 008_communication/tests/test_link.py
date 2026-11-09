@@ -158,3 +158,66 @@ class LinkTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+IDLE = dataclasses.replace(BASE, heartbeat_interval=0, peer_ttl=0)
+
+
+class IdleConfigTests(unittest.TestCase):
+    def test_zero_disables_timers(self) -> None:
+        cfg = dataclasses.replace(BASE, heartbeat_interval=0, peer_ttl=0)
+        self.assertEqual((cfg.heartbeat_interval, cfg.peer_ttl), (0, 0))
+
+    def test_negative_refused(self) -> None:
+        with self.assertRaises(ValueError):
+            dataclasses.replace(BASE, heartbeat_interval=-1)
+
+    def test_ttl_must_outlast_heartbeat(self) -> None:
+        with self.assertRaises(ValueError):
+            dataclasses.replace(BASE, heartbeat_interval=60, peer_ttl=30)
+        dataclasses.replace(BASE, heartbeat_interval=60, peer_ttl=200)  # slow heartbeat: fine
+
+
+class IdleModeTests(unittest.IsolatedAsyncioTestCase):
+    """heartbeat_interval = 0 and peer_ttl = 0: nothing runs while nothing is sent."""
+
+    async def asyncSetUp(self) -> None:
+        self.server = UDPServer(IDLE)
+        _, self.port = await self.server.start()
+        self.client = UDPClient(dataclasses.replace(IDLE, port=self.port))
+        await self.client.connect()
+
+    async def asyncTearDown(self) -> None:
+        await self.client.close()
+        await self.server.close()
+
+    async def test_no_background_tasks_when_idle(self) -> None:
+        self.assertIsNone(self.client._heartbeat_task)
+        self.assertIsNone(self.server._housekeeping_task)
+        # Only this test's own task is alive: no timer will wake the process.
+        self.assertEqual(asyncio.all_tasks(), {asyncio.current_task()})
+
+    async def test_exchange_both_ways(self) -> None:
+        await self.client.send("hello")
+        self.assertEqual([m.text for m in self.server.received], ["hello"])
+        self.assertEqual(list((await self.server.broadcast("temp=21")).values()), [True])
+        self.assertEqual((await self.client.recv(timeout=1)).text, "temp=21")
+
+    async def test_peers_never_expire(self) -> None:
+        self.assertEqual(self.server._endpoint().prune_peers(), [])
+        self.assertEqual(len(self.server.peers), 1)
+
+    async def test_send_detects_loss_and_recovers_after_server_restart(self) -> None:
+        await self.server.close()
+        with self.assertRaises(DeliveryError):
+            await self.client.send("lost")
+        self.assertFalse(self.client.connected)
+
+        # A new server on the same port knows no client until the client sends.
+        self.server = UDPServer(dataclasses.replace(IDLE, port=self.port))
+        await self.server.start()
+        self.assertEqual(self.server.peers, [])
+        await self.client.send("back")
+        self.assertTrue(self.client.connected)
+        self.assertEqual(len(self.server.peers), 1)
+        self.assertEqual(list((await self.server.broadcast("ok")).values()), [True])

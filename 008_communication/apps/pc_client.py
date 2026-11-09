@@ -47,13 +47,21 @@ def process_batch(batch: list[Message]) -> None:
 
 
 async def batch_loop(client: UDPClient, every: float) -> None:
-    """Every `every` seconds, take everything stacked so far and process it."""
+    """Process stacked messages in batches, at most once every `every` seconds.
+
+    Event-driven, so it costs nothing while the link is quiet: instead of
+    waking up every `every` seconds to look at an empty stack, it sleeps until
+    the first message of a batch arrives, waits `every` seconds so that the
+    following messages pile up, then processes them all together.
+    """
     while True:
+        # Sleeps (no CPU, no timer) until a message arrives; recv() takes it off the stack.
+        first = await client.recv()
+        # Let the rest of the batch arrive.
         await asyncio.sleep(every)
         # drain() returns all stacked messages and empties the stack, so each
-        # message is processed exactly once. Skip when nothing arrived.
-        if batch := client.drain():
-            process_batch(batch)
+        # message is processed exactly once.
+        process_batch([first, *client.drain()])
 
 
 async def interactive_loop(client: UDPClient) -> None:
@@ -78,7 +86,7 @@ async def main() -> None:
     # --- command-line options ---------------------------------------------
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_cli_args(parser)  # --config, --server-ip, --bind-ip, --port
-    parser.add_argument("--batch-interval", type=float, default=5.0, help="seconds between stack processing")
+    parser.add_argument("--batch-interval", type=float, default=5.0, help="seconds to collect a batch after its first message")
     parser.add_argument("--interactive", action="store_true", help="send lines typed on stdin to the server")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()

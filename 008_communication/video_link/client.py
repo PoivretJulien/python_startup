@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import socket
 import time
@@ -34,6 +35,7 @@ from .protocol import (
 log = logging.getLogger(__name__)
 
 Addr = tuple[str, int]
+SUBSCRIBE_RETRY = 2.0  # idle mode: seconds between SUBs until the server confirms
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +114,8 @@ class VideoClient:
         self._delivered = 0
         self._consumed = 0
         self._new_frame = asyncio.Event()
+        self._subscribed = asyncio.Event()  # set by the server's SUBACK (or by video arriving)
+        self._last_sub = 0.0  # monotonic time of our last SUB
 
     # ------------------------------------------------------------------ lifecycle
     async def connect(self) -> None:
@@ -161,6 +165,24 @@ class VideoClient:
         self._consumed = self._delivered
         return self.frames[-1]
 
+    @property
+    def subscribed(self) -> bool:
+        """True once the server has confirmed the subscription (SUBACK) or video arrived."""
+        return self._subscribed.is_set()
+
+    async def wait_for_frame(self, timeout: float | None = None) -> None:
+        """Wait until a new frame arrives, without consuming it.
+
+        Unlike next_frame(), the frame is still returned by the next
+        next_frame()/stream() call, so this can run beside a viewer (run_client
+        uses it to log statistics only while video is flowing).
+        """
+        seen = self._delivered
+        async with asyncio.timeout(timeout):
+            while self._delivered == seen:
+                self._new_frame.clear()
+                await self._new_frame.wait()
+
     async def stream(self) -> AsyncIterator[Frame]:
         """`async for frame in client.stream()`: newest frames, never a backlog."""
         while True:
@@ -168,15 +190,28 @@ class VideoClient:
 
     # ------------------------------------------------------------------ internals
     async def _subscribe_loop(self) -> None:
-        while True:
+        if self.video.subscribe_interval > 0:
+            # Normal mode: a SUB every subscribe_interval keeps the subscription alive.
+            while True:
+                self._send(Kind.SUB)
+                await asyncio.sleep(self.video.subscribe_interval)
+        # Idle mode: subscribe until the server confirms, then stop. From then
+        # on a SUB is sent only while frames arrive (see _on_datagram), so
+        # nothing runs while the server isn't streaming.
+        while not self._subscribed.is_set():
             self._send(Kind.SUB)
-            await asyncio.sleep(self.video.subscribe_interval)
+            with contextlib.suppress(TimeoutError):
+                async with asyncio.timeout(SUBSCRIBE_RETRY):
+                    await self._subscribed.wait()
+        log.info("subscribed; keep-alive off (idle mode): the client wakes only for video")
 
     def _send(self, kind: Kind) -> None:
         if self._transport is None or self._transport.is_closing() or self._server is None:
             return
         chunk = Chunk(kind, bytes(4), ts=time.time(), payload=self._cookie)
         self._transport.sendto(encode(chunk, self._key), self._server)
+        if kind is Kind.SUB:
+            self._last_sub = time.monotonic()
 
     def _on_datagram(self, data: bytes, addr: Addr) -> None:
         if addr != self._server:
@@ -193,7 +228,17 @@ class VideoClient:
                 if chunk.payload != self._cookie:
                     self._cookie = chunk.payload
                     self._send(Kind.SUB)  # answer right away, don't wait a period
+            case Kind.SUBACK:
+                if not self._subscribed.is_set():
+                    log.info("subscribed to video at %s:%d", *self._server)  # type: ignore[str-format]
+                self._subscribed.set()
             case Kind.FRAME:
+                self._subscribed.set()
+                # Refresh the subscription while video flows, whatever the
+                # keep-alive setting: this is what keeps an idle-mode client
+                # subscribed. With the default 1 s keep-alive it never triggers.
+                if time.monotonic() - self._last_sub > self.video.subscriber_ttl / 3:
+                    self._send(Kind.SUB)
                 self._on_chunk(chunk)
 
     def _on_chunk(self, chunk: Chunk) -> None:

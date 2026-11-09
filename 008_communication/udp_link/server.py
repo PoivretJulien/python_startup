@@ -36,7 +36,11 @@ class UDPServer(LinkBase):
             sock=open_udp_socket(cfg.bind_ip, cfg.port),
         )
         self._ep = ep
-        self._housekeeping_task = asyncio.create_task(self._housekeeping(), name="udp-server-housekeeping")
+        if cfg.peer_ttl > 0:
+            self._housekeeping_task = asyncio.create_task(self._housekeeping(), name="udp-server-housekeeping")
+        else:
+            # Idle mode: no timer. Clients are forgotten only on BYE or a failed send.
+            log.info("peer expiry off (idle mode): the server wakes only for traffic")
         log.info("server listening on %s:%d (session %s)", *ep.local_address, ep.sid)
         return ep.local_address
 
@@ -61,7 +65,7 @@ class UDPServer(LinkBase):
 
     @property
     def peers(self) -> list[Addr]:
-        """Clients currently known (sent HELLO/PING/DATA within peer_ttl)."""
+        """Clients currently known (sent HELLO/PING/DATA within peer_ttl, or ever if peer_ttl is 0)."""
         return list(self._endpoint().peers)
 
     async def send(self, text: str, peer: Addr) -> None:

@@ -1,7 +1,8 @@
 """VIDEO SERVER program -- run this on server_side.
 
 Captures a camera (or a test pattern), encodes JPEG and streams it to every
-subscribed client.
+subscribed client. While nobody is subscribed the camera is closed and the
+program sleeps: no capture, no encoding, no timer.
 
     python -m video_link.run_server --config link.toml --source 0 --fps 15
     python -m video_link.run_server --config link.toml --source test   # no camera
@@ -22,8 +23,10 @@ log = logging.getLogger("video_server")
 
 
 async def report(server: VideoServer, every: float = 5.0) -> None:
+    """Log the stream statistics every `every` seconds, only while someone watches."""
     last_frames = last_bytes = 0
     while True:
+        await server.wait_for_subscriber()  # sleeps while nobody is subscribed
         await asyncio.sleep(every)
         s = server.stats
         frames, sent = s.frames_sent - last_frames, s.bytes_sent - last_bytes
@@ -48,10 +51,17 @@ async def main() -> None:
 
     async with VideoServer(link, video) as server, asyncio.TaskGroup() as tg:
         tg.create_task(report(server))
-        frames = capture(args.source, width=args.width, height=args.height, fps=args.fps, quality=args.quality)
-        async with contextlib.aclosing(frames):
-            async for jpeg, captured_at in frames:
-                await server.publish(jpeg, captured_at)
+        while True:
+            # Camera off until a client subscribes.
+            await server.wait_for_subscriber()
+            log.info("streaming: camera on")
+            frames = capture(args.source, width=args.width, height=args.height, fps=args.fps, quality=args.quality)
+            async with contextlib.aclosing(frames):  # closing it releases the camera
+                async for jpeg, captured_at in frames:
+                    await server.publish(jpeg, captured_at)
+                    if not server.subscribers:  # last viewer left (BYE) or timed out
+                        break
+            log.info("no subscriber: camera off, waiting")
 
 
 if __name__ == "__main__":

@@ -41,15 +41,19 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.*)")
 
 
 # --------------------------------------------------------------------------- inline
-def inline(text: str) -> str:
+def inline(text: str, code_lang: str | None = None) -> str:
+    """Inline Markdown. With `code_lang`, `code` spans are syntax-highlighted."""
     out, pos = [], 0
     for m in _INLINE.finditer(text):
         out.append(_plain(text[pos : m.start()]))
         if m["code"] is not None:
-            out.append(f"<code>{html.escape(m['code'])}</code>")
+            if code_lang:
+                out.append(f'<code class="hl">{highlight(m["code"], code_lang)}</code>')
+            else:
+                out.append(f"<code>{html.escape(m['code'])}</code>")
         else:
             href = re.sub(r"(^|/)README\.md(#|$)", r"\1README.html\2", m["href"])
-            out.append(f'<a href="{html.escape(href, quote=True)}">{inline(m["text"])}</a>')
+            out.append(f'<a href="{html.escape(href, quote=True)}">{inline(m["text"], code_lang)}</a>')
         pos = m.end()
     out.append(_plain(text[pos:]))
     return "".join(out)
@@ -68,6 +72,66 @@ def slugify(text: str, used: set[str]) -> str:
     return slug
 
 
+# --------------------------------------------------------------------------- syntax highlighting
+# One regex per language; each named group becomes <span class="tk-NAME">.
+# Deliberately small (comments, strings, keywords, numbers, names) and stdlib only.
+_PY_KEYWORDS = ("False None True and as assert async await break case class continue def del elif else "
+                "except finally for from global if import in is lambda match nonlocal not or pass raise "
+                "return try while with yield")
+_PY_BUILTINS = ("print len range list dict set tuple str int float bytes bool frozenset sum min max "
+                "isinstance zip enumerate open type super object self cls")
+_PY_STRING = (r'[rbfRBF]{0,2}(?:"""[\s\S]*?"""' r"|'''[\s\S]*?'''"
+              r'|"(?:\\.|[^"\\\n])*"' r"|'(?:\\.|[^'\\\n])*')")
+_SH_STRING = r'"(?:\\.|[^"\\])*"' r"|'[^']*'"
+_LEXERS = {
+    "python": re.compile(
+        r"(?P<com>#[^\n]*)"
+        rf"|(?P<str>{_PY_STRING})"
+        r"|(?P<deco>@[\w.]+)"
+        r"|(?P<def>(?<=\bdef )\w+|(?<=\bclass )\w+)"
+        rf"|(?P<kw>\b(?:{'|'.join(_PY_KEYWORDS.split())})\b)"
+        r"|(?P<num>\b\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?\b)"
+        r"|(?P<type>\b[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*\b)"
+        rf"|(?P<bi>\b(?:{'|'.join(_PY_BUILTINS.split())})\b)"
+        r"|(?P<fn>\b[A-Za-z_]\w*(?=\())"
+    ),
+    "bash": re.compile(  # also used for PowerShell: same comments, $vars, -flags
+        r"(?P<com>(?<!\S)#[^\n]*)"
+        rf"|(?P<str>{_SH_STRING})"
+        r"|(?P<var>\$\{[^}]*\}|\$env:\w+|\$\w+)"
+        r"|(?P<fn>(?m:^)(?:sudo )?[\w./-]+)"
+        r"|(?P<flag>(?<!\S)--?[A-Za-z][\w-]*)"
+        r"|(?P<num>(?<![\w.])\d+(?:\.\d+)*(?![\w.]))"
+    ),
+    "toml": re.compile(
+        r"(?P<com>#[^\n]*)"
+        r"|(?P<sec>(?m:^)\[[^\]\n]*\])"
+        rf"|(?P<str>{_SH_STRING})"
+        r"|(?P<key>(?m:^)\s*[\w.-]+(?=\s*=))"
+        r"|(?P<kw>\b(?:true|false)\b)"
+        r"|(?P<num>(?<![\w.])[+-]?\d[\d_]*(?:\.\d+)?(?![\w.]))"
+    ),
+}
+_LANG_ALIAS = {"py": "python", "python3": "python", "sh": "bash", "shell": "bash", "zsh": "bash",
+               "console": "bash", "powershell": "bash", "ps1": "bash", "pwsh": "bash"}
+
+
+def highlight(code: str, lang: str) -> str:
+    """Return `code` as escaped HTML, with token <span>s when `lang` is known."""
+    rx = _LEXERS.get(_LANG_ALIAS.get(lang, lang))
+    if rx is None:
+        return html.escape(code)
+    out, pos = [], 0
+    for m in rx.finditer(code):
+        if not m[0]:
+            continue
+        out.append(html.escape(code[pos : m.start()]))
+        out.append(f'<span class="tk-{m.lastgroup}">{html.escape(m[0])}</span>')
+        pos = m.end()
+    out.append(html.escape(code[pos:]))
+    return "".join(out)
+
+
 # --------------------------------------------------------------------------- blocks
 SIDES_START, SIDES_END = "<!-- sides -->", "<!-- /sides -->"
 SIDE_MARKERS = {"<!-- server -->": "server", "<!-- client -->": "client"}
@@ -75,6 +139,7 @@ SIDE_DEFAULT_LABEL = {"server": "Server side", "client": "Client side"}
 _COL_MARKER = re.compile(r"^<!--\s*col\s+([\w.+-]+)\s*-->$")
 _COMMENT = re.compile(r"^\s*<!--.*-->\s*$")
 _DETAILS_OPEN = re.compile(r"^\s*<details>\s*(?:<summary>(.*?)</summary>)?\s*$")
+API_MARKER = "<!-- api -->"  # next table: API reference style, code cells highlighted as Python
 _BOLD_LINE = re.compile(r"^\s*\*\*(.+?)\*\*:?\s*$")
 
 
@@ -125,6 +190,7 @@ def _sides(lines: list[str], state: _State) -> str:
 def _blocks(lines: list[str], state: _State) -> str:
     out: list[str] = []
     toc, used = state.toc, state.used
+    api_table = False
     i = 0
 
     while i < len(lines):
@@ -161,6 +227,11 @@ def _blocks(lines: list[str], state: _State) -> str:
                        f'<div class="deep-body">{_blocks(inner, state)}</div></details>')
             continue
 
+        if line.strip() == API_MARKER:
+            api_table = True
+            i += 1
+            continue
+
         if _COMMENT.match(line):
             i += 1
             continue
@@ -176,7 +247,7 @@ def _blocks(lines: list[str], state: _State) -> str:
             label = f'<span class="lang">{html.escape(lang)}</span>' if lang else ""
             out.append(
                 f'<div class="code lang-{html.escape(lang or "text")}">{label}<button class="copy" type="button" aria-label="Copy code">Copy</button>'
-                f"<pre><code>{html.escape(chr(10).join(code))}</code></pre></div>"
+                f"<pre><code>{highlight(chr(10).join(code), lang)}</code></pre></div>"
             )
             continue
 
@@ -199,9 +270,12 @@ def _blocks(lines: list[str], state: _State) -> str:
             while i < len(lines) and lines[i].lstrip().startswith("|"):
                 rows.append(_cells(lines[i]))
                 i += 1
+            lang = "python" if api_table else None
             thead = "".join(f"<th>{inline(c)}</th>" for c in header)
-            tbody = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>" for r in rows)
-            out.append(f'<div class="table"><table><thead><tr>{thead}</tr></thead><tbody>{tbody}</tbody></table></div>')
+            tbody = "".join("<tr>" + "".join(f"<td>{inline(c, lang)}</td>" for c in r) + "</tr>" for r in rows)
+            cls = "table api" if api_table else "table"
+            api_table = False
+            out.append(f'<div class="{cls}"><table><thead><tr>{thead}</tr></thead><tbody>{tbody}</tbody></table></div>')
             continue
 
         if _UL.match(line):
@@ -245,13 +319,21 @@ def _is_block_start(lines: list[str], i: int) -> bool:
 
 
 # --------------------------------------------------------------------------- page
+# Token colours: a light set for inline code on light pages, a dark set for
+# code blocks (always on a dark background) and for inline code on dark pages.
+_TK_LIGHT = ("--tk-kw:#8839ef;--tk-str:#2f7d1e;--tk-com:#6c7086;--tk-num:#c2410c;--tk-fn:#1e5fd9;--tk-def:#1e5fd9;"
+             "--tk-type:#a0610b;--tk-bi:#0e7490;--tk-deco:#c0267a;--tk-flag:#0e7490;--tk-var:#c0263f;--tk-key:#1e5fd9;--tk-sec:#8839ef")
+_TK_DARK = ("--tk-kw:#c792ea;--tk-str:#c3e88d;--tk-com:#7f8796;--tk-num:#f78c6c;--tk-fn:#82aaff;--tk-def:#82aaff;"
+            "--tk-type:#ffcb6b;--tk-bi:#89ddff;--tk-deco:#f07178;--tk-flag:#89ddff;--tk-var:#f07178;--tk-key:#82aaff;--tk-sec:#c792ea")
+_TOKENS = "kw str com num fn def type bi deco flag var key sec".split()
+
 CSS = """
 :root{--bg:#fbfbfa;--surface:#fff;--text:#1d1f23;--muted:#5d636e;--border:#e3e4e8;--accent:#2756c7;
---code-bg:#f3f4f6;--pre-bg:#16181d;--pre-text:#e6e8ec;--th:#f5f6f8;--server:#b45309;--client:#2756c7;--deep:#0e7490;color-scheme:light}
+--code-bg:#f3f4f6;--pre-bg:#16181d;--pre-text:#e6e8ec;--th:#f5f6f8;--server:#b45309;--client:#2756c7;--deep:#0e7490;""" + _TK_LIGHT + """;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121317;--surface:#1a1c21;--text:#e7e8eb;
---muted:#a0a5ae;--border:#2c2f36;--accent:#8bb0ff;--code-bg:#262931;--pre-bg:#0c0d10;--pre-text:#e6e8ec;--th:#21242a;--server:#f5a524;--client:#8bb0ff;--deep:#67e8f9;color-scheme:dark}}
+--muted:#a0a5ae;--border:#2c2f36;--accent:#8bb0ff;--code-bg:#262931;--pre-bg:#0c0d10;--pre-text:#e6e8ec;--th:#21242a;--server:#f5a524;--client:#8bb0ff;--deep:#67e8f9;""" + _TK_DARK + """;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#121317;--surface:#1a1c21;--text:#e7e8eb;--muted:#a0a5ae;--border:#2c2f36;--accent:#8bb0ff;
---code-bg:#262931;--pre-bg:#0c0d10;--pre-text:#e6e8ec;--th:#21242a;--server:#f5a524;--client:#8bb0ff;--deep:#67e8f9;color-scheme:dark}
+--code-bg:#262931;--pre-bg:#0c0d10;--pre-text:#e6e8ec;--th:#21242a;--server:#f5a524;--client:#8bb0ff;--deep:#67e8f9;""" + _TK_DARK + """;color-scheme:dark}
 *{box-sizing:border-box}
 html{scroll-padding-top:72px}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -292,6 +374,7 @@ border-radius:6px;padding:3px 9px;cursor:pointer;opacity:.85}
 table{border-collapse:collapse;width:100%;font-size:15px;background:var(--surface)}
 th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
 th{background:var(--th);font-weight:600}
+th code{white-space:nowrap;overflow-wrap:normal}
 tbody tr:last-child td{border-bottom:0}
 .sides{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:0 0 1.4em}
 @media (min-width:760px){.sides{grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))}}
@@ -312,6 +395,15 @@ details.deep>summary:hover,details.deep>summary:focus-visible{color:var(--accent
 .deep-body p,.deep-body ul,.deep-body ol{margin:.45em 0}.deep-body li{margin:.15em 0}
 .deep-body code{font-style:normal}.deep-body strong{color:inherit}
 .deep-body .code{font-style:normal;margin:.5em 0}
+.code{""" + _TK_DARK + """}
+""" + "".join(f".tk-{t}{{color:var(--tk-{t})}}" for t in _TOKENS) + """
+.tk-com{font-style:italic}.tk-def,.tk-sec{font-weight:600}
+.table.api table{font-size:14.5px}
+.table.api td:first-child{width:44%}
+.table.api code{overflow-wrap:normal}
+.table.api td:first-child code{background:none;padding:0;font-size:.9em}
+.table.api td:nth-child(2):not(:last-child){white-space:nowrap}
+.table.api th{white-space:nowrap}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
 """
 

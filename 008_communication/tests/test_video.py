@@ -145,5 +145,78 @@ class CookieTests(unittest.IsolatedAsyncioTestCase):
             self.assertIs(decode(reply, KEY, max_clock_skew=60).kind, Kind.CHALLENGE)
 
 
+IDLE_VIDEO = dataclasses.replace(VIDEO, subscribe_interval=0, subscriber_ttl=0.3)
+
+
+class VideoIdleConfigTests(unittest.TestCase):
+    def test_zero_keepalive_allowed_negative_refused(self) -> None:
+        self.assertEqual(VideoConfig(subscribe_interval=0).subscribe_interval, 0)
+        with self.assertRaises(ValueError):
+            VideoConfig(subscribe_interval=-1)
+
+
+class VideoIdleModeTests(unittest.IsolatedAsyncioTestCase):
+    """subscribe_interval = 0: the client subscribes once, then is silent while no video flows."""
+
+    async def asyncSetUp(self) -> None:
+        self.server = VideoServer(LINK, IDLE_VIDEO)
+        _, port = await self.server.start()
+        self.client = VideoClient(LINK, dataclasses.replace(IDLE_VIDEO, port=port))
+        await self.client.connect()
+        await until(lambda: self.client.subscribed)
+
+    async def asyncTearDown(self) -> None:
+        await self.client.close()
+        await self.server.close()
+
+    async def test_subscribe_loop_ends_after_suback(self) -> None:
+        await until(lambda: self.client._sub_task.done())
+        self.assertEqual(len(self.server.subscribers), 1)
+        # Nothing is left running: no timer will wake the process.
+        self.assertEqual(asyncio.all_tasks(), {asyncio.current_task()})
+
+    async def test_pause_longer_than_ttl_keeps_subscriber(self) -> None:
+        await asyncio.sleep(IDLE_VIDEO.subscriber_ttl * 3)  # no video, no SUB
+        self.assertEqual(await self.server.publish(b"after-pause"), 1)
+        self.assertEqual((await self.client.next_frame(timeout=1)).data, b"after-pause")
+
+    async def test_streaming_refreshes_subscription(self) -> None:
+        # Stream for 4x the TTL: the client re-subscribes from the frames alone.
+        loop = asyncio.get_running_loop()
+        end = loop.time() + IDLE_VIDEO.subscriber_ttl * 4
+        while loop.time() < end:
+            await self.server.publish(os.urandom(2000))
+            await asyncio.sleep(0.02)
+        self.assertEqual(len(self.server.subscribers), 1)
+        self.assertGreater(self.client.stats.frames, 20)
+
+    async def test_dead_client_dropped_after_ttl_of_streaming(self) -> None:
+        self.client._transport.close()  # crash: no BYE, no more SUBs
+        loop = asyncio.get_running_loop()
+        end = loop.time() + IDLE_VIDEO.subscriber_ttl * 3
+        while loop.time() < end and self.server.subscribers:
+            await self.server.publish(b"x")
+            await asyncio.sleep(0.02)
+        self.assertEqual(self.server.subscribers, {})
+
+    async def test_wait_for_frame_does_not_consume(self) -> None:
+        waiter = asyncio.create_task(self.client.wait_for_frame(timeout=1))
+        await asyncio.sleep(0)
+        await self.server.publish(b"one")
+        await waiter
+        self.assertEqual((await self.client.next_frame(timeout=1)).data, b"one")
+
+    async def test_wait_for_subscriber(self) -> None:
+        await asyncio.wait_for(self.server.wait_for_subscriber(), 0.5)  # already one
+        await self.client.close()
+        await until(lambda: not self.server.subscribers)
+        waiter = asyncio.create_task(self.server.wait_for_subscriber())
+        await asyncio.sleep(0.05)
+        self.assertFalse(waiter.done())
+        self.client = VideoClient(LINK, dataclasses.replace(IDLE_VIDEO, port=self.server.address[1]))
+        await self.client.connect()
+        await asyncio.wait_for(waiter, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

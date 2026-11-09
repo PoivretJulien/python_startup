@@ -20,6 +20,9 @@ Design (real-time media rules, unlike udp_link):
       only streams to an address that proved it can receive packets there.
       This stops someone from replaying a SUB with a spoofed source address
       to flood another host with video.
+    * Every accepted SUB is confirmed with a SUBACK of the same size (no
+      amplification), so a client knows it is subscribed without waiting for
+      video. That is what lets the keep-alive be switched off (idle mode).
 """
 
 from __future__ import annotations
@@ -47,6 +50,7 @@ class Kind(IntEnum):
     CHALLENGE = 2  # server -> client: here is your address cookie
     FRAME = 3  # server -> client: one chunk of a JPEG frame
     BYE = 4  # client -> server: unsubscribe (payload: cookie)
+    SUBACK = 5  # server -> client: subscription accepted (payload: the cookie, echoed)
 
 
 class VideoProtocolError(ValueError):

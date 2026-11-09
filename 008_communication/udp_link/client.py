@@ -22,6 +22,10 @@ from .protocol import Kind
 
 log = logging.getLogger(__name__)
 
+# Seconds between HELLO attempts while waiting for the server, when there is
+# no heartbeat_interval to reuse (idle mode).
+HANDSHAKE_RETRY = 5.0
+
 
 class UDPClient(LinkBase):
     def __init__(
@@ -72,7 +76,11 @@ class UDPClient(LinkBase):
         except BaseException:
             await self.close()
             raise
-        self._heartbeat_task = asyncio.create_task(self._heartbeat(), name="udp-client-heartbeat")
+        if cfg.heartbeat_interval > 0:
+            self._heartbeat_task = asyncio.create_task(self._heartbeat(), name="udp-client-heartbeat")
+        else:
+            # Idle mode: no timer at all. Liveness is checked only when we send.
+            log.info("heartbeat off (idle mode): the client wakes only for traffic")
 
     async def _handshake(self) -> None:
         ep, server = self._endpoint(), self.server
@@ -85,7 +93,7 @@ class UDPClient(LinkBase):
                 log.warning(
                     "server %s:%d not answering (down, wrong IP/port or wrong secret); retrying...", *server
                 )
-                await asyncio.sleep(self.config.heartbeat_interval)
+                await asyncio.sleep(self.config.heartbeat_interval or HANDSHAKE_RETRY)
             else:
                 self.connected = True
                 log.info("connected to %s:%d from %s:%d (session %s)", *server, *ep.local_address, ep.sid)
@@ -110,8 +118,22 @@ class UDPClient(LinkBase):
                 self.connected = True
 
     async def send(self, text: str) -> None:
-        """Reliable send to the server. Raises DeliveryError if not ACKed."""
-        await self._endpoint().send_reliable(Kind.DATA, text, self.server)
+        """Reliable send to the server. Raises DeliveryError if not ACKed.
+
+        Also keeps `connected` up to date, which is the only liveness check
+        when the heartbeat is off (idle mode). A DATA packet re-registers this
+        client on the server, so sending also recovers from a server restart.
+        """
+        try:
+            await self._endpoint().send_reliable(Kind.DATA, text, self.server)
+        except DeliveryError:
+            if self.connected:
+                log.warning("lost contact with server %s:%d", *self.server)
+            self.connected = False
+            raise
+        if not self.connected:
+            log.info("link to server %s:%d restored", *self.server)
+        self.connected = True
 
     async def close(self) -> None:
         if self._heartbeat_task:

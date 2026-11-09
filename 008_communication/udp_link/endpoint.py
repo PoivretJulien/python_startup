@@ -229,6 +229,8 @@ class ReliableEndpoint(asyncio.DatagramProtocol):
 
     # ------------------------------------------------------------------ peers
     def prune_peers(self) -> list[Addr]:
+        if self.config.peer_ttl <= 0:  # idle mode: peers never time out
+            return []
         now = time.monotonic()
         expired = [a for a, seen in self.peers.items() if now - seen > self.config.peer_ttl]
         for addr in expired:

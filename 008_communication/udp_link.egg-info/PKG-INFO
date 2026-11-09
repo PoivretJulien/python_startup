@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: udp-link
+Version: 1.0.0
+Summary: Async, acknowledged, HMAC-authenticated string exchange over UDP
+Requires-Python: >=3.11
+Provides-Extra: video
+Requires-Dist: opencv-python-headless; extra == "video"
+Requires-Dist: numpy; extra == "video"

@@ -1,0 +1,4 @@
+
+[video]
+opencv-python-headless
+numpy

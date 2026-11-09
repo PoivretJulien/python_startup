@@ -19,8 +19,10 @@ DEFAULT_VIDEO_PORT = 50556
 @dataclass(frozen=True, slots=True)
 class VideoConfig:
     port: int = DEFAULT_VIDEO_PORT
-    subscribe_interval: float = 1.0  # client SUB keep-alive period (s)
-    subscriber_ttl: float = 4.0  # server stops streaming to silent clients (s)
+    # Keep-alive. 0 = idle mode: the client subscribes once and then only
+    # re-subscribes while video is arriving (see "Idle mode" in README.md).
+    subscribe_interval: float = 1.0  # client SUB keep-alive period (s); 0 = off
+    subscriber_ttl: float = 4.0  # server stops streaming to clients silent this long *while streaming* (s)
     max_subscribers: int = 4  # each subscriber costs full upload bandwidth
     max_frame_bytes: int = 1_000_000  # reject frames larger than this
     max_partial_frames: int = 4  # frames being reassembled at once (client)
@@ -32,7 +34,10 @@ class VideoConfig:
         if not 0 <= self.port <= 65535:
             raise ValueError(f"port out of range: {self.port}")
         for f in fields(self):
-            if f.name != "port" and getattr(self, f.name) <= 0:
+            if f.name == "subscribe_interval":
+                if self.subscribe_interval < 0:
+                    raise ValueError("subscribe_interval must be >= 0 (0 = idle mode)")
+            elif f.name != "port" and getattr(self, f.name) <= 0:
                 raise ValueError(f"{f.name} must be > 0")
 
     @classmethod
