@@ -44,7 +44,7 @@ Where the COPY and PASTE develop the world instead of killing it for once !
 <html lang="en">
 <body>
 <pre>
-                                  ... 
+                                  ...coming soon...
 </pre>
 </body>
 </html>
