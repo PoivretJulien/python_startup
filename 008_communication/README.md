@@ -16,7 +16,7 @@ a customizable and totally private way, with secure (non compiled) open source s
 that allow us to sense different part of our property.
 
 Keeping in mind that avoiding to share that data without our permission is the basement of
-each commercial pressure, necessary to any commercial exchanges IS THE FIRST REALITY TO ACCEPT.
+each commercial pressure, necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.
 
 for that a thrusted optical stream need first to be established,
 that is the open source philosophy.
