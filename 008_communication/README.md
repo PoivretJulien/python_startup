@@ -15,6 +15,10 @@ our permission privacy is the basement of each commercial pressure and commercia
 
 for video streaming we don't want this available in the street right ?
 
+this module is a bit less ambitious than a video streaming but with just text we can start to synchronize 
+stuff in a real useful way and maybe start to produce some gardening goods monitored with reproducible recipies
+
+
 
 
 </pre>
