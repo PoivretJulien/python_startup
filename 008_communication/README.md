@@ -44,7 +44,7 @@ feedback loop where the real INVESTMENT is the COMMON need to take control of ou
 </html>
 
 
-###Quotes: "We love only what we understand."
+### Quotes: "We love only what we understand. we approve if we can't get any faster"
 
 
 
