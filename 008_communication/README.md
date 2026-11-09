@@ -16,7 +16,7 @@ but this cyber culture is very important, else what our boots will just walk ove
 to the consequence of our own wishes.
 
 in the Aladdin myth the genie became slave of it's own power and finish to be trap in the consequence bottle of the
-lamp (the enlightenment) and obey to it's master, the owner of the lamp.
+lamp (the enlightenment) and obey to it's master, the owner of the lamp. (that was Jafar the red genie)
 
 we need awareness to understand consequences of our choices and staying the owner of the lamp us the PEOPLE. 
 
