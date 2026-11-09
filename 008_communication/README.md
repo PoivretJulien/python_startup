@@ -12,12 +12,11 @@ that allow us to sense different part of our property.
 Keeping in mind that avoiding to share that data without our permission is the basement of
 each commercial pressure, necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.
 
-for that a thrusted optical stream need first to be established,
-that is the open source philosophy.
+For that a trusted optical stream need first to be established, that is the open source philosophy.
 
 For video streaming we don't want this available in the street right ?
 I mean as owner i deserve to have the means to check the source of what I'm running on my devices.
-specially when this may involve potentially, those I love the most.
+specially when this may involve potentially, those We love the most.
 
 -> even if a clean OS, (non corrupted) still paramount, ANY political silly land lording on our beloved 
 device may invalid this, but I believe into the interest of new technology to stay credible for their 
@@ -27,17 +26,17 @@ At first with a simple text data stream we can start to synchronize stuff in a r
 and maybe start to produce some gardening goods monitored with reproducible recipes locally to serve 
 the peoples and their daily first needs.
 
-Of course people need to be involved but with the help of ia, it's have never been so easy to set technology 
-at our service and put hands in the dirt to work really for ourself by simply following proved and shared procedures.
+Of course people need to be involved but with the help of ia, it's have never been so easy 
+to set technology at our service and put hands in the dirt to work really for ourself by simply 
+following proved and shared procedures.
 
 it simply might be the HOPE that any one need now a days... being able to grow my own foods...
 is healthy, responsive and educative an make us really independent as society and more commercially 
 related locally and internationally with the technology and research.
 
-So Device communication is very important have to be done with the less friction possible 
-the heart lifting is producing goods with the help of technology with a 
-simple resume and feedback loop where  the real investment is the common need to take control 
-of our becoming.
+So Device communication is very important and have to be done with the less friction possible 
+the heavy lifting is producing goods with the help of technology with a simple resume and 
+feedback loop where the real INVESTMENT is the COMMON need to take control of our becoming.
 
 ```
   Quotes: "We love only what we understand."
