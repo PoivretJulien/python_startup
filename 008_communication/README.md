@@ -39,30 +39,13 @@ So Device communication is very important and have to be done with the less fric
 the heavy lifting is producing goods with the help of technology with a simple resume and 
 feedback loop where the real INVESTMENT is the COMMON need to take control of our becoming.
 
-```
-  Quotes: "We love only what we understand."
-```
-
---- > application instruction will follow
-
-( for now it's just an ia basic python server/client module )
-
-----------------------------------------------------------------------------------------------------
-i'm testing introducing it I will share a full overview when available   
-for now it's just serve to add some background to the direction of
-effective software probe engineering basics (in python).
-
-from a graphical ui to local synchronicity to serve people.
-
-...selling software won't be a thing anymore in a couple of years 
-but people will need to exchange and be involved, entertained, passioned 
-by math and technology, no way that mathematic will become a 
-forbidden science for the sake of laziness.
-----------------------------------------------------------------------------------------------------
-```
 </pre>
 </body>
 </html>
+
+
+###Quotes: "We love only what we understand."
+
 
 
 
