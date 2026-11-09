@@ -30,13 +30,14 @@ specially when this may involve potentially, those I love the most.
 device may invalid this, but I believe into the interest of new technology to stay credible for their 
 own sake so, this will be leveled properly with the appropriated means.
 
-At first with simple text data we can start to synchronize stuff in a real and useful way 
-and maybe start to produce some gardening goods monitored with reproducible recipes locally 
-to serve the peoples and their daily first needs.
+At first with a simple text data stream we can start to synchronize stuff in a real and useful way. 
+and maybe start to produce some gardening goods monitored with reproducible recipes locally to serve 
+the peoples and their daily first needs.
 
 Of course people need to be involved but with ia, it's have never been so easy to put our hands 
 in the dirt and work really for ourself by following proved and shared procedures.
-it simply might be the hope that any one need now a days, being able to grow my own foods
+
+it simply might be the HOPE that any one need now a days... being able to grow my own foods...
 is healthy, responsive and educative an make us really independent as society and more commercially 
 related locally and internationally with the technology and research.
 
