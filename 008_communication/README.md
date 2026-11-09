@@ -77,6 +77,8 @@ to balance with, the inventor of the hammer have no regret i’m sure.
 in practice:
 
 First get the ip and the key on the server side:
+
+and copy the whole project on each side of the network.
 ```
 python3 -m udp_link ip
 python3 -m udp_link keygen
@@ -86,7 +88,18 @@ Copy and paste the template config toml file:
 ```
  cp ./link.example.toml ./link.toml
 ```
+then update the toml with ip address, port, and keygen.
+
+the updated toml file must be copied on the folder next to the app folder on each sides
+
+then on each side run respectively 
+```
+python3 -m apps.time_server --config link.toml
+python3 -m apps.time_client --config link.toml
+```
 Ensure firewall rule and you are good to go to enjoy your python journey on your local network.
+
+
 </pre>
 </body>
 </html>
