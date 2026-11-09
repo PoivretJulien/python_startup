@@ -39,6 +39,11 @@ it simply might be the hope that any one need now a days, being able to grow my 
 is healthy, responsive and educative an make us really independent as society and more commercially 
 related locally and internationally with the technology and research.
 
+So Device communication is very important have to be done with the less friction possible 
+the heart lifting is producing goods with the help of technology with a 
+simple resume and feedback loop where  the real investment is the common need to take control 
+of our becoming.
+
 </pre>
 </body>
 </html>
