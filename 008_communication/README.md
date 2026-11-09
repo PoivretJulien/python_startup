@@ -8,8 +8,8 @@ of our property.
 
 At the era of IA antigenic management staying active by scripting/planing our environment is very IMPORTANT to stay close
 to the mathematics and a stimulating daily routine, who want an humanity where humans are just cow in fields ?  
-the process of thinking planing interacting with low level hardware is needed and will be controlled by agent anyway
-but this cyber culture is very important else what our boots will walk over ourselves in the most pathetic way.
+the process of thinking, planing, interacting with low level hardware is needed and will be controlled by agent anyway
+but this cyber culture is very important, else what our boots will walk over ourselves in the most pathetic way.
 
 ### Contextual Sensitivity:
 
