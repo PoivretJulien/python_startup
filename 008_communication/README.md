@@ -3,13 +3,12 @@
 <html lang="en">
 <body>
 <pre>
+Quotes: "We love only what we understand."
   
 Python to server Home Network Communication.
 
-
-now, 
-let's add some momentum in a responsive manner to our own private software world.
-but let introduce some sensibility first.
+now, let's add some momentum in a responsive manner to our own private
+software world but let introduce some sensibility first.
 
 Objective:
 use python to establish a software mesh in our property and connect or devices in
