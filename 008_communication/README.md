@@ -28,7 +28,7 @@ specially when this may involve potentially, those I love the most.
 
 -> even if a clean OS non corrupted still paramount any political silly land lording on our beloved 
 device may invalid this but I believe into the interest of new technology to stay credible for their 
-own sake so this will be leveled properly with the appropriated means.
+own sake so, this will be leveled properly with the appropriated means.
 
 At first with simple text data we can start to synchronize stuff in a real and useful way 
 and maybe start to produce some gardening goods monitored with reproducible recipes locally 
