@@ -64,7 +64,7 @@ Server:
 Client:
           		- The other part is the client side the part that receives the data. (We call it the client side ).
 
-Both sides will agree on a handshake and start to exchange data each other (they get in sync automatically).
+Both sides will agree on an handshake and start to exchange data each other (they get in sync automatically).
 Once aware each other, the client start to send str data every heartbeat delay, once received the a simple python str
 is just stored in a list on the other side of the network, a simple python script can process the str and trigger conditionally 
 an action before cleaning the list of the instruction recieved. 
@@ -73,6 +73,8 @@ By this simple process both app locally on the same network can have awareness a
 thinks like portals, pumps, lights, amd of course the familiar machine gun can still be driven like any thing else 
 but remember it’s not the hammer that kill ! it is the murderer right ? Ugly sure, but IA video analysis is also the hope, 
 to balance with, the inventor of the hammer have no regret i’m sure. 
+
+in practice:
 
 First get the ip and the key on the server side:
 ```
