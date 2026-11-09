@@ -33,7 +33,7 @@ to improve the process again and the world by this simple iterative behavior.
 How to install the toolchain and run the programs:
 
 step 1: 
-install python
+install python (always be usefull)
 
 step 2:
 make a new folder with the name of your choice 
@@ -41,19 +41,24 @@ make a new folder with the name of your choice
 inside this runtime folder )
 
 step 3: 
-copy and run the install script ( corresponding to you os )
+copy and run the install script ( corresponding to your os )
 from the python_OpenGL_toolchain folder inside you new project folder. 
 ( run it twice to be sure that everything are well installed )
-a python check_env.py can be run inside this folder with 
+a hidden folder named .venv is created with the needed runtime inside
+a python check_env.py can be run the named root project folder with 
 ./.venv/bin/python check_env.py for self auto diagnostic of the 
-toolschain of your embedded folder. (simply copy and paste it inside)
-requirements.txt must be copied alongside the install script for a full
-diagnostic.
+tools chain of your embedded folder. (simply copy and paste it inside)
+requirements.txt must be also copied alongside the install script for a full
+diagnostic capability.
 
 step 4:
 copy and paste the examples of this repository the '.py' script
 and run it with the local folder toolschain with:
 ./.venv/bin/python script_example.py
+all .py modules in a project folder example have to be packed inside the
+same folder an run with:
+./.venv/bin/python main.py
+
 
 <a href="https://www.example.com">
   <img src="image/logo.jpg" alt="">
