@@ -48,12 +48,13 @@ application instruction will fallow
 for now it's just an ia basic python server/client module
 
 i'm testing it and sharing a working full overview when available   
-for now it just serve to add some background to the direction of
-effective software probe engineering basics with python. 
-from a graphical ui to local synchronicity to serve people 
-selling software won't be a thing anymore in a couple of years 
-but people will need exchange and be involve entertained passioned 
-by math and technology no way that mathematic will be a forbidden science for 
+for now it's just serve to add some background to the direction of
+effective software probe engineering basics (in python).
+
+from a graphical ui to local synchronicity to serve people.
+...selling software won't be a thing anymore in a couple of years 
+but people will need to exchange and be involved, entertained, passioned 
+by math and technology, no way that mathematic will become a forbidden science for 
 the sake of lazyness.
 </pre>
 </body>
