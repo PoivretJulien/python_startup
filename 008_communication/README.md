@@ -28,9 +28,9 @@ and maybe start to produce some gardening goods monitored with reproducible LOCA
 the peoples IN their daily FIRST needs.
 
 So Device communications are very important and have to be done with the less friction possible 
-the heavy lifting is producing goods and reproducible process with our devices agents can pick up 
-as repository and expand them from a proved working solution Where the copy and paste develop the world
-instead of killing it.
+the heavy lifting is producing goods and reproducible process where our devices agents can pick it up 
+as repository and expand the current project from a proved working local solution to a new locality
+Where the COPY and PASTE develop the world instead of killing it for once !
 
 </pre>
 </body>
