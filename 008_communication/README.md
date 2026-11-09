@@ -36,11 +36,11 @@ We start first with a simple text data stream via UDP protocol, it's more than e
 in a real and useful way, like monitoring some gardening goods and logging data this will allow reproducible  
 LOCAL recipes this will simply serve the peoples IN their daily FIRST needs.
 
-So Devices communications are very important and not an easy topic and have to be process with the less friction  
-as possible syncing two device over a private Network should not be an obscure science an python is the good balance 
+So Devices communications are very important and not an easy topic and have to be process with a minimal friction  
+as possible syncing two devices over a private Network should not be an obscure science, an python is the good balance 
 between software engineering and user customization. 
 
-Articulating functionality with ease is the real goal.
+Articulating functionality with ease is the real objective.
 
 </pre>
 </body>
