@@ -24,7 +24,7 @@ that is the open source philosophy.
 
 For video streaming we don't want this available in the street right ?
 I mean as owner i deserve to have the means to check the source of what I'm running on my devices.
-specially when this may involve potentially my family.
+specially when this may involve potentially, the one I love the most.
 
 -> even if a clean OS non corrupted still paramount any political silly land lording on our beloved 
 device may invalid this but I believe into the interest of new technology to stay credible for their 
