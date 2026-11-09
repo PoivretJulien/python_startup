@@ -10,8 +10,9 @@ now, let's add some momentum in a responsive manner to our own private software 
 Objective:
 use python to establish a software mesh in our property and connect or devices in
 a customizable and totally private way, with secure (non compiled) open source scripts
-that allow us to sense different part of our property. without sharing that data without 
-our permission privacy is the basement of each commercial pressure and commercial exchange.
+that allow us to sense different part of our property.
+avoiding to share that data without our permission is the basement of
+each commercial pressure necesaary to any commercial exchanges.
 
 For video streaming we don't want this available in the street right ?
 I mean as owner i deserve to have the means to check the source of what I'm running on my devices.
