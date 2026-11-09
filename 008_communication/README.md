@@ -42,6 +42,8 @@ between software engineering and user customization.
 
 Articulating functionality with ease is the real objective, python achieve this.
 
+compiled proprietary lib can also be used when sharper performances are required nothing forbid that.
+
 </pre>
 </body>
 </html>
