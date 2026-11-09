@@ -32,14 +32,15 @@ necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.
 As owner we deserve to have the means to check the source of what we are running on our devices.
 specially when this may involve, those we love the most.
   
-At first with a simple text data stream via UDP protocol we can start to synchronize stuff in a real and useful way. 
-and maybe start to produce some monitored gardening goods with reproducible LOCAL recipes to serve 
-the peoples IN their daily FIRST needs.
+We start first with a simple text data stream via UDP protocol, it's more than enough to synchronize stuff 
+in a real and useful way, like monitoring some gardening goods and logging data this will allow reproducible  
+LOCAL recipes this will simply serve the peoples IN their daily FIRST needs.
 
-So Device communications are very important and have to be done with the less friction possible 
-the heavy lifting is producing goods and reproducible process where our devices agents can pick it up 
-as simple repository and expand the current project from a proved working local one to a solution in a   
-new locality Where the COPY and PASTE develop the world instead of killing it, for once !
+So Devices communications are very important and not an easy topic and have to be process with the less friction  
+as possible syncing two device over a private Network should not be an obscure science an python is the good balance 
+between software engineering and user customization. 
+
+Articulating functionality with ease the real goal.
 
 </pre>
 </body>
