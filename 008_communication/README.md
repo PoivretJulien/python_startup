@@ -45,10 +45,11 @@ So Device communication is very important have to be done with the less friction
 the heart lifting is producing goods with the help of technology with a 
 simple resume and feedback loop where  the real investment is the common need to take control 
 of our becoming.
-
+```
 --- > application instruction will follow
 
 ( for now it's just an ia basic python server/client module )
+
 ----------------------------------------------------------------------------------------------------
 i'm testing it and sharing a working full overview when available   
 for now it's just serve to add some background to the direction of
@@ -61,7 +62,7 @@ but people will need to exchange and be involved, entertained, passioned
 by math and technology, no way that mathematic will become a 
 forbidden science for the sake of laziness.
 ----------------------------------------------------------------------------------------------------
-
+```
 </pre>
 </body>
 </html>
