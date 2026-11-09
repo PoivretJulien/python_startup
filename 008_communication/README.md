@@ -13,7 +13,9 @@ a customizable and totally private way, with secure (non compiled) open source s
 that allow us to sense different part of our property. without sharing that data without 
 our permission privacy is the basement of each commercial pressure and commercial exchange.
 
-for video streaming we don't want this available in the street right ?
+For video streaming we don't want this available in the street right ?
+I mean as owner i deserve to have the means to check the source of what I'm running on my devices.
+specially when this may involve potentialy my family.
 
 this module is a bit less ambitious than a video streaming but with just text we can start to synchronize 
 stuff in a real useful way and maybe start to produce some gardening goods monitored with reproducible recipies
