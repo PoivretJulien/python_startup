@@ -1,5 +1,5 @@
 <a href="https://www.example.com">
-  <img src="../image/lan_mesh.svg" alt="">
+  <img src="assets/lan_mesh.svg" alt="">
 </a>
 
 ### Objective:
