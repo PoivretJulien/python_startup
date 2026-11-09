@@ -32,7 +32,7 @@ At first with a simple text data stream we can start to synchronize stuff in a r
 and maybe start to produce some gardening goods monitored with reproducible recipes locally to serve 
 the peoples and their daily first needs.
 
-Of course people need to be involved but with the help ia, it's have never been so easy to set technology 
+Of course people need to be involved but with the help of ia, it's have never been so easy to set technology 
 at our service and put hands in the dirt to work really for ourself 
 by simply following proved and shared procedures.
 
