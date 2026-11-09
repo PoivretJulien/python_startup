@@ -27,7 +27,7 @@ I mean as owner i deserve to have the means to check the source of what I'm runn
 specially when this may involve potentially, those I love the most.
 
 -> even if a clean OS non corrupted still paramount any political silly land lording on our beloved 
-device may invalid this but I believe into the interest of new technology to stay credible for their 
+device may invalid this, but I believe into the interest of new technology to stay credible for their 
 own sake so, this will be leveled properly with the appropriated means.
 
 At first with simple text data we can start to synchronize stuff in a real and useful way 
