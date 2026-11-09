@@ -32,7 +32,7 @@ As owner we deserve to have the means to check the source of what we are running
 specially when this may involve potentially, those we love the most.
   
 At first with a simple text data stream via UDP protocol we can start to synchronize stuff in a real and useful way. 
-and maybe start to produce some gardening goods monitored with reproducible LOCAL recipes to serve 
+and maybe start to produce some monitored gardening goods with reproducible LOCAL recipes to serve 
 the peoples IN their daily FIRST needs.
 
 So Device communications are very important and have to be done with the less friction possible 
