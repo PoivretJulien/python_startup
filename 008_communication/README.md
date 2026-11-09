@@ -51,7 +51,7 @@ of our becoming.
 ( for now it's just an ia basic python server/client module )
 
 ----------------------------------------------------------------------------------------------------
-i'm testing it and sharing a working full overview when available   
+i'm testing introducing it I will share a full overview when available   
 for now it's just serve to add some background to the direction of
 effective software probe engineering basics (in python).
 
