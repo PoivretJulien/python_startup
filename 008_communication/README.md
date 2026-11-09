@@ -24,12 +24,13 @@ As owner we deserve to have the means to check the source of what we running on 
 specially when this may involve potentially, those We love the most.
   
 At first with a simple text data stream we can start to synchronize stuff in a real and useful way. 
-and maybe start to produce some gardening goods monitored with reproducible recipes locally to serve 
-the peoples and their daily first needs it's far more tangible than selling home made software...
+and maybe start to produce some gardening goods monitored with reproducible LOCAL recipes to serve 
+the peoples IN their daily FIRST needs.
 
 So Device communications are very important and have to be done with the less friction possible 
 the heavy lifting is producing goods and reproducible process with our devices agents can pick up 
-as repository and expand them from a proved working solution.
+as repository and expand them from a proved working solution Where the copy and paste develop the world
+instead of killing it.
 
 </pre>
 </body>
