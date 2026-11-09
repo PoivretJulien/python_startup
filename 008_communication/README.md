@@ -11,7 +11,7 @@ of our property.
 At the era of IA agentic management, staying active by scripting/planing our environment is very IMPORTANT to stay close
 of the mathematics and a stimulating daily routine that keep us dreaming, who want an humanity where humans are just cows in fields ?  
 the process of thinking, planing, interacting with low level hardware is, needed and will be controlled/supervised by agent anyway...
-but this cyber culture is very important, else what our boots will walk over ourselves in the most pathetic way if we are not educated 
+but this cyber culture is very important, else what our boots will just walk over ourselves in the most pathetic way if we are not educated 
 to the consequence of our own wishes.
 
 in the Aladdin myth the genie became slave of it's own power and finish to be trap in the consequence bottle of the
