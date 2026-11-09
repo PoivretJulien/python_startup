@@ -28,6 +28,29 @@ log = logging.getLogger(__name__)
 
 DEFAULT_PORT = 50555
 MIN_SECRET_LEN = 16
+DEFAULT_CONFIG_NAME = "link.toml"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def resolve_config_path(path: str | os.PathLike[str] | None) -> Path | None:
+    """Find the config file so the programs work from any folder.
+
+    Explicit path (or $UDP_LINK_CONFIG): used as given; if relative and not
+    found in the current folder, it is also looked up in the project folder.
+    No path: link.toml in the current folder, then in the project folder.
+    """
+    path = path or os.environ.get("UDP_LINK_CONFIG")
+    if path:
+        candidate = Path(path).expanduser()
+        if candidate.exists() or candidate.is_absolute():
+            return candidate
+        if (in_project := PROJECT_ROOT / candidate).exists():
+            return in_project
+        raise FileNotFoundError(f"config file {path!r} not found in {Path.cwd()} or {PROJECT_ROOT}")
+    for folder in (Path.cwd(), PROJECT_ROOT):
+        if (candidate := folder / DEFAULT_CONFIG_NAME).exists():
+            return candidate
+    return None
 
 _ENV = {
     "server_ip": ("UDP_LINK_SERVER_IP", str),
@@ -92,9 +115,9 @@ class LinkConfig:
     def load(cls, path: str | os.PathLike[str] | None = None, **overrides: Any) -> LinkConfig:
         values: dict[str, Any] = {}
 
-        path = path or os.environ.get("UDP_LINK_CONFIG")
-        if path:
-            values.update(_read_toml(Path(path)))
+        if (found := resolve_config_path(path)) is not None:
+            log.debug("using config %s", found)
+            values.update(_read_toml(found))
 
         for name, (env, conv) in _ENV.items():
             if (raw := os.environ.get(env)) is not None:

@@ -15,6 +15,7 @@ import logging
 import socket
 from types import TracebackType
 
+from ._net import open_udp_socket
 from .config import LinkConfig
 from .endpoint import Addr, DeliveryError, LinkBase, MessageHandler, ReliableEndpoint
 from .protocol import Kind
@@ -63,8 +64,7 @@ class UDPClient(LinkBase):
                 on_message=self._on_message,
                 peer_filter=lambda addr: addr == server,  # only talk to our server
             ),
-            local_addr=(cfg.client_bind_ip, 0),
-            family=socket.AF_INET,
+            sock=open_udp_socket(cfg.client_bind_ip, 0),
         )
         self._ep = ep
         try:

@@ -8,8 +8,10 @@ import os
 import socket
 import tomllib
 from dataclasses import dataclass, fields
-from pathlib import Path
 from typing import Any
+
+from udp_link._net import open_udp_socket
+from udp_link.config import resolve_config_path
 
 DEFAULT_VIDEO_PORT = 50556
 
@@ -36,9 +38,8 @@ class VideoConfig:
     @classmethod
     def load(cls, path: str | os.PathLike[str] | None = None, **overrides: Any) -> VideoConfig:
         values: dict[str, Any] = {}
-        path = path or os.environ.get("UDP_LINK_CONFIG")
-        if path:
-            with Path(path).open("rb") as fh:
+        if (found := resolve_config_path(path)) is not None:
+            with found.open("rb") as fh:
                 values.update(tomllib.load(fh).get("video", {}))
         if (port := os.environ.get("UDP_LINK_VIDEO_PORT")) is not None:
             values["port"] = int(port)
@@ -50,13 +51,5 @@ class VideoConfig:
 
 
 def make_udp_socket(bind: tuple[str, int], buffer_size: int) -> socket.socket:
-    """IPv4 UDP socket with enlarged kernel buffers (video sends bursts)."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for opt in (socket.SO_SNDBUF, socket.SO_RCVBUF):
-        try:
-            sock.setsockopt(socket.SOL_SOCKET, opt, buffer_size)
-        except OSError:
-            pass  # OS limit (e.g. net.core.rmem_max); keep the default
-    sock.bind(bind)
-    sock.setblocking(False)
-    return sock
+    """IPv4 UDP socket with enlarged kernel buffers (video sends bursts); Windows-safe."""
+    return open_udp_socket(bind[0], bind[1], buffer_size=buffer_size)

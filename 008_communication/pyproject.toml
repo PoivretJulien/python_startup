@@ -13,4 +13,4 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["udp_link", "video_link"]
+packages = ["udp_link", "video_link", "apps"]

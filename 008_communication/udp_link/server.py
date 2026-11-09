@@ -11,9 +11,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import socket
 from types import TracebackType
 
+from ._net import open_udp_socket
 from .config import LinkConfig
 from .endpoint import Addr, LinkBase, MessageHandler, ReliableEndpoint
 from .protocol import Kind
@@ -33,8 +33,7 @@ class UDPServer(LinkBase):
         cfg = self.config
         _, ep = await loop.create_datagram_endpoint(
             lambda: ReliableEndpoint(cfg, name="server", on_message=self._on_message),
-            local_addr=(cfg.bind_ip, cfg.port),
-            family=socket.AF_INET,
+            sock=open_udp_socket(cfg.bind_ip, cfg.port),
         )
         self._ep = ep
         self._housekeeping_task = asyncio.create_task(self._housekeeping(), name="udp-server-housekeeping")
