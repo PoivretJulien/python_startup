@@ -49,7 +49,7 @@ of our becoming.
 --- > application instruction will follow
 
 ( for now it's just an ia basic python server/client module )
-
+----------------------------------------------------------------------------------------------------
 i'm testing it and sharing a working full overview when available   
 for now it's just serve to add some background to the direction of
 effective software probe engineering basics (in python).
@@ -60,11 +60,11 @@ from a graphical ui to local synchronicity to serve people.
 but people will need to exchange and be involved, entertained, passioned 
 by math and technology, no way that mathematic will become a 
 forbidden science for the sake of laziness.
+----------------------------------------------------------------------------------------------------
 
 </pre>
 </body>
 </html>
-
 
 
 
