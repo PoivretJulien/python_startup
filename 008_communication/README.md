@@ -28,8 +28,8 @@ we need awareness to understand consequences of our choices an staying the owner
 Keeping in mind that avoiding to share data without our permission is the basement of each commercial pressure,  
 necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.
   
-As owner we deserve to have the means to check the source of what we running on our devices.
-specially when this may involve potentially, those We love the most.
+As owner we deserve to have the means to check the source of what we are running on our devices.
+specially when this may involve potentially, those we love the most.
   
 At first with a simple text data stream via UDP protocol we can start to synchronize stuff in a real and useful way. 
 and maybe start to produce some gardening goods monitored with reproducible LOCAL recipes to serve 
