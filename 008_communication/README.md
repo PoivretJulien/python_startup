@@ -17,7 +17,7 @@ to the consequence of our own wishes.
 in the Aladdin myth the genie became slave of it's own power and finish to be trap in the consequence bottle of the
 lamp (the enlightenment) and obey to it's master, the owner of the lamp.
 
-we need awareness to understand consequences of our choices an staying the owner of the lamp us the PEOPLE. 
+we need awareness to understand consequences of our choices and staying the owner of the lamp us the PEOPLE. 
 
 ### Contextual Sensitivity:
 
