@@ -87,6 +87,20 @@ def parse_kv(text: str) -> dict[str, float | str]:
     return out
 
 
+def parse_fields(text: str) -> dict[str, str]:
+    """Like parse_kv(), but every value stays text: 'id=7;value=5' -> {'id': '7', 'value': '5'}.
+
+    Use it when exact values matter (ids, commands, user input): parse_kv()
+    would turn '5' into 5.0 and '007' into 7.0.
+    """
+    out: dict[str, str] = {}
+    for part in text.split(";"):
+        key, sep, value = part.partition("=")
+        if sep and key.strip():
+            out[key.strip()] = value.strip()
+    return out
+
+
 def run(main: Callable[[], Coroutine[Any, Any, None]]) -> None:
     """Start an async `main()` and shut it down cleanly on Ctrl+C or SIGTERM.
 

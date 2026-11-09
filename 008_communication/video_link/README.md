@@ -1,6 +1,6 @@
 # video_link
 
-This module streams live JPEG video (MJPEG) over UDP on the same LAN, from a camera to one or more viewers. It runs next to [`udp_link`](../README.md), which carries the strings, and reuses its `link.toml`: the same server IP and the same secret, on its own port (default `50556`). Typical setup:
+This module streams live JPEG video (MJPEG) over UDP on the same LAN, from a camera to one or more viewers. It runs next to [`udp_link`](../udp_link/README.md), which carries the strings, and reuses its `link.toml`: the same server IP and the same secret, on its own port (default `50556`). Typical setup:
 
 * **server_side**: runs the **video server**, captures a camera (or a test pattern), encodes JPEG and sends each frame to every subscribed client.
 * **Client side**: runs the **video client**, subscribes, reassembles the frames and shows them, saves them or hands them to your code.
@@ -59,7 +59,7 @@ Why a separate module from udp_link:
 
 ## Setup
 
-Set up **udp_link first** on both machines ([Setup](../README.md#setup)): the project folder, Python 3.11+ and the shared `link.toml`. video_link reads the same file. Then, on each side:
+Set up **udp_link first** on both machines ([Setup](../udp_link/README.md#setup)): the project folder, Python 3.11+ and the shared `link.toml`. video_link reads the same file. Then, on each side:
 
 <!-- sides -->
 <!-- server -->
@@ -202,14 +202,14 @@ subscribe_interval = 0     # client: subscribe once, then only while video flows
 What idle mode gives up:
 
 * **A server restart forgets the client.** The new server has no subscriber, so it never starts the camera, and the idle client never subscribes again. Restart the client, or use the slow keep-alive.
-* **The client's firewall may forget the flow** after a long pause, and block the first frames when streaming resumes. The slow keep-alive avoids this; the 50 s value is explained in the udp_link [Idle mode](../README.md#idle-mode-low-power) section.
+* **The client's firewall may forget the flow** after a long pause, and block the first frames when streaming resumes. The slow keep-alive avoids this; the 50 s value is explained in the udp_link [Idle mode](../udp_link/README.md#idle-mode-low-power) section.
 * **Subscribing is confirmed once.** Until the `SUBACK` arrives, the client retries every 2 s, for example while the server is still down.
 
-For the whole project to be idle, also set `heartbeat_interval = 0` and `peer_ttl = 0` in `[link]` if you use udp_link: see its [Idle mode](../README.md#idle-mode-low-power).
+For the whole project to be idle, also set `heartbeat_interval = 0` and `peer_ttl = 0` in `[link]` if you use udp_link: see its [Idle mode](../udp_link/README.md#idle-mode-low-power).
 
 ## Open the UDP port (firewall)
 
-Only **server_side** needs a rule: allow inbound UDP **50556**, exactly like port 50555 for udp_link. The udp_link page has the commands for macOS, Linux (ufw and firewalld) and Windows, with the steps to revert them: [Open the UDP ports](../README.md#open-the-udp-ports-firewall). Replace `50555` with `50556`, or open both ports if you run both modules.
+Only **server_side** needs a rule: allow inbound UDP **50556**, exactly like port 50555 for udp_link. The udp_link page has the commands for macOS, Linux (ufw and firewalld) and Windows, with the steps to revert them: [Open the UDP ports](../udp_link/README.md#open-the-udp-ports-firewall). Replace `50555` with `50556`, or open both ports if you run both modules.
 
 | OS | Open UDP 50556 | Revert |
 |---|---|---|
@@ -261,7 +261,7 @@ async with VideoClient(link, video) as client:
 
 ## API reference
 
-Everything below is importable from `video_link` (and `capture` from `video_link.camera`). Methods marked `async` must be awaited. Members marked `@property` are read without parentheses. The network settings (`server_ip`, `bind_ip`, `secret`, `max_clock_skew`) come from the `udp_link` [`LinkConfig`](../README.md#linkconfig); `VideoConfig` only adds the video-specific ones.
+Everything below is importable from `video_link` (and `capture` from `video_link.camera`). Methods marked `async` must be awaited. Members marked `@property` are read without parentheses. The network settings (`server_ip`, `bind_ip`, `secret`, `max_clock_skew`) come from the `udp_link` [`LinkConfig`](../udp_link/README.md#linkconfig); `VideoConfig` only adds the video-specific ones.
 
 ### `VideoConfig`
 

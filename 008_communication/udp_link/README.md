@@ -13,6 +13,7 @@ Data flows both ways. Each side keeps the strings it receives in a list (`.recei
 |---|---|---|
 | Time test (any OS) | `python3 -m apps.time_server` | `python3 -m apps.time_client` |
 | Sensor strings | `python3 -m apps.sensor_server` | `python3 -m apps.pc_client` |
+| Confirmed requests | `python3 -m apps.confirm_server` | `python3 -m apps.confirm_client` |
 | Video (optional) | `python3 -m video_link.run_server` | `python3 -m video_link.run_client` |
 | OpenCV (video only) | `pip install opencv-python-headless` | `pip install opencv-python` |
 | Firewall | allow inbound UDP 50555 (and 50556 for video), see [Open the UDP ports](#open-the-udp-ports-firewall) | nothing to open |
@@ -35,9 +36,11 @@ udp_link_project/
 │   ├── time_server.py   # test: sends the OS time every 3 s (any OS)
 │   ├── time_client.py   # test: prints the time messages (any OS)
 │   ├── sensor_server.py # sensor example, server_side
-│   └── pc_client.py     # sensor example, client side
+│   ├── pc_client.py     # sensor example, client side
+│   ├── confirm_server.py # confirmed requests, server_side
+│   └── confirm_client.py # confirmed requests, client side
 ├── video_link/          # separate module: camera video streaming (see video_link/README.md)
-├── tests/               # test_link.py, test_video.py
+├── tests/               # test_link.py, test_video.py, test_confirm.py
 └── link.example.toml
 ```
 
@@ -257,6 +260,63 @@ Connects to the server, stacks every received reading and processes the stack in
 ### Sensor context: server_side on an Arduino UNO Q
 
 If server_side is an Arduino UNO Q, `sensor_server.py` runs on the board's Linux side. The sensors are usually wired to the MCU, and the Linux side reaches the sketch through the Arduino Bridge (RPC), for example `Bridge.call("read_temp")` inside App Lab. Make `read_sensor()` call the Bridge and format what it returns as a `key=value;key=value` string.
+
+### 3. Confirmed requests: received, then processed
+
+When `await client.send(...)` returns, the server's **transport ACK** has arrived: the message is in the server's stack. That doesn't prove your server code has handled it. This example adds an **application reply**: the server does the work, then answers `done=<id>` with the outcome. The client therefore sees both confirmations for every request.
+
+<!-- sides -->
+<!-- server -->
+**On server_side**
+
+```bash
+python3 -m apps.confirm_server --config link.toml
+```
+
+* Carries out commands on a pretend device: `led on|off`, `add <number>`, `status` (0.2 s each)
+* Replies `done=<id>;status=ok;result=...` or `done=<id>;status=error;reason=...`
+* Your code goes in: `Device.execute()` in `apps/confirm_server.py`
+<!-- client -->
+**On the client side**
+
+```bash
+python3 -m apps.confirm_client --config link.toml
+```
+
+* Without arguments, runs a demo of 5 requests, two of them invalid
+* Or send your own: `... confirm_client --config link.toml "led off" "add 5" status`
+* `--timeout`: seconds to wait for each reply (default 5)
+<!-- /sides -->
+
+The client prints both steps for every request:
+
+```
+request 1  led on
+  sent        transport ACK: the server received it      (0 ms)
+  done        status=ok, led is on: the server processed it  (204 ms)
+request 3  led blue
+  sent        transport ACK: the server received it
+  FAILED      the server processed it and refused: led value must be on or off, got 'blue'
+```
+
+| What the client sees | Meaning |
+|---|---|
+| `done` | received **and** processed successfully |
+| `FAILED` | received and processed, but the server refused it (bad command or value) |
+| `NO REPLY` | received (ACKed), but no answer within `--timeout`: the work may or may not have happened |
+| `NOT RECEIVED` | `DeliveryError`: no ACK after all retries; the server never had the message |
+
+<details><summary>In depth: how replies are matched to requests</summary>
+
+Every request carries a number, `id=7;cmd=led;value=on`, taken from a counter in the client. Before sending, the client stores an `asyncio.Future` under that id: a placeholder that a later event fills in. The server echoes the id in its reply (`done=7;...`). The client's `on_message` handler looks the id up, fills the Future, and the waiting `request()` call wakes up. Because of the ids, several requests can be in flight at the same time and their replies can arrive in any order.
+
+The server handler is an `async def`, which udp_link runs as its own task for each message. A slow command therefore never delays the reception of the next one. Every outcome gets a reply, including errors and unexpected exceptions, so the client never waits for an answer that won't come.
+
+Both sides parse with `parse_fields()` from `apps/_common.py`, which keeps every value as text. `parse_kv()`, used by the sensor example, would turn `5` into `5.0` and break ids and exact values.
+
+`NO REPLY` is the one uncertain case: the reply may be lost, the server may be slow, or it may have crashed mid-work. If running a command twice is harmful, make commands **idempotent** ("set led on" rather than "toggle led"), or have the server remember recent ids and answer a repeated id with the stored result instead of doing the work again.
+
+</details>
 
 ## Idle mode (low power)
 
@@ -654,7 +714,7 @@ python3 -m udp_link ip       # print this machine's LAN IP
 
 ## Video streaming
 
-Video goes through the separate [`video_link/`](video_link/README.md) module, on its own port, and shares this `link.toml`. It has its own [idle mode](video_link/README.md#idle-mode-low-power), set in the `[video]` table.
+Video goes through the separate [`video_link/`](../video_link/README.md) module, on its own port, and shares this `link.toml`. It has its own [idle mode](../video_link/README.md#idle-mode-low-power), set in the `[video]` table.
 
 ## Tests
 
@@ -662,4 +722,4 @@ Video goes through the separate [`video_link/`](video_link/README.md) module, on
 python3 -m unittest -v
 ```
 
-The tests cover these cases: two-way exchange, stacking, 100 concurrent sends, packet loss and retransmission, lost-ACK de-duplication, wrong-secret rejection, tampering, stale packets, oversized payloads, peer cleanup on BYE, and the stack limit.
+The tests cover these cases: two-way exchange, stacking, 100 concurrent sends, packet loss and retransmission, lost-ACK de-duplication, wrong-secret rejection, tampering, stale packets, oversized payloads, peer cleanup on BYE, the stack limit, idle mode, and the confirmed-request example (replies matched by id, errors, timeouts).

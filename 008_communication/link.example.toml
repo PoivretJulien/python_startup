@@ -11,7 +11,7 @@ secret    = "CHANGE-ME-run-python3-m-udp_link-keygen"
 # max_retries        = 5
 # heartbeat_interval = 5.0     # 0 = no heartbeat
 # peer_ttl           = 20.0    # 0 = never forget clients on a timer
-#   Low power, same values on both machines (see "Idle mode" in README):
+#   Low power, same values on both machines (see "Idle mode" in udp_link/README.md):
 #     idle mode:            heartbeat_interval = 0,  peer_ttl = 0
 #     listen-only clients:  heartbeat_interval = 50, peer_ttl = 180
 # max_clock_skew     = 120.0   # set 0 if the machines have no NTP / internet
