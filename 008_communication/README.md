@@ -39,6 +39,15 @@ instead of killing it.
 
 ### Quotes: "We love only what we understand. we approve if we can't get any faster"
 
+### How it work:
+<!DOCTYPE html>
+<html lang="en">
+<body>
+<pre>
+
+</pre>
+</body>
+</html>
 
 
 
