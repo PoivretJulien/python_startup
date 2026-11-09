@@ -5,6 +5,7 @@
 <pre>
 
 Objective:
+
 use python to establish a software mesh in our property and connect or devices in
 a customizable and totally private way, with secure (non compiled) open source scripts
 that allow us to sense different part of our property.
