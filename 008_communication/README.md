@@ -26,7 +26,7 @@ we need awareness to understand consequences of our choices and staying the owne
 <body>
 <pre>
 Keeping in mind that avoiding to share data without our permission is the basement of each commercial pressure,  
-necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.
+necessary to any commercial exchanges IT'S THE FIRST REALITY TO ACCEPT.  
   
 As owner we deserve to have the means to check the source of what we are running on our devices.
 specially when this may involve potentially, those we love the most.
