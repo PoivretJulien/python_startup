@@ -18,7 +18,8 @@ that allow us to sense different part of our property.
 Keeping in mind that voiding to share that data without our permission is the basement of
 each commercial pressure necessary to any commercial exchanges IS THE FIRST REALITY TO ACCEPT.
 
-a thrusted optical stream need first to be established that the open source philosophy.
+for that a thrusted optical stream need first to be established,
+that is the open source philosophy.
 
 For video streaming we don't want this available in the street right ?
 I mean as owner i deserve to have the means to check the source of what I'm running on my devices.
