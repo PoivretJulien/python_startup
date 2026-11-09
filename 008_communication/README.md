@@ -3,10 +3,7 @@
 <html lang="en">
 <body>
 <pre>
-```
-Quotes: "We love only what we understand."
-```
-  
+
 Python to server Home Network Communication.
 
 now, let's add some momentum in a responsive manner to our own private
@@ -47,7 +44,11 @@ So Device communication is very important have to be done with the less friction
 the heart lifting is producing goods with the help of technology with a 
 simple resume and feedback loop where  the real investment is the common need to take control 
 of our becoming.
+
 ```
+  Quotes: "We love only what we understand."
+```
+
 --- > application instruction will follow
 
 ( for now it's just an ia basic python server/client module )
