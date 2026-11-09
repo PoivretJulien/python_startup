@@ -66,8 +66,8 @@ Client:
 
 Both sides will agree on an handshake and start to exchange data each other (they get in sync automatically).
 Once aware each other, the client start to send str data every heartbeat delay, once received, the simple python str
-is just stored in a list on the other side of the network, a simple python script can process the str and trigger conditionally 
-an action before cleaning the list of the instruction once recieved. 
+is just stored in a list on the other side of the network, a simple python script can process the str and
+trigger conditionally an action before cleaning the list of the instruction once recieved. 
 
 By this simple process both app locally on the same network can have awareness and share data and synchronize
 thinks like portals, pumps, lights, amd of course the familiar machine gun can still be driven like any thing else 
