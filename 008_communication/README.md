@@ -4,11 +4,6 @@
 <body>
 <pre>
 
-Python to server Home Network Communication.
-
-now, let's add some momentum in a responsive manner to our own private
-software world but let introduce some sensibility first.
-
 Objective:
 use python to establish a software mesh in our property and connect or devices in
 a customizable and totally private way, with secure (non compiled) open source scripts
@@ -33,8 +28,7 @@ and maybe start to produce some gardening goods monitored with reproducible reci
 the peoples and their daily first needs.
 
 Of course people need to be involved but with the help of ia, it's have never been so easy to set technology 
-at our service and put hands in the dirt to work really for ourself 
-by simply following proved and shared procedures.
+at our service and put hands in the dirt to work really for ourself by simply following proved and shared procedures.
 
 it simply might be the HOPE that any one need now a days... being able to grow my own foods...
 is healthy, responsive and educative an make us really independent as society and more commercially 
