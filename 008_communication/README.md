@@ -71,8 +71,8 @@ trigger conditionally an action before cleaning the list of the instruction once
 
 By this simple process both app locally on the same network can have awareness and share data and synchronize
 thinks like portals, pumps, lights, amd of course the familiar machine gun can still be driven like any thing else 
-but remember it’s not the hammer that kill ! it is the murderer right ? Ugly sure, but IA video analysis is also the hope, 
-to balance with, the inventor of the hammer have no regret i’m sure. 
+but remember it’s not the hammer that kill ! it is the murderer right ? Ugly sure, but IA video analysis is also 
+the hope, to balance with, the inventor of the hammer have no regret i’m sure. 
 
 in practice:
 
