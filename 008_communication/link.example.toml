@@ -13,3 +13,8 @@ secret    = "CHANGE-ME-run-python3-m-udp_link-keygen"
 # peer_ttl           = 20.0
 # max_clock_skew     = 120.0   # set 0 if the machines have no NTP / internet
 # allowed_hosts      = ["192.168.1.20"]   # server: only accept these client IPs
+
+# Video streaming (video_link) -- optional, defaults shown
+# [video]
+# port            = 50556
+# max_subscribers = 4
