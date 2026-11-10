@@ -1,4 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/2cd67c64-806a-474e-a307-aac44d07c791" />
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -11,7 +10,7 @@ whole API step by step.
 ```
 toolchain/   installers for macOS, Linux and Windows + an environment checker
 graphics/    the drawing library (wgpu): 3D lines, arrows, particles, pictures, text,
-             and screen-space rectangles / circles / triangles / lines / dashed lines / pictures
+             and screen-space rectangles / circles (plain or gradient) / triangles / lines / dashed lines / pictures
              with their hit tests
 network/     udp_link (strings over UDP) and video_link (camera over UDP)
 examples/    01_hover_shapes   two shapes that change colour under the cursor
@@ -20,6 +19,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              04_linked_circles two draggable circles joined by a dashed line
              05_keyboard       the keys held, the last presses and the typed text, on screen
              06_slider         sliders that set a colour and a corner radius
+             07_gradient_gauge a gradient gauge whose marker moves with the Up / Down keys
 guide.html   the step-by-step guide
 ```
 
@@ -46,6 +46,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/04_linked_circles/main.py
 .venv/bin/python examples/05_keyboard/main.py
 .venv/bin/python examples/06_slider/main.py
+.venv/bin/python examples/07_gradient_gauge/main.py
 .venv/bin/python graphics/main.py
 ```
 
@@ -64,6 +65,8 @@ def draw_frame():
     over = ui.in_screen_rect(app.cursor(), (60, 90), (260, 150), 28)
     ui.draw_screen_rect((60, 90), (260, 150), (1, .85, .1) if over else (.58, .25, .9), 28)
     ui.draw_screen_circle((500, 165), 75, (.58, .25, .9))
+    ui.draw_screen_gradient_rect((360, 90), (60, 150), [0, .5, 1],                        # stops ...
+                                 [(0, 0, 1), (0, 1, 0), (1, 0, 0)], (0, -1), 20)          # ... colours, direction, radius
     ui.draw_screen_triangle((320, 250), 60, 80, (0, -1), (1, .55, .1))                    # base, height, direction
     ui.draw_screen_line((60, 280), (575, 280), (1, 1, 1), 2)                              # thickness
     ui.draw_screen_dashed_line((60, 310), (575, 310), (1, .55, .1), 4, dash=12, spacing=6)

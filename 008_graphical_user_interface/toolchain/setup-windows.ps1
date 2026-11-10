@@ -175,6 +175,7 @@ Ready. From the project root:
   .venv\Scripts\python examples\04_linked_circles\main.py  # two circles and a dashed line
   .venv\Scripts\python examples\05_keyboard\main.py        # the keyboard, on screen
   .venv\Scripts\python examples\06_slider\main.py          # sliders that set values
+  .venv\Scripts\python examples\07_gradient_gauge\main.py  # a gradient gauge and the arrow keys
   .venv\Scripts\python graphics\main.py                    # the full 3D scene (--backend vulkan forces Vulkan)
   start guide.html                                         # how to use the API
 

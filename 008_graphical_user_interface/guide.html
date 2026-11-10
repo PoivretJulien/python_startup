@@ -205,7 +205,7 @@
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
   <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures and text in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Six small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Seven small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -335,7 +335,7 @@ app.run(draw_frame)</code></pre>
   <div class="card"><h4>Screen space</h4>
     <p>Units are <strong>pixels of the window</strong>. <code>(0, 0)</code> is the top-left corner, <code>x</code> grows to the right, <code>y</code> grows <strong>down</strong>.</p>
     <p>It is exactly what the mouse reports, so a shape and the cursor speak the same language. Things drawn here ignore the camera and always sit on top.</p>
-    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_triangle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
+    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_gradient_rect</code>, <code>draw_screen_gradient_circle</code>, <code>draw_screen_triangle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
   <div class="card"><h4>World space</h4>
     <p>Units are whatever you decide (metres, say). Three numbers <code>(x, y, z)</code>; the floor is the <code>x, y</code> plane and <code>z</code> points <strong>up</strong>.</p>
     <p>What you see depends on the camera: orbit, pan and zoom change the picture, not your numbers.</p>
@@ -349,7 +349,7 @@ app.run(draw_frame)</code></pre>
 <!-- ================================================================ 5 -->
 <section id="shapes">
 <h2><span class="n">05</span>Shapes on the screen</h2>
-<p class="goal">A rectangle, a circle, a triangle, a line, a dashed line and a picture.</p>
+<p class="goal">A rectangle, a circle, a triangle, a line, a dashed line, a picture — and gradients.</p>
 
 <h3>The rounded rectangle</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius)</code></pre>
@@ -390,6 +390,99 @@ ui.draw_screen_rect((60, 320), (260, 40), PURPLE, 999)   # a pill: the radius is
 
 ui.draw_screen_circle((500, 165), 75, PURPLE)</code></pre>
 <p>A circle is described from its middle, a rectangle from its corner. That is the only asymmetry to remember.</p>
+
+<h3>Gradients: several colours in one shape</h3>
+<pre><code class="py">ui.draw_screen_gradient_rect(anchor, size, stops, colors, direction, radius)
+ui.draw_screen_gradient_circle(center, radius, stops, colors, direction)</code></pre>
+<p>The same rounded rectangle and the same circle, with the single colour replaced by a gradient. <code>draw_screen_rect</code> and <code>draw_screen_circle</code> are unchanged: these are two more methods.</p>
+<p>A gradient is described by <strong>two lists of the same length</strong>, read side by side, and a direction:</p>
+<pre><code class="py">STOPS  = [0.0,  0.25,   0.5,   0.75,   1.0]       # where: positions from 0.0 to 1.0
+COLORS = [BLUE, YELLOW, GREEN, ORANGE, RED]       # what: the colour at each position
+
+ui.draw_screen_gradient_rect((90, 50), (90, 400), STOPS, COLORS, (0, -1), 26)     # bottom to top</code></pre>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="A horizontal gradient bar with five stops marked 0.0, 0.25, 0.5, 0.75 and 1.0, the colour at each stop, and the direction arrow from position 0 to position 1">
+  <defs>
+    <linearGradient id="gauge" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#2659ff"/><stop offset="0.25" stop-color="#ffe61a"/>
+      <stop offset="0.5" stop-color="#33d94d"/><stop offset="0.75" stop-color="#ff8c1a"/>
+      <stop offset="1" stop-color="#ff2626"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="70" width="560" height="70" rx="22" fill="url(#gauge)"/>
+  <g font-size="12">
+    <path d="M100 150 V170 M240 150 V170 M380 150 V170 M520 150 V170 M660 150 V170" stroke="#e6e3dc"/>
+    <text x="100" y="188" text-anchor="middle">0.0</text><text x="240" y="188" text-anchor="middle">0.25</text>
+    <text x="380" y="188" text-anchor="middle">0.5</text><text x="520" y="188" text-anchor="middle">0.75</text>
+    <text x="660" y="188" text-anchor="middle">1.0</text>
+    <text x="100" y="208" text-anchor="middle" style="fill:#9a968c">BLUE</text><text x="240" y="208" text-anchor="middle" style="fill:#9a968c">YELLOW</text>
+    <text x="380" y="208" text-anchor="middle" style="fill:#9a968c">GREEN</text><text x="520" y="208" text-anchor="middle" style="fill:#9a968c">ORANGE</text>
+    <text x="660" y="208" text-anchor="middle" style="fill:#9a968c">RED</text>
+    <text x="40" y="188" style="fill:#ff8c1a">stops</text><text x="40" y="208" style="fill:#ff8c1a">colors</text>
+  </g>
+  <path d="M100 40 H656" stroke="#ff8c1a" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="380" y="30" text-anchor="middle" font-size="12" style="fill:#ff8c1a">direction (1, 0)</text>
+  <text x="380" y="238" text-anchor="middle" font-size="12" style="fill:#9a968c">between two stops, the colour slides from one to the next</text>
+</svg>
+<figcaption>Position <code>0.0</code> is the side the direction comes from, <code>1.0</code> the side it points to. Each colour is exact at its stop; in between, the two neighbours are mixed in proportion to the distance.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>anchor</code>, <code>size</code>, <code>radius</code></td><td>Exactly those of <code>draw_screen_rect</code>: top-left corner, <code>(width, height)</code>, corner radius.</td><td><code>(90, 50)</code>, <code>(90, 400)</code>, <code>26</code></td></tr>
+  <tr><td><code>center</code>, <code>radius</code></td><td>Exactly those of <code>draw_screen_circle</code>.</td><td><code>(300, 200)</code>, <code>60</code></td></tr>
+  <tr><td><code>stops</code></td><td>A list of floats from <code>0.0</code> to <code>1.0</code>: positions along the gradient.</td><td class="wrap"><code>[0.0, 0.5, 1.0]</code></td></tr>
+  <tr><td><code>colors</code></td><td>A list of <code>(r, g, b)</code> or <code>(r, g, b, a)</code>: the colour at each stop. <strong>Same length</strong> as <code>stops</code>.</td><td class="wrap"><code>[BLUE, GREEN, RED]</code></td></tr>
+  <tr><td><code>direction</code></td><td>Which way the gradient runs: an <code>(x, y)</code> tuple or a <code>Vec2</code>, of any length. Optional: left to right by default.</td><td><code>(0, -1)</code></td></tr>
+</table></div>
+
+<div class="tablewrap"><table>
+  <tr><th>direction</th><th>The gradient runs</th></tr>
+  <tr><td><code>(1, 0)</code></td><td>left to right (the default)</td></tr>
+  <tr><td><code>(-1, 0)</code></td><td>right to left</td></tr>
+  <tr><td><code>(0, -1)</code></td><td>bottom to top — screen <code>y</code> grows down, so "up" is minus <code>y</code></td></tr>
+  <tr><td><code>(0, 1)</code></td><td>top to bottom</td></tr>
+  <tr><td><code>(1, 1)</code></td><td>from the top-left corner to the bottom-right corner</td></tr>
+</table></div>
+
+<p>A few things the two lists can do:</p>
+<pre><code class="py">ui.draw_screen_gradient_rect(a, s, [0, 1], [BLUE, RED])                            # the simplest: two colours
+ui.draw_screen_gradient_rect(a, s, [0, 0.9, 1], [GREEN, GREEN, RED])              # flat green, red only at the end
+ui.draw_screen_gradient_rect(a, s, [0, 0.5, 0.5, 1], [BLUE, BLUE, RED, RED])      # two stops at the same place: a hard edge
+ui.draw_screen_gradient_rect(a, s, [0, 1], [(0, 0, 0, 0.8), (0, 0, 0, 0)], (0, 1))     # alpha too: a shadow that fades out</code></pre>
+
+<h3>The colour at one position</h3>
+<p>Sometimes you need the colour <em>of the gradient</em> somewhere else: a label, a lamp, a marker. Ask for it, with the same two lists:</p>
+<pre><code class="py">import screen2d
+
+here = screen2d.gradient_color(STOPS, COLORS, 0.6)     # (r, g, b, a) at 60 %
+ui.draw_screen_circle((330, 200), 26, here)</code></pre>
+
+<div class="box"><div class="t">Why a gradient is as fast as one colour</div>
+<p>The first time a gradient is drawn, its stops are turned into a tiny strip of 256 coloured dots and sent to the graphics card, which keeps it. From then on, for each pixel of the shape, the card only works out how far along the gradient that pixel is and reads the strip there, blending the two nearest dots. That costs the same for two stops or twenty, and nothing is recomputed while you keep drawing the same gradient.</p></div>
+
+<h3>Example 7: a gauge</h3>
+<pre class="shell">.venv/bin/python examples/07_gradient_gauge/main.py</pre>
+<p>A tall gradient rectangle from blue (bottom) to red (top), and a tiny triangle pointing up, drawn on top of it, that the Up and Down arrow keys move. The program remembers one float, <code>level</code>; everything on screen is computed from it:</p>
+<pre><code class="py">level = 0.5                                             # 0.0 = bottom, 1.0 = top
+
+def draw_frame():
+    global level
+    if app.key_pressed("UP", repeat=True):              # repeat=True: keeps moving while held
+        level += 0.02
+    if app.key_pressed("DOWN", repeat=True):
+        level -= 0.02
+    level = min(max(level, 0.0), 1.0)                   # stay on the gauge
+
+    ui.draw_screen_gradient_rect((90, 50), (90, 400), STOPS, COLORS, (0, -1), 26)
+
+    tip_y = 420 - level * 340                           # level 0 -> low on the screen, 1 -> high
+    ui.draw_screen_triangle((135, tip_y + 16), 22, 16, (0, -1), WHITE)      # drawn after: on top
+
+    here = screen2d.gradient_color(STOPS, COLORS, level)                    # the colour under the marker
+    ui.draw_screen_circle((330, tip_y), 26, here)</code></pre>
+<p>Note the minus sign in <code>tip_y</code>: a <em>higher</em> level is a <em>smaller</em> <code>y</code>, because screen <code>y</code> grows downward. The keys are explained in <a href="#keyboard">The keyboard</a>.</p>
 
 <h3>The triangle</h3>
 <pre><code class="py">ui.draw_screen_triangle(anchor, base, height, direction, color)
@@ -1355,6 +1448,9 @@ app.request_redraw()         app.quit()</code></pre>
 <h3>Screen space — pixels, origin top-left, y down</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius=0)        ui.in_screen_rect(cursor, anchor, size, radius=0)
 ui.draw_screen_circle(center, radius, color)              ui.in_screen_circle(cursor, center, radius)
+ui.draw_screen_gradient_rect(anchor, size, stops, colors, direction=(1, 0), radius=0)
+ui.draw_screen_gradient_circle(center, radius, stops, colors, direction=(1, 0))
+screen2d.gradient_color(stops, colors, t) -&gt; (r, g, b, a)
 ui.draw_screen_triangle(anchor, base, height, direction=(0, -1), color, antialias=True)
 ui.in_screen_triangle(cursor, anchor, base, height, direction=(0, -1))
 ui.draw_screen_line(start, end, color, thickness=2)       ui.in_screen_line(cursor, start, end, thickness=2)
@@ -1402,6 +1498,8 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
   <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
   <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
+  <tr><td class="wrap"><code>a gradient needs one colour per stop</code></td><td>The <code>stops</code> and <code>colors</code> lists do not have the same length. Count them: one colour for each position.</td></tr>
+  <tr><td>A gradient runs the wrong way</td><td>Position <code>0.0</code> is where the direction <em>comes from</em>. Bottom to top is <code>(0, -1)</code>. Or keep the direction and reverse the colours.</td></tr>
   <tr><td>A triangle points the wrong way</td><td>"Up" is <code>(0, -1)</code>, not <code>(0, 1)</code>: screen <code>y</code> grows downward.</td></tr>
   <tr><td>An animation only moves when the mouse moves</td><td>That is the reactive loop doing its job. Add <code>--refresh 60</code>, or call <code>app.request_redraw()</code> when your data changes.</td></tr>
   <tr><td>Side B stays on "waiting for side A"</td><td>Same <code>link.toml</code> on both sides? <code>server_ip</code> is the address of the <em>server</em> machine? The firewall of that machine allows UDP port 50555? The two clocks agree within two minutes (or set <code>max_clock_skew = 0</code> on both)?</td></tr>
@@ -1412,7 +1510,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

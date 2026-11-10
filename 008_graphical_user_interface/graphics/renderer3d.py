@@ -57,6 +57,12 @@ class SceneRenderer:
             blend=True,
             **overlay,
         )
+        # Gradient shapes: the SDF of the plain shapes, coloured by a 1D gradient
+        # texture. Textures are cached per distinct gradient (see _gradient).
+        self.gradient_pipeline = gpu.pipeline(
+            shaders3d.SCREEN_GRADIENT_SHAPES, shapes, blend=True, textured=True, **overlay
+        )
+        self._gradients: dict[tuple, texture3d.Texture] = {}
         # Screen-space triangles: the SDF one (anti-aliased, a blended quad) and
         # the plain twins (three vertices; opaque = no blending, or blended).
         triangles = gpu3d.vertex_layout(*shaders3d.SCREEN_TRIANGLE_LAYOUT, instanced=True)
@@ -262,6 +268,95 @@ class SceneRenderer:
             row = screen2d.circle_instance(center, radius, color)
             self._submit_points(self.shape_pipeline, self._screen_uniforms(1.0), row)
 
+    # -- gradient shapes ----------------------------------------------------
+    MAX_GRADIENTS = 64  # distinct gradients kept on the GPU before the oldest goes
+
+    def _gradient(self, stops, colors) -> texture3d.Texture:
+        """The 1D texture of a gradient, built on first use and then reused."""
+        key = screen2d.gradient_stops(stops, colors)
+        texture = self._gradients.get(key)
+        if texture is None:
+            if len(self._gradients) >= self.MAX_GRADIENTS:
+                # An animated gradient makes a new key every frame: drop the
+                # oldest one instead of growing without bound.
+                self._gradients.pop(next(iter(self._gradients))).destroy()
+            texture = texture3d.Texture(
+                screen2d.gradient_pixels(*key), self.gpu, mipmaps=False
+            )
+            self._gradients[key] = texture
+        return texture
+
+    def _submit_gradient(self, row: np.ndarray, texture: texture3d.Texture) -> None:
+        self.gpu.submit(
+            gpu3d.DrawCall(
+                pipeline=self.gradient_pipeline,
+                uniforms=self._screen_uniforms(1.0),
+                vertex_count=6,
+                instance_count=1,
+                vertices=row,
+                texture_group=texture.bind_group,
+            )
+        )
+
+    def draw_screen_gradient_rect(
+        self,
+        anchor: screen2d.Point2,
+        size: screen2d.Size2,
+        stops: screen2d.Sequence[float],
+        colors: screen2d.Sequence[screen2d.ColorRGBA],
+        direction: screen2d.Point2 = screen2d.RIGHT,
+        radius: float = 0.0,
+    ) -> None:
+        """Draw a rounded rectangle filled with a multi-colour gradient.
+
+        ``anchor``, ``size`` and ``radius`` are those of ``draw_screen_rect``
+        (top-left corner, ``(width, height)``, corner radius; window pixels).
+        The single colour is replaced by three arguments:
+
+        * ``stops`` — positions along the gradient, floats from ``0.0`` (where
+          it starts) to ``1.0`` (where it ends), e.g. ``[0.0, 0.5, 1.0]``;
+        * ``colors`` — one ``(r, g, b)`` or ``(r, g, b, a)`` per stop: the
+          colour at that position. Same length as ``stops``;
+        * ``direction`` — an ``(x, y)`` tuple or ``Vec2`` saying which way the
+          gradient runs: ``(1, 0)`` left to right (default), ``(0, -1)`` bottom
+          to top, ``(1, 1)`` towards the bottom-right corner. Its length does
+          not matter.
+
+        Between two stops the colour is interpolated; position 0 is the edge
+        (or corner) the direction comes from, position 1 the one it points to.
+
+        Hardware accelerated: the stops are baked once into a 256-texel 1D
+        texture, cached for as long as the same gradient is drawn, and the
+        fragment shader does one dot product and one texture fetch per pixel —
+        the same cost for 2 stops or 20. The edge is anti-aliased by the same
+        distance field as ``draw_screen_rect``. One instance, one draw call.
+
+        ``in_screen_rect`` is its hit test, and ``screen2d.gradient_color``
+        returns the colour of a gradient at one position.
+        """
+        row = screen2d.gradient_rect_instance(anchor, size, direction, radius)
+        if row[0, 2] > 0.0 and row[0, 3] > 0.0:
+            self._submit_gradient(row, self._gradient(stops, colors))
+
+    def draw_screen_gradient_circle(
+        self,
+        center: screen2d.Point2,
+        radius: float,
+        stops: screen2d.Sequence[float],
+        colors: screen2d.Sequence[screen2d.ColorRGBA],
+        direction: screen2d.Point2 = screen2d.RIGHT,
+    ) -> None:
+        """Draw an anti-aliased disc filled with a multi-colour gradient.
+
+        ``center`` and ``radius`` are those of ``draw_screen_circle``; ``stops``,
+        ``colors`` and ``direction`` those of ``draw_screen_gradient_rect``. The
+        gradient runs across the diameter, along ``direction``. Same program,
+        same cached texture, one draw call. ``in_screen_circle`` is its hit test.
+        """
+        if radius > 0.0:
+            row = screen2d.gradient_circle_instance(center, radius, direction)
+            self._submit_gradient(row, self._gradient(stops, colors))
+
     def draw_screen_triangle(
         self,
         anchor: screen2d.Point2,
@@ -417,6 +512,9 @@ class SceneRenderer:
     in_screen_triangle = staticmethod(screen2d.in_triangle)
 
     def close(self) -> None:
+        for texture in self._gradients.values():
+            texture.destroy()
+        self._gradients.clear()
         self.textures.close()
         self.images.close()
         if self.grid_buffer is not None:

@@ -1,4 +1,4 @@
-"""Screen-space shapes: rounded rectangles, circles, triangles, lines and their hit tests.
+"""Screen-space shapes: rounded rectangles, circles, triangles, lines, gradients, hit tests.
 
 Everything here speaks **window pixels** with the origin at the **top-left** and
 y growing down — the convention of ``glfw.get_cursor_pos`` and of
@@ -45,6 +45,11 @@ LINE_FLOATS = 11
 TRIANGLE_FLOATS = 10
 
 UP = (0.0, -1.0)  # screen y grows down, so "up" is minus y
+RIGHT = (1.0, 0.0)
+
+# A gradient is baked into one row of this many texels. 256 steps is as fine as
+# an 8-bit colour channel can show; the GPU blends between neighbouring texels.
+GRADIENT_TEXELS = 256
 
 
 def clamp_radius(width: float, height: float, radius: float) -> float:
@@ -107,6 +112,94 @@ def line_instance(
     row[0, 8] = 0.5 * max(float(thickness), 0.0)
     row[0, 9] = max(float(dash), 0.0)
     row[0, 10] = max(float(spacing), 0.0)
+    return row
+
+
+def gradient_stops(
+    stops: Sequence[float],
+    colors: Sequence[ColorRGBA],
+) -> tuple[tuple[float, ...], tuple[tuple[float, float, float, float], ...]]:
+    """Check a gradient description and return it as two sorted tuples.
+
+    ``stops`` are positions along the gradient, from ``0.0`` (where it starts)
+    to ``1.0`` (where it ends); ``colors`` gives the colour at each one. The two
+    lists must have the same length. The stops need not be in order.
+    """
+    if len(stops) != len(colors):
+        raise ValueError(
+            f"a gradient needs one colour per stop: got {len(stops)} stop(s) "
+            f"and {len(colors)} colour(s)"
+        )
+    if not stops:
+        raise ValueError("a gradient needs at least one stop")
+    pairs = sorted(zip((float(s) for s in stops), (rgba(c) for c in colors)), key=lambda p: p[0])
+    return tuple(p[0] for p in pairs), tuple(p[1] for p in pairs)
+
+
+def gradient_color(
+    stops: Sequence[float],
+    colors: Sequence[ColorRGBA],
+    t: float,
+) -> tuple[float, float, float, float]:
+    """The ``(r, g, b, a)`` of a gradient at position ``t`` (0.0 .. 1.0).
+
+    The same interpolation the GPU draws: the colour of the nearest stop on
+    each side, mixed in proportion to the distance. Before the first stop and
+    after the last one the colour stays constant. Handy to give something else
+    (a label, a marker) the colour of the gradient at one point.
+    """
+    positions, values = gradient_stops(stops, colors)
+    table = np.asarray(values, dtype=np.float64)
+    return tuple(float(np.interp(t, positions, table[:, channel])) for channel in range(4))
+
+
+def gradient_pixels(stops: Sequence[float], colors: Sequence[ColorRGBA]) -> np.ndarray:
+    """A gradient baked as a ``(1, GRADIENT_TEXELS, 4)`` uint8 RGBA row.
+
+    Texel ``i`` holds the colour at ``t = i / (GRADIENT_TEXELS - 1)``. This row
+    is what the gradient shader samples; it is computed once per distinct
+    gradient and cached by the renderer.
+    """
+    positions, values = gradient_stops(stops, colors)
+    table = np.asarray(values, dtype=np.float64)
+    t = np.linspace(0.0, 1.0, GRADIENT_TEXELS)
+    row = np.stack([np.interp(t, positions, table[:, channel]) for channel in range(4)], axis=1)
+    return np.clip(row * 255.0 + 0.5, 0.0, 255.0).astype(np.uint8)[None, :, :]
+
+
+def _unit(direction: Point2, fallback: Point2) -> tuple[float, float]:
+    dx, dy = float(direction[0]), float(direction[1])
+    length = math.hypot(dx, dy)
+    if length <= 1e-12:
+        return float(fallback[0]), float(fallback[1])
+    return dx / length, dy / length
+
+
+def gradient_rect_instance(
+    anchor: Point2,
+    size: Size2,
+    direction: Point2,
+    radius: float = 0.0,
+) -> np.ndarray:
+    """One gradient rounded rectangle as a ``(1, 9)`` float32 instance row.
+
+    The layout of ``rect_instance`` with the colour replaced by the gradient
+    frame: unit direction (2), half extent of the box along it (1), texels (1).
+    """
+    row = rect_instance(anchor, size, (0.0, 0.0, 0.0, 0.0), radius)
+    dx, dy = _unit(direction, RIGHT)
+    # How far the box reaches along the direction, from its centre: the
+    # gradient runs from -extent to +extent, corner to corner.
+    extent = abs(dx) * row[0, 2] + abs(dy) * row[0, 3]
+    row[0, 4:8] = (dx, dy, extent, GRADIENT_TEXELS)
+    return row
+
+
+def gradient_circle_instance(center: Point2, radius: float, direction: Point2) -> np.ndarray:
+    """One gradient disc: the gradient runs across its diameter."""
+    row = circle_instance(center, radius, (0.0, 0.0, 0.0, 0.0))
+    dx, dy = _unit(direction, RIGHT)
+    row[0, 4:8] = (dx, dy, row[0, 8], GRADIENT_TEXELS)
     return row
 
 

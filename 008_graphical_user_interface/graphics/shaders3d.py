@@ -520,6 +520,83 @@ fn fs_main(i: LOut) -> @location(0) vec4<f32> {
 """
 )
 
+# ------------------------------------- screen-space gradient shapes (SDF)
+# The rounded-box distance field of SCREEN_SHAPES, but the colour comes from a
+# gradient instead of one constant. The gradient itself — any number of colour
+# stops — is baked once into a small 1D texture (one row of texels, see
+# screen2d.gradient_pixels); the fragment shader only computes *where* it is
+# along the gradient (t, 0..1) and lets the GPU's texture sampler interpolate
+# between the two nearest texels. Per pixel that is one dot product and one
+# texture fetch, whatever the number of stops.
+SCREEN_GRADIENT_SHAPES = (
+    COMMON
+    + """
+@group(1) @binding(0) var gradient_texture: texture_2d<f32>;
+@group(1) @binding(1) var gradient_sampler: sampler;
+
+struct GIn {
+    @location(0) center: vec2<f32>,      // window points, top-left origin
+    @location(1) half_size: vec2<f32>,   // half width / half height, points
+    @location(2) gradient: vec4<f32>,    // direction.xy (unit), half extent along it (points), texels
+    @location(3) radius: f32,            // corner radius, points
+};
+
+struct GOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(linear) local: vec2<f32>,    // from the centre, pixels
+    @location(1) @interpolate(flat) half_px: vec2<f32>,
+    @location(2) @interpolate(flat) radius_px: f32,
+    @location(3) @interpolate(flat) gradient: vec4<f32>,   // direction.xy, half extent (pixels), texels
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, s: GIn) -> GOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+    );
+    let scale = u.viewport / u.screen;          // points -> framebuffer pixels
+    let unit = min(scale.x, scale.y);
+    let half_px = s.half_size * scale;
+    let local = corners[vertex] * (half_px + vec2<f32>(u.feather));
+    let pixel = s.center * scale + local;
+    var out: GOut;
+    out.position = vec4<f32>(
+        pixel.x / u.viewport.x * 2.0 - 1.0,
+        1.0 - pixel.y / u.viewport.y * 2.0,
+        0.0,
+        1.0
+    );
+    out.local = local;
+    out.half_px = half_px;
+    out.radius_px = s.radius * unit;
+    out.gradient = vec4<f32>(s.gradient.xy, s.gradient.z * unit, s.gradient.w);
+    return out;
+}
+
+@fragment
+fn fs_main(i: GOut) -> @location(0) vec4<f32> {
+    // Where this pixel is along the gradient: 0 on the side the direction
+    // comes from, 1 on the side it points to.
+    let t = clamp(dot(i.local, i.gradient.xy) / max(2.0 * i.gradient.z, 1e-6) + 0.5, 0.0, 1.0);
+    // Aim at texel centres, so t = 0 and t = 1 return exactly the first and
+    // the last colour. (Sampled before the discard: WGSL requires it.)
+    let texels = i.gradient.w;
+    let color = textureSample(gradient_texture, gradient_sampler,
+                              vec2<f32>((t * (texels - 1.0) + 0.5) / texels, 0.5));
+
+    // The same signed distance as SCREEN_SHAPES gives the anti-aliased edge.
+    let q = abs(i.local) - i.half_px + vec2<f32>(i.radius_px);
+    let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - i.radius_px;
+    let coverage = clamp(0.5 - d, 0.0, 1.0);
+    if (coverage <= 0.001) {
+        discard;
+    }
+    return vec4<f32>(color.rgb, color.a * coverage);
+}
+"""
+)
+
 # --------------------------------------------- screen-space triangles (SDF)
 # One instance per triangle: its three corners (window points) and a colour.
 _TRIANGLE_IO = """
@@ -656,6 +733,7 @@ ALL_SHADERS = {
     "screen_shapes": SCREEN_SHAPES,
     "screen_rect_sharp": SCREEN_RECT_SHARP,
     "screen_lines": SCREEN_LINES,
+    "screen_gradient_shapes": SCREEN_GRADIENT_SHAPES,
     "screen_triangles": SCREEN_TRIANGLES,
     "screen_triangle_sharp": SCREEN_TRIANGLE_SHARP,
 }
