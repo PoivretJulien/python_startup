@@ -86,6 +86,7 @@ def check_project() -> None:
     for module, why in (
         ("renderer_aa3d", "graphics: the drawing API"),
         ("app3d", "graphics: window + loop in one object"),
+        ("widgets2d", "graphics: ready-made controls (slider)"),
         ("udp_link", "network: strings over UDP"),
         ("udp_link.bridge", "network: the link in a background thread"),
         ("video_link", "network: video over UDP"),

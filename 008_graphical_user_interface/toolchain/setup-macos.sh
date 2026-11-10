@@ -264,6 +264,7 @@ Ready. From the project root:
   .venv/bin/python examples/03_udp_video/main.py       # video between two windows
   .venv/bin/python examples/04_linked_circles/main.py  # two circles and a dashed line
   .venv/bin/python examples/05_keyboard/main.py        # the keyboard, on screen
+  .venv/bin/python examples/06_slider/main.py          # sliders that set values
   .venv/bin/python graphics/main.py                    # the full 3D scene
   open guide.html                                      # how to use the API
 

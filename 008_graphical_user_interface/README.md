@@ -1,4 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/5740ea9d-e032-4d56-9da9-50540e8e2c2f" />
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -19,6 +18,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              03_udp_video      a camera (or test pattern) in window A, shown in window B over UDP
              04_linked_circles two draggable circles joined by a dashed line
              05_keyboard       the keys held, the last presses and the typed text, on screen
+             06_slider         sliders that set a colour and a corner radius
 guide.html   the step-by-step guide
 ```
 
@@ -44,6 +44,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/03_udp_video/main.py            # add --source 0 for a real camera
 .venv/bin/python examples/04_linked_circles/main.py
 .venv/bin/python examples/05_keyboard/main.py
+.venv/bin/python examples/06_slider/main.py
 .venv/bin/python graphics/main.py
 ```
 
@@ -67,6 +68,12 @@ def draw_frame():
     ui.draw_screen_dashed_line((60, 310), (575, 310), (1, .55, .1), 4, dash=12, spacing=6)
 
 app.run(draw_frame)
+```
+
+```python
+from widgets2d import Slider                   # graphics/
+volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimum, maximum
+# in draw_frame:  level = volume.draw(app)     -> a float; drag the handle or click the line
 ```
 
 ```python
