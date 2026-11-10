@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graphical user interface — the guide</title>
+<style>
+  :root {
+    --bg: #101013;
+    --panel: #18181d;
+    --panel-2: #1f1f26;
+    --line: #2c2c36;
+    --text: #e6e3dc;
+    --muted: #9a968c;
+    --accent: #ff8c1a;
+    --accent-soft: rgba(255, 140, 26, 0.13);
+    --accent-line: rgba(255, 140, 26, 0.45);
+    --purple: #9440e6;
+    --yellow: #ffd91a;
+    --cyan: #33d9f2;
+    --green: #59e659;
+    --red: #ff4d4d;
+    --code: #0b0b0e;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); max-width: 1180px; margin: 0 auto; }
+  nav {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 28px 18px 28px 22px; border-right: 1px solid var(--line);
+  }
+  nav .brand { font-weight: 700; letter-spacing: .02em; margin-bottom: 4px; }
+  nav .brand span { color: var(--accent); }
+  nav .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  nav ol { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  nav li { counter-increment: step; }
+  nav li a {
+    display: flex; gap: 10px; padding: 6px 8px; border-radius: 6px;
+    color: var(--text); font-size: 14px; border-left: 2px solid transparent;
+  }
+  nav li a::before { content: counter(step, decimal-leading-zero); color: var(--accent); font: 12px/1.9 var(--mono); }
+  nav li a:hover { background: var(--accent-soft); text-decoration: none; border-left-color: var(--accent); }
+
+  main { padding: 44px 44px 120px; min-width: 0; }
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+  .eyebrow { color: var(--accent); font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  h1 { font-size: 40px; line-height: 1.12; margin: 14px 0 14px; letter-spacing: -.02em; text-wrap: balance; }
+  h1 em { color: var(--accent); font-style: normal; }
+  .lead { font-size: 18px; color: #cfcbc2; max-width: 62ch; margin: 0; }
+
+  section { padding-top: 46px; }
+  h2 {
+    font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .n { color: var(--accent); font: 600 14px/1 var(--mono); }
+  h3 { font-size: 18px; margin: 30px 0 8px; color: #fff; }
+  p { margin: 10px 0; max-width: 72ch; }
+  ul, ol.steps { max-width: 72ch; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .goal { color: var(--muted); margin-top: 0; }
+
+  code { font: 14px/1.5 var(--mono); background: var(--panel-2); padding: 1px 6px; border-radius: 4px; color: #ffd9ad; }
+  pre {
+    background: var(--code); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 14px 0;
+    font: 13.5px/1.6 var(--mono); color: #dcd8cf; tab-size: 4;
+  }
+  pre code { background: none; padding: 0; color: inherit; font: inherit; }
+  pre.shell { border-left-color: var(--muted); }
+  .c { color: #7d796f; font-style: italic; }
+  .s { color: #b6e07a; }
+  .k { color: var(--accent); }
+  .f { color: #7fd6ff; }
+  .num { color: #d9a6ff; }
+
+  .box {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 10px;
+    padding: 14px 18px; margin: 18px 0; max-width: 76ch;
+  }
+  .box.key { border-color: var(--accent-line); background: var(--accent-soft); }
+  .box.warn { border-color: rgba(255, 217, 26, .4); background: rgba(255, 217, 26, .07); }
+  .box .t { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .box.warn .t { color: var(--yellow); }
+  .box p { margin: 6px 0; }
+
+  .tablewrap { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--accent); font: 600 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; border-bottom-color: var(--accent-line); }
+  td code { white-space: nowrap; }
+  td.wrap code { white-space: normal; }
+
+  figure { margin: 22px 0; }
+  figure svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 72ch; }
+  svg text { font-family: var(--mono); fill: var(--text); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 14px 18px; }
+  .card h4 { margin: 0 0 6px; color: var(--accent); font: 600 13px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .card p { margin: 6px 0; font-size: 15px; }
+
+  .demo { border: 1px solid var(--accent-line); border-radius: 10px; background: #0f0f12; margin: 18px 0; overflow: hidden; max-width: 640px; }
+  .demo canvas { display: block; width: 100%; height: auto; cursor: default; touch-action: none; }
+  .demo .bar { display: flex; justify-content: space-between; gap: 12px; padding: 8px 14px; border-top: 1px solid var(--line); font: 12.5px/1.4 var(--mono); color: var(--muted); }
+  .demo .bar b { color: var(--accent); font-weight: 600; }
+
+  footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px; }
+    nav ol { display: grid; grid-template-columns: 1fr 1fr; }
+    main { padding: 28px 16px 80px; }
+    h1 { font-size: 30px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="brand"><span>008</span> graphical user interface</div>
+  <div class="sub">the guide, from zero to live video between two windows</div>
+  <ol>
+    <li><a href="#map">The map</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#first">Your first window</a></li>
+    <li><a href="#spaces">Two coordinate systems</a></li>
+    <li><a href="#shapes">Shapes on the screen</a></li>
+    <li><a href="#hit">Is the mouse on it?</a></li>
+    <li><a href="#recipes">Hover, click, drag</a></li>
+    <li><a href="#text">Text</a></li>
+    <li><a href="#world">Drawing in 3D</a></li>
+    <li><a href="#camera">The camera</a></li>
+    <li><a href="#loop">The loop</a></li>
+    <li><a href="#network">Sending strings</a></li>
+    <li><a href="#together">Window + network</a></li>
+    <li><a href="#video">Video between two windows</a></li>
+    <li><a href="#cheat">Cheat sheet</a></li>
+    <li><a href="#trouble">When it does not work</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Python · wgpu · UDP</div>
+  <h1>Draw it, touch it, <em>send it</em>.</h1>
+  <p class="lead">This project gives you three things with as little code as possible: a window you draw into with one function, shapes that know when the mouse is on them, and a way to send plain strings — or live video — to another program on your network. This guide walks through all of it, one small step at a time.</p>
+</header>
+
+<!-- ================================================================ 1 -->
+<section id="map">
+<h2><span class="n">01</span>The map</h2>
+<p class="goal">Where everything lives, before touching any of it.</p>
+
+<figure>
+<svg viewBox="0 0 760 300" role="img" aria-label="The four folders of the project and how they depend on each other">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#ff8c1a"/>
+    </marker>
+  </defs>
+  <rect x="270" y="24" width="220" height="70" rx="10" fill="#1f1f26" stroke="#ff8c1a"/>
+  <text x="380" y="52" text-anchor="middle" font-size="15" font-weight="600">examples/</text>
+  <text x="380" y="74" text-anchor="middle" font-size="12" fill="#9a968c" style="fill:#9a968c">your programs start here</text>
+
+  <rect x="40" y="170" width="220" height="90" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+  <text x="150" y="198" text-anchor="middle" font-size="15" font-weight="600">graphics/</text>
+  <text x="150" y="220" text-anchor="middle" font-size="12" style="fill:#9a968c">window, GPU, draw_*,</text>
+  <text x="150" y="238" text-anchor="middle" font-size="12" style="fill:#9a968c">hit tests, camera</text>
+
+  <rect x="500" y="170" width="220" height="90" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+  <text x="610" y="198" text-anchor="middle" font-size="15" font-weight="600">network/</text>
+  <text x="610" y="220" text-anchor="middle" font-size="12" style="fill:#9a968c">udp_link: strings over UDP</text>
+  <text x="610" y="238" text-anchor="middle" font-size="12" style="fill:#9a968c">video_link: camera over UDP</text>
+
+  <rect x="270" y="186" width="220" height="58" rx="10" fill="#18181d" stroke="#2c2c36" stroke-dasharray="5 4"/>
+  <text x="380" y="211" text-anchor="middle" font-size="15" font-weight="600">toolchain/</text>
+  <text x="380" y="231" text-anchor="middle" font-size="12" style="fill:#9a968c">installs .venv for all of it</text>
+
+  <path d="M330 94 L190 168" stroke="#ff8c1a" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <path d="M430 94 L570 168" stroke="#ff8c1a" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <text x="248" y="122" text-anchor="end" font-size="12" style="fill:#ff8c1a">import app3d</text>
+  <text x="512" y="122" font-size="12" style="fill:#ff8c1a">import udp_link</text>
+</svg>
+<figcaption>The two libraries do not know about each other. A program in <code>examples/</code> imports the one it needs, or both.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Folder</th><th>What it is</th><th>Start with</th></tr>
+  <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
+  <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures and text in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
+  <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Three small complete programs that use the libraries: hover, drag over UDP, video over UDP.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+</table></div>
+</section>
+
+<!-- ================================================================ 2 -->
+<section id="install">
+<h2><span class="n">02</span>Install</h2>
+<p class="goal">One command. It needs Python 3.11 or newer and nothing else.</p>
+
+<p>Open a terminal <strong>in the project folder</strong> and run the script for your system. It creates a private Python environment in <code>.venv</code>, installs the packages, and checks that your graphics card answers.</p>
+
+<h3>macOS</h3>
+<pre class="shell">./toolchain/setup-macos.sh</pre>
+<h3>Linux</h3>
+<pre class="shell">./toolchain/setup-linux.sh</pre>
+<h3>Windows (PowerShell)</h3>
+<pre class="shell">powershell -ExecutionPolicy Bypass -File .\toolchain\setup-windows.ps1</pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Package</th><th>Why it is installed</th></tr>
+  <tr><td><code>glfw</code></td><td>Opens the window and reads the mouse and keyboard.</td></tr>
+  <tr><td><code>wgpu</code> + <code>rendercanvas</code></td><td>Talks to the graphics card: Metal on macOS, Vulkan on Linux, DirectX 12 on Windows. No OpenGL.</td></tr>
+  <tr><td><code>numpy</code></td><td>The arithmetic behind every shape.</td></tr>
+  <tr><td><code>Pillow</code></td><td>Reads picture files for <code>draw_image</code>.</td></tr>
+  <tr><td><code>opencv-python-headless</code></td><td>Optional. Camera capture and JPEG for <code>video_link</code> and example 3. Skip it with <code>--no-opencv</code> (<code>-NoOpenCV</code> on Windows).</td></tr>
+</table></div>
+<p>The network library <code>udp_link</code> needs no package at all: it uses only what ships with Python.</p>
+
+<h3>Check that it worked</h3>
+<pre class="shell">.venv/bin/python toolchain/check_env.py --window</pre>
+<p>An orange window appears for one second and every line ends with a green tick. On Windows the interpreter is <code>.venv\Scripts\python</code>; everywhere below, replace <code>.venv/bin/python</code> with it.</p>
+
+<div class="box key"><div class="t">Rule for the whole guide</div>
+<p>Every command is typed from the project root, and always starts with <code>.venv/bin/python</code>. That is the Python that has the packages.</p></div>
+</section>
+
+<!-- ================================================================ 3 -->
+<section id="first">
+<h2><span class="n">03</span>Your first window</h2>
+<p class="goal">Twelve lines: a window with one circle.</p>
+
+<p>Create a folder <code>examples/03_mine/</code> and a file <code>main.py</code> inside it:</p>
+
+<pre><code class="py">import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]     # the project root
+sys.path.insert(0, str(ROOT / "graphics"))     # where app3d lives
+
+import app3d
+
+app = app3d.App("my first window", size=(640, 400))
+
+def draw_frame():
+    app.aa.draw_screen_circle((320, 200), 80, (1.0, 0.55, 0.1))
+
+app.run(draw_frame)</code></pre>
+
+<pre class="shell">.venv/bin/python examples/03_mine/main.py</pre>
+
+<p>Three ideas are in those lines, and they are the whole model:</p>
+<ol class="steps">
+  <li><strong><code>App</code> is the window.</strong> It opens it, connects it to the graphics card and prepares the renderers.</li>
+  <li><strong><code>draw_frame</code> is your program.</strong> It says what is on screen <em>right now</em>. You never clear the screen and never "show" it: you only list the things to draw.</li>
+  <li><strong><code>app.run(draw_frame)</code> is the loop.</strong> It calls your function when something changed, and sleeps the rest of the time. Press <kbd>Esc</kbd> or close the window to leave it.</li>
+</ol>
+
+<h3>What the App gives you</h3>
+<div class="tablewrap"><table>
+  <tr><th>Name</th><th>What it is</th></tr>
+  <tr><td><code>app.aa</code></td><td>The renderer. Every <code>draw_…</code> and <code>in_…</code> method is called on it. "aa" means anti-aliased: smooth edges.</td></tr>
+  <tr><td><code>app.plain</code></td><td>The same methods with hard, one-pixel edges for 3D lines. Faster, rougher. Interchangeable with <code>app.aa</code>.</td></tr>
+  <tr><td><code>app.cursor()</code></td><td>The mouse position as <code>(x, y)</code> in window pixels.</td></tr>
+  <tr><td><code>app.mouse_down()</code></td><td><code>True</code> while the left button is held.</td></tr>
+  <tr><td><code>app.size()</code></td><td>The window size as <code>(width, height)</code>.</td></tr>
+  <tr><td><code>app.camera</code></td><td>The 3D camera (see <a href="#camera">The camera</a>).</td></tr>
+  <tr><td><code>app.request_redraw()</code></td><td>"Please call <code>draw_frame</code> once more." Safe from another thread.</td></tr>
+  <tr><td><code>app.args</code></td><td>The command-line options (see <a href="#loop">The loop</a>).</td></tr>
+</table></div>
+
+<div class="box"><div class="t">A habit worth taking</div>
+<p>Give the renderer a short name at the top of your program: <code>ui = app.aa</code>. The rest of this guide writes <code>ui.draw_…</code>.</p></div>
+</section>
+
+<!-- ================================================================ 4 -->
+<section id="spaces">
+<h2><span class="n">04</span>Two coordinate systems</h2>
+<p class="goal">The one idea that explains every method name.</p>
+
+<p>The same window holds two different worlds. Each drawing method belongs to one of them, and its name tells you which.</p>
+
+<figure>
+<svg viewBox="0 0 760 290" role="img" aria-label="Screen space with origin top-left and y down, next to world space with x, y on the floor and z up">
+  <!-- screen space -->
+  <rect x="30" y="40" width="320" height="210" rx="8" fill="#101013" stroke="#ff8c1a"/>
+  <circle cx="30" cy="40" r="5" fill="#ff8c1a"/>
+  <text x="40" y="30" font-size="12" style="fill:#ff8c1a">(0, 0)</text>
+  <path d="M30 40 H200" stroke="#ff8c1a" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M30 40 V160" stroke="#ff8c1a" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="208" y="45" font-size="13" style="fill:#ff8c1a">x</text>
+  <text x="25" y="180" font-size="13" style="fill:#ff8c1a">y</text>
+  <rect x="120" y="100" width="150" height="80" rx="16" fill="#9440e6"/>
+  <text x="195" y="145" text-anchor="middle" font-size="12">pixels</text>
+  <text x="352" y="268" text-anchor="end" font-size="12" style="fill:#9a968c">(width, height)</text>
+  <text x="190" y="280" text-anchor="middle" font-size="13" font-weight="600">SCREEN SPACE</text>
+
+  <!-- world space -->
+  <rect x="410" y="40" width="320" height="210" rx="8" fill="#101013" stroke="#2c2c36"/>
+  <g stroke="#3a3a46" stroke-width="1">
+    <path d="M450 215 L610 245 M480 190 L650 216 M510 168 L686 190 M540 150 L716 168"/>
+    <path d="M450 215 L540 150 M505 225 L600 157 M560 235 L655 163 M610 245 L716 168"/>
+  </g>
+  <path d="M560 200 L665 220" stroke="#ff4d4d" stroke-width="2.4"/>
+  <path d="M560 200 L625 153" stroke="#59e659" stroke-width="2.4"/>
+  <path d="M560 200 L560 90" stroke="#4d8cff" stroke-width="2.4"/>
+  <text x="672" y="228" font-size="13" style="fill:#ff4d4d">x</text>
+  <text x="630" y="150" font-size="13" style="fill:#59e659">y</text>
+  <text x="566" y="88" font-size="13" style="fill:#4d8cff">z (up)</text>
+  <circle cx="560" cy="200" r="4" fill="#e6e3dc"/>
+  <text x="470" y="200" font-size="12" style="fill:#9a968c">(0, 0, 0)</text>
+  <text x="570" y="280" text-anchor="middle" font-size="13" font-weight="600">WORLD SPACE</text>
+</svg>
+<figcaption>Left: screen space, used by every method with <code>screen</code> in its name. Right: world space, used by all the others.</figcaption>
+</figure>
+
+<div class="grid2">
+  <div class="card"><h4>Screen space</h4>
+    <p>Units are <strong>pixels of the window</strong>. <code>(0, 0)</code> is the top-left corner, <code>x</code> grows to the right, <code>y</code> grows <strong>down</strong>.</p>
+    <p>It is exactly what the mouse reports, so a shape and the cursor speak the same language. Things drawn here ignore the camera and always sit on top.</p>
+    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
+  <div class="card"><h4>World space</h4>
+    <p>Units are whatever you decide (metres, say). Three numbers <code>(x, y, z)</code>; the floor is the <code>x, y</code> plane and <code>z</code> points <strong>up</strong>.</p>
+    <p>What you see depends on the camera: orbit, pan and zoom change the picture, not your numbers.</p>
+    <p>Methods: <code>draw_line</code>, <code>draw_arrow</code>, <code>draw_circle</code>, <code>draw_points</code>, <code>draw_text</code>, <code>draw_image</code>, <code>draw_grid</code>.</p></div>
+</div>
+
+<div class="box key"><div class="t">Remember</div>
+<p>For buttons, panels, handles and anything the mouse touches: screen space. For the thing you are studying — vectors, particles, a model: world space.</p></div>
+</section>
+
+<!-- ================================================================ 5 -->
+<section id="shapes">
+<h2><span class="n">05</span>Shapes on the screen</h2>
+<p class="goal">A rectangle, a circle and a picture. Three methods.</p>
+
+<h3>The rounded rectangle</h3>
+<pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius)</code></pre>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="A rounded rectangle with its anchor at the top-left, its width, height and corner radius">
+  <rect x="200" y="60" width="360" height="150" rx="38" fill="#9440e6"/>
+  <rect x="200" y="60" width="360" height="150" fill="none" stroke="#6b6b78" stroke-dasharray="4 4"/>
+  <circle cx="200" cy="60" r="6" fill="#ff8c1a"/>
+  <text x="190" y="48" text-anchor="end" font-size="13" style="fill:#ff8c1a">anchor (x, y)</text>
+  <path d="M200 228 H560" stroke="#e6e3dc" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="380" y="245" text-anchor="middle" font-size="13">size[0] = width</text>
+  <path d="M580 60 V210" stroke="#e6e3dc" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="592" y="140" font-size="13">size[1] = height</text>
+  <circle cx="238" cy="98" r="38" fill="none" stroke="#ffd91a" stroke-dasharray="3 3"/>
+  <path d="M238 98 L211 71" stroke="#ffd91a" stroke-width="1.6"/>
+  <text x="246" y="104" font-size="13" style="fill:#ffd91a">radius</text>
+</svg>
+<figcaption>The anchor is the top-left corner of the box <em>before</em> rounding (the dashed outline). The radius is the same for the four corners.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>anchor</code></td><td>Top-left corner, in pixels.</td><td><code>(60, 90)</code></td></tr>
+  <tr><td><code>size</code></td><td>Width and height, in pixels.</td><td><code>(260, 150)</code></td></tr>
+  <tr><td><code>color</code></td><td>Red, green, blue and optionally alpha, each from 0 to 1.</td><td><code>(0.58, 0.25, 0.90, 1.0)</code></td></tr>
+  <tr><td><code>radius</code></td><td>Corner radius in pixels. Optional; <code>0</code> means sharp corners.</td><td><code>28</code></td></tr>
+</table></div>
+
+<pre><code class="py">PURPLE = (0.58, 0.25, 0.90, 1.0)
+
+ui.draw_screen_rect((60, 90), (260, 150), PURPLE, 28)    # rounded
+ui.draw_screen_rect((60, 260), (260, 40), PURPLE)        # sharp: no radius
+ui.draw_screen_rect((60, 320), (260, 40), PURPLE, 999)   # a pill: the radius is capped at half the height</code></pre>
+
+<h3>The circle</h3>
+<pre><code class="py">ui.draw_screen_circle(center, radius, color)
+
+ui.draw_screen_circle((500, 165), 75, PURPLE)</code></pre>
+<p>A circle is described from its middle, a rectangle from its corner. That is the only asymmetry to remember.</p>
+
+<h3>The picture</h3>
+<pre><code class="py">ui.draw_screen_image(anchor, size, source)
+
+ui.draw_screen_image((20, 20), (320, 240), "photo.png")</code></pre>
+<p>Described like a rectangle: <code>anchor</code> is the top-left corner, <code>size</code> is <code>(width, height)</code>. So its hit test is simply <code>ui.in_screen_rect(cursor, anchor, size)</code>. <code>source</code> is a file, a Pillow image, a NumPy array or a <code>Texture</code>.</p>
+<p>The picture is stretched to the size you give. To keep its proportions inside a box, let <code>screen2d.fit</code> compute the anchor and size:</p>
+<pre><code class="py">import screen2d
+
+anchor, size = screen2d.fit((640, 480), (0, 0), app.size())     # a 4:3 picture, centred in the window
+ui.draw_screen_image(anchor, size, "photo.png")</code></pre>
+
+<h3>Colour and transparency</h3>
+<p>A colour is three or four numbers between 0 and 1. The fourth, <em>alpha</em>, is how solid the shape is: <code>1</code> hides what is behind it, <code>0.5</code> lets half of it through, <code>0</code> is invisible. Leave it out and it is <code>1</code>.</p>
+<pre><code class="py">ui.draw_screen_rect((0, 0), app.size(), (0, 0, 0, 0.5))   # dim the whole window</code></pre>
+
+<h3>What is on top of what</h3>
+<p>The order of the lines in <code>draw_frame</code> is the order of the layers: what you draw <strong>last</strong> is on top. Screen shapes are always above the 3D scene.</p>
+
+<h3>Why two kinds of corners</h3>
+<div class="grid2">
+  <div class="card"><h4>radius &gt; 0 — smooth</h4>
+    <p>For each pixel, the graphics card computes one number: its distance to the edge of the shape. Pixels well inside are fully painted, pixels well outside are not, and the pixels <em>on</em> the edge are painted in proportion. This is a <strong>signed distance function</strong> (SDF), and it is why the curve stays clean at any size and on a Retina screen.</p></div>
+  <div class="card"><h4>radius = 0 — fast</h4>
+    <p>A straight, upright rectangle needs none of that: the edges of the rectangle are the edges of the pixels. A separate, minimal program just fills them. With an opaque colour it does not even blend. Use it freely for panels and backgrounds.</p></div>
+</div>
+</section>
+
+<!-- ================================================================ 6 -->
+<section id="hit">
+<h2><span class="n">06</span>Is the mouse on it?</h2>
+<p class="goal">Two questions that answer True or False.</p>
+
+<pre><code class="py">ui.in_screen_rect(cursor, anchor, size, radius)     # -&gt; True / False
+ui.in_screen_circle(cursor, center, radius)         # -&gt; True / False</code></pre>
+
+<p>Look at the arguments: after <code>cursor</code>, they are <strong>the same, in the same order</strong>, as the drawing method. Describe a shape once, then use the description twice.</p>
+
+<pre><code class="py">ANCHOR, SIZE, RADIUS = (60, 90), (260, 150), 28
+
+def draw_frame():
+    cursor = app.cursor()
+    over = ui.in_screen_rect(cursor, ANCHOR, SIZE, RADIUS)
+    ui.draw_screen_rect(ANCHOR, SIZE, YELLOW if over else PURPLE, RADIUS)</code></pre>
+
+<p>The rounded corners are respected: a cursor in the empty corner of the box, outside the curve, is <em>not</em> on the shape. Try it:</p>
+
+<div class="demo">
+  <canvas id="demo-hit" width="640" height="300" aria-label="Interactive preview: a rounded rectangle and a circle turn yellow under the cursor"></canvas>
+  <div class="bar"><span>preview drawn by this page, same maths as the library</span><span id="demo-hit-out">move the mouse over a shape</span></div>
+</div>
+
+<div class="box"><div class="t">These are plain functions</div>
+<p>The tests need no window and no graphics card. They also live in <code>graphics/screen2d.py</code> as <code>screen2d.in_rect</code> and <code>screen2d.in_circle</code>, next to two more that return the <em>distance</em> to the edge in pixels (negative inside): <code>screen2d.rect_distance</code> and <code>screen2d.circle_distance</code>. Useful for a forgiving button: <code>rect_distance(…) &lt;= 6</code> also accepts a cursor 6 pixels outside.</p></div>
+</section>
+
+<!-- ================================================================ 7 -->
+<section id="recipes">
+<h2><span class="n">07</span>Hover, click, drag</h2>
+<p class="goal">Three recipes. Everything interactive is a variation of them.</p>
+
+<h3>Hover</h3>
+<p>You have just seen it: ask, then pick the colour. Nothing is stored between two frames.</p>
+
+<h3>Click</h3>
+<p><code>app.mouse_down()</code> is true for as long as the button is held, which is many frames. A <em>click</em> is the single frame where it <strong>becomes</strong> true. To see that moment, remember the previous answer:</p>
+<pre><code class="py">was_down = False
+count = 0
+
+def draw_frame():
+    global was_down, count
+    cursor, down = app.cursor(), app.mouse_down()
+
+    clicked = down and not was_down          # true for exactly one frame
+    was_down = down
+
+    over = ui.in_screen_rect(cursor, ANCHOR, SIZE, RADIUS)
+    if clicked and over:
+        count += 1
+
+    ui.draw_screen_rect(ANCHOR, SIZE, YELLOW if over else PURPLE, RADIUS)
+    ui.draw_screen_text(80, 170, f"clicked {count} times", 16.0, (1, 1, 1))</code></pre>
+
+<h3>Drag</h3>
+<p>A drag has a beginning (the click lands on the shape), a middle (the shape follows the cursor) and an end (the button is released). One boolean, <code>dragging</code>, says which part you are in.</p>
+<pre><code class="py">position = [320.0, 200.0]      # a list, so it can be changed
+grab = (0.0, 0.0)
+dragging = False
+was_down = False
+RADIUS = 46
+
+def draw_frame():
+    global dragging, was_down, grab
+    cursor, down = app.cursor(), app.mouse_down()
+
+    if down and not was_down and ui.in_screen_circle(cursor, position, RADIUS):
+        dragging = True                                    # the beginning
+        grab = (position[0] - cursor[0], position[1] - cursor[1])
+    if not down:
+        dragging = False                                   # the end
+    was_down = down
+
+    if dragging:                                           # the middle
+        position[0] = cursor[0] + grab[0]
+        position[1] = cursor[1] + grab[1]
+
+    ui.draw_screen_circle(position, RADIUS, YELLOW if dragging else PURPLE)</code></pre>
+
+<p><code>grab</code> is the small distance between the cursor and the centre at the moment of the click. Adding it back keeps the circle from jumping its centre under the cursor. Try the preview below, then remove <code>grab</code> in your own copy to feel the difference.</p>
+
+<div class="demo">
+  <canvas id="demo-drag" width="640" height="300" aria-label="Interactive preview: drag the circle, it turns yellow while held"></canvas>
+  <div class="bar"><span>click the circle and drag it</span><span id="demo-drag-out">dragging: False</span></div>
+</div>
+
+<p>The complete program for hover is <code>examples/01_hover_shapes/main.py</code>; the drag is in <code>examples/02_udp_drag/main.py</code>.</p>
+</section>
+
+<!-- ================================================================ 8 -->
+<section id="text">
+<h2><span class="n">08</span>Text</h2>
+<p class="goal">Labels, in pixels or lying in the 3D scene.</p>
+
+<pre><code class="py">ui.draw_screen_text(x, y, text, size_px, color)</code></pre>
+<p><code>(x, y)</code> is the left end of the <strong>baseline</strong> — the line the letters sit on — so the text goes <em>up</em> from <code>y</code>. <code>size_px</code> is the height of a capital letter. The colour is <code>(r, g, b)</code>.</p>
+<pre><code class="py">ui.draw_screen_text(16, 24, f"cursor {app.cursor()}", 14.0, (1.0, 0.85, 0.4))</code></pre>
+
+<h3>Centring a label in a button</h3>
+<p>Every text method returns the width it used, and <code>measure_screen_text</code> gives it without drawing:</p>
+<pre><code class="py">label, size = "START", 16.0
+width = ui.measure_screen_text(label, size)
+
+x = ANCHOR[0] + (SIZE[0] - width) / 2          # centred left to right
+y = ANCHOR[1] + (SIZE[1] + size) / 2           # baseline: middle + half a letter
+ui.draw_screen_rect(ANCHOR, SIZE, PURPLE, 12)
+ui.draw_screen_text(x, y, label, size, (1, 1, 1))</code></pre>
+
+<h3>Text in the 3D world</h3>
+<pre><code class="py">ui.draw_text((0, 0, 0), "origin", 0.30, (1, 1, 0))                       # flat on the floor
+ui.draw_text((0, 0, 0), "wall", 0.30, (1, 1, 0), right=(1, 0, 0), up=(0, 0, 1))   # standing up</code></pre>
+<p>Here the size is in world units, so the text shrinks with distance like everything else. <code>right</code> and <code>up</code> choose the plane it is written on. <code>ui.measure_text(text, size)</code> returns its width in world units.</p>
+
+<div class="box warn"><div class="t">Limit</div>
+<p>The built-in font is drawn with strokes and covers the usual ASCII characters. Text is available on <code>app.aa</code> only, not on <code>app.plain</code>.</p></div>
+</section>
+
+<!-- ================================================================ 9 -->
+<section id="world">
+<h2><span class="n">09</span>Drawing in 3D</h2>
+<p class="goal">The world-space methods, shortest first.</p>
+
+<p>Points are three numbers. A tuple works, and so does the small <code>Vec3</code> class when you want to do arithmetic on them.</p>
+
+<pre><code class="py">from vec3 import Vec3
+
+def draw_frame():
+    app.camera.handle(app.window)          # let the mouse orbit / pan / zoom
+    ui.draw_grid()                         # the floor
+
+    ui.draw_line((0, 0, 0), (2, 1, 0), (1, 1, 0))             # start, end, colour
+    ui.draw_line((0, 0, 0), (0, 2, 0), (1, 1, 0), 0.05)       # … with a thickness in world units
+    ui.draw_arrow(Vec3(0, 0, 0), Vec3(1, 1, 1), (0.2, 0.85, 0.95))
+    ui.draw_circle((0, 0, 0), 1.8, (1, 1, 0))                 # flat on the floor
+    ui.draw_circle((0, 0, 1), 0.5, (1, 0, 1), axis=(1, 0, 0)) # facing along x</code></pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Method</th><th>Draws</th><th>Notes</th></tr>
+  <tr><td><code>draw_grid()</code></td><td>The floor grid</td><td>Follows the camera; its squares resize as you zoom.</td></tr>
+  <tr><td><code>draw_line(start, tip, color, thickness=0)</code></td><td>A segment</td><td><code>thickness</code> is in world units; 0 is a thin line of constant width.</td></tr>
+  <tr><td><code>draw_arrow(start, tip, color)</code></td><td>A vector</td><td>The head is at <code>tip</code>.</td></tr>
+  <tr><td><code>draw_circle(center, radius, color, axis=(0,0,1))</code></td><td>A circle outline</td><td><code>axis</code> is the direction the circle faces.</td></tr>
+  <tr><td><code>draw_point(center, size, color)</code></td><td>One particle</td><td><code>size</code> is its radius in world units.</td></tr>
+  <tr><td><code>draw_points(points, size, color)</code></td><td>Many particles at once</td><td>See below.</td></tr>
+  <tr><td><code>draw_image(anchor, source, right, up, width)</code></td><td>A picture</td><td>See below.</td></tr>
+  <tr><td><code>draw_text(anchor, text, size, color)</code></td><td>Text in the scene</td><td>See <a href="#text">Text</a>.</td></tr>
+</table></div>
+<p>World-space colours are <code>(r, g, b)</code>; only the <code>…_rgba</code> particle methods take a fourth number.</p>
+
+<h3>Many particles, one call</h3>
+<p>Calling <code>draw_point</code> a million times would be slow: Python would be doing the looping. Give <code>draw_points</code> the whole array instead, and the loop happens on the graphics card.</p>
+<pre><code class="py">import numpy as np
+
+points = np.random.uniform(-2, 2, size=(10_000, 3)).astype(np.float32)   # N rows of (x, y, z)
+colors = np.abs(points) / 2                                              # N rows of (r, g, b)
+
+ui.draw_points(points, 0.02, colors)        # one size for all …
+ui.draw_points(points, 0.02, (1, 1, 1))     # … or one colour for all</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Variant</th><th>Use it when</th></tr>
+  <tr><td><code>draw_points</code></td><td>Opaque particles. The fastest.</td></tr>
+  <tr><td><code>draw_points_sorted</code></td><td>Particles overlap and the nearest must cover the others (it sorts them back to front).</td></tr>
+  <tr><td><code>draw_points_rgba</code></td><td>Each particle has its own transparency: colours are <code>(r, g, b, a)</code>.</td></tr>
+  <tr><td><code>draw_points_rgba_sorted</code></td><td>Transparent <em>and</em> overlapping.</td></tr>
+</table></div>
+
+<h3>A picture</h3>
+<pre><code class="py">ui.draw_image(
+    anchor=(-2, 0, 0),         # its bottom-left corner
+    source="photo.png",        # a file, a Pillow image or a NumPy array
+    right=(1, 0, 0),           # the direction of its bottom edge
+    up=(0, 0, 1),              # the direction of its left edge: standing up
+    width=1.8,                 # world units; the height follows the picture's shape
+)</code></pre>
+<p>The picture is sent to the graphics card the first time and remembered, so drawing the same one every frame costs almost nothing.</p>
+
+<h3>Vec2 and Vec3</h3>
+<pre><code class="py">from vec2 import Vec2
+from vec3 import Vec3
+
+a, b = Vec3(1, 0, 0), Vec3(0, 1, 0)
+a + b            # Vec3(1, 1, 0)          a * 2          # Vec3(2, 0, 0)
+a.dot(b)         # 0.0                    a.cross(b)     # Vec3(0, 0, 1)
+(a + b).length() # 1.414…                 (a + b).normalized()
+a.x, a[0]        # both work: a Vec3 can be used anywhere a tuple can</code></pre>
+<p><code>Vec2</code> is the same with two numbers (and <code>determinant</code> instead of <code>cross</code>). It is handy for screen-space positions: <code>ui.draw_screen_circle(Vec2(320, 200), 40, PURPLE)</code>.</p>
+</section>
+
+<!-- ================================================================ 10 -->
+<section id="camera">
+<h2><span class="n">10</span>The camera</h2>
+<p class="goal">One line to make the 3D scene explorable.</p>
+
+<pre><code class="py">def draw_frame():
+    app.camera.handle(app.window)     # first line of the frame
+    ui.draw_grid()
+    …</code></pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Gesture</th><th>Effect</th></tr>
+  <tr><td>Left-drag</td><td>Orbit around the point being looked at</td></tr>
+  <tr><td>Middle-drag</td><td>Pan</td></tr>
+  <tr><td>Wheel</td><td>Zoom</td></tr>
+</table></div>
+
+<div class="tablewrap"><table>
+  <tr><th>Method</th><th>What for</th></tr>
+  <tr><td><code>camera.reset()</code></td><td>Back to the starting view.</td></tr>
+  <tr><td><code>camera.orbit(dx, dy)</code>, <code>camera.pan(dx, dy)</code>, <code>camera.zoom_by(factor)</code></td><td>Move it from your own code (a key, a button).</td></tr>
+  <tr><td><code>camera.floor_point(x, y, width, height)</code></td><td>The world point on the floor under a screen pixel, or <code>None</code>. This is how the mouse points at the 3D scene.</td></tr>
+  <tr><td><code>camera.eye()</code>, <code>camera.forward()</code></td><td>Where the camera is and where it looks.</td></tr>
+</table></div>
+
+<pre><code class="py">width, height = app.size()
+hit = app.camera.floor_point(*app.cursor(), width, height)
+if hit is not None:
+    ui.draw_arrow((0, 0, 0), (hit[0], hit[1], 0.0))      # an arrow from the origin to the mouse</code></pre>
+
+<div class="box warn"><div class="t">One mouse, two jobs</div>
+<p>Left-drag orbits the camera. If your program also drags screen shapes, the two fight. Call <code>camera.handle</code> only when the cursor is not on your interface, or leave it out as the two examples do.</p></div>
+</section>
+
+<!-- ================================================================ 11 -->
+<section id="loop">
+<h2><span class="n">11</span>The loop</h2>
+<p class="goal">Why an idle window costs nothing, and when to change that.</p>
+
+<figure>
+<svg viewBox="0 0 760 200" role="img" aria-label="The reactive loop: sleep, an event arrives, draw one frame, show it, sleep again">
+  <g font-size="13">
+    <rect x="30" y="70" width="140" height="60" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="100" y="97" text-anchor="middle" font-weight="600">sleep</text>
+    <text x="100" y="116" text-anchor="middle" font-size="11" style="fill:#9a968c">no CPU, no GPU</text>
+
+    <rect x="220" y="70" width="140" height="60" rx="10" fill="#1f1f26" stroke="#ff8c1a"/>
+    <text x="290" y="97" text-anchor="middle" font-weight="600">event</text>
+    <text x="290" y="116" text-anchor="middle" font-size="11" style="fill:#9a968c">mouse, key, message</text>
+
+    <rect x="410" y="70" width="140" height="60" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="480" y="97" text-anchor="middle" font-weight="600">draw_frame()</text>
+    <text x="480" y="116" text-anchor="middle" font-size="11" style="fill:#9a968c">called once</text>
+
+    <rect x="600" y="70" width="130" height="60" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="665" y="97" text-anchor="middle" font-weight="600">show</text>
+    <text x="665" y="116" text-anchor="middle" font-size="11" style="fill:#9a968c">one picture</text>
+  </g>
+  <path d="M170 100 H218" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M360 100 H408" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M550 100 H598" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M665 130 V168 H100 V132" stroke="#ff8c1a" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <text x="380" y="186" text-anchor="middle" font-size="12" style="fill:#9a968c">and back to sleep</text>
+</svg>
+<figcaption>The reactive loop, the default. Nothing happens until something happens.</figcaption>
+</figure>
+
+<p>This is why <code>draw_frame</code> must describe the whole picture each time, and why it should not wait or sleep itself: it is called, it lists the shapes, it returns.</p>
+
+<h3>Options on the command line</h3>
+<p>Every program built on <code>App</code> understands these, with no code from you:</p>
+<div class="tablewrap"><table>
+  <tr><th>Option</th><th>Effect</th></tr>
+  <tr><td>(none)</td><td><strong>Reactive.</strong> Redraw only on an event.</td></tr>
+  <tr><td><code>--poll</code></td><td>Redraw continuously, as fast as the screen refreshes. Simple, but it never rests.</td></tr>
+  <tr><td><code>--refresh 30</code></td><td>Stay reactive, and also redraw 30 times per second. For things that move on their own: a clock, an animation.</td></tr>
+  <tr><td><code>--wait 0.5</code></td><td>The longest the loop sleeps in one go, in seconds. <code>0</code> sleeps until an event.</td></tr>
+  <tr><td><code>--seconds 5</code></td><td>Quit after 5 seconds. Handy for measuring.</td></tr>
+  <tr><td><code>--backend vulkan</code></td><td>Force a graphics backend: <code>metal</code>, <code>vulkan</code>, <code>dx12</code>, <code>gl</code>.</td></tr>
+</table></div>
+<pre class="shell">.venv/bin/python examples/01_hover_shapes/main.py --poll</pre>
+<p>On exit the program prints how many frames it drew and how much processor time it used, so you can compare the two modes yourself.</p>
+
+<h3>Waking the loop from your own code</h3>
+<p>Something changed that is not a mouse or key event — a message arrived, a timer fired? Call:</p>
+<pre><code class="py">app.request_redraw()</code></pre>
+<p>It asks for exactly one more frame, and it is safe to call from another thread. The network section uses it.</p>
+
+<h3>Adding your own options</h3>
+<pre><code class="py">import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--count", type=int, default=3)
+
+app = app3d.App("my tool", parser=parser)     # --poll, --refresh … are added for you
+print(app.args.count)</code></pre>
+</section>
+
+<!-- ================================================================ 12 -->
+<section id="network">
+<h2><span class="n">12</span>Sending strings</h2>
+<p class="goal">Two programs, one of them says something, the other hears it.</p>
+
+<p>The <code>udp_link</code> library sends <strong>Python strings</strong> between two programs — on the same computer or on two computers of the same network. One side is the <em>server</em>, the other the <em>client</em>; once connected, both can send and receive.</p>
+
+<figure>
+<svg viewBox="0 0 760 190" role="img" aria-label="The server listens on a port, the client connects to the server's address, strings travel both ways">
+  <rect x="40" y="50" width="230" height="90" rx="10" fill="#1f1f26" stroke="#ff8c1a"/>
+  <text x="155" y="80" text-anchor="middle" font-size="15" font-weight="600">server</text>
+  <text x="155" y="102" text-anchor="middle" font-size="12" style="fill:#9a968c">listens on bind_ip : port</text>
+  <text x="155" y="122" text-anchor="middle" font-size="12" style="fill:#9a968c">send() reaches every client</text>
+
+  <rect x="490" y="50" width="230" height="90" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+  <text x="605" y="80" text-anchor="middle" font-size="15" font-weight="600">client</text>
+  <text x="605" y="102" text-anchor="middle" font-size="12" style="fill:#9a968c">connects to server_ip : port</text>
+  <text x="605" y="122" text-anchor="middle" font-size="12" style="fill:#9a968c">send() reaches the server</text>
+
+  <path d="M272 82 H488" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M488 112 H272" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <text x="380" y="74" text-anchor="middle" font-size="12" style="fill:#ff8c1a">"x=212;y=148"</text>
+  <text x="380" y="130" text-anchor="middle" font-size="12" style="fill:#ff8c1a">"hello"</text>
+  <text x="380" y="172" text-anchor="middle" font-size="12" style="fill:#9a968c">both sides read the same link.toml</text>
+</svg>
+</figure>
+
+<h3>Step 1 — the shared file, link.toml</h3>
+<p>Both programs must agree on an address, a port and a secret. They read them from <code>network/link.toml</code>:</p>
+<pre><code class="toml">[link]
+server_ip = "127.0.0.1"    # where the client finds the server
+bind_ip   = "0.0.0.0"      # where the server listens (0.0.0.0 = everywhere)
+port      = 50555
+secret    = "a-long-shared-text-of-16-characters-or-more"</code></pre>
+
+<div class="grid2">
+  <div class="card"><h4>Same computer</h4>
+    <p>Keep <code>server_ip = "127.0.0.1"</code>. That address always means "this machine". It is the file as shipped: nothing to do.</p></div>
+  <div class="card"><h4>Two computers</h4>
+    <p>On the server machine, ask for its address:</p>
+    <pre class="shell" style="margin:8px 0">cd network
+python3 -m udp_link ip</pre>
+    <p>Write the answer in <code>server_ip</code>, then copy the <strong>same</strong> file to both machines.</p></div>
+</div>
+<p>The secret proves that a message comes from your own programs; make a new one with <code>python3 -m udp_link keygen</code> (from <code>network/</code>). Messages are signed with it, not hidden: do not send passwords.</p>
+
+<h3>Step 2 — the simple way: LinkThread</h3>
+<p>A window already owns the main thread of your program. <code>LinkThread</code> runs the network beside it and leaves you two things: a method to send, and a function that is called when a string arrives.</p>
+
+<pre><code class="py">import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "network"))
+
+from udp_link.bridge import LinkThread
+
+def on_text(text):                       # called for every string received
+    print("received:", text)
+
+link = LinkThread("server", ROOT / "network" / "link.toml", on_text=on_text).start()
+link.send("temperature=21.4")            # returns at once, from any thread
+…
+link.close()                             # when the program ends</code></pre>
+<p>The other program is the same with <code>"client"</code> instead of <code>"server"</code>. Start them in any order: the client keeps trying until the server is there, and a string sent before the connection is ready leaves as soon as it is.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>Member</th><th>Meaning</th></tr>
+  <tr><td><code>LinkThread(role, config, on_text=…)</code></td><td><code>role</code> is <code>"server"</code> or <code>"client"</code>; <code>config</code> is the path of the toml file.</td></tr>
+  <tr><td><code>.start()</code></td><td>Starts the link in the background and returns the object.</td></tr>
+  <tr><td><code>.send(text)</code></td><td>Queues one string. Never waits.</td></tr>
+  <tr><td><code>.close()</code></td><td>Stops the link cleanly.</td></tr>
+  <tr><td><code>.connected</code></td><td><code>True</code> once the server listens / the client is connected.</td></tr>
+  <tr><td><code>.error</code></td><td><code>None</code>, or the reason the link stopped (port already used, for instance).</td></tr>
+  <tr><td><code>latest_only=True</code></td><td>The default. See below.</td></tr>
+</table></div>
+
+<h3>State or events?</h3>
+<div class="grid2">
+  <div class="card"><h4>State — latest_only=True</h4>
+    <p>A position, a slider, a temperature: only the <em>newest</em> value matters. If you send faster than the network delivers, older values are replaced by newer ones. The receiver always ends on the last value and never falls behind.</p></div>
+  <div class="card"><h4>Events — latest_only=False</h4>
+    <p>"button pressed", "door opened": each one matters, in order. Every string is delivered, one after the other.</p></div>
+</div>
+
+<h3>What to put in the string</h3>
+<p>Anything. A convention that reads well and needs no library is <code>key=value</code> pairs separated by <code>;</code>:</p>
+<pre><code class="py">text = f"x={x:.1f};y={y:.1f};drag={int(dragging)}"      # sender
+
+from apps._common import parse_kv                        # receiver
+values = parse_kv(text)        # {'x': 212.0, 'y': 148.5, 'drag': 1.0}</code></pre>
+<p>One string must stay under about 1100 bytes. For more, send several.</p>
+
+<h3>The complete way: async</h3>
+<p>A program with no window can use the library directly. It is written with <code>async</code> / <code>await</code>, and gives you more: who sent a message, whether a send was received, the list of connected clients.</p>
+<pre><code class="py">import asyncio
+from udp_link import UDPServer, UDPClient, LinkConfig
+
+async def server_side():
+    async with UDPServer(LinkConfig.load()) as server:
+        msg = await server.recv()                    # wait for one string
+        print(msg.text, "from", msg.peer)
+        await server.broadcast("temp=21.4")          # to every client
+
+async def client_side():
+    async with UDPClient(LinkConfig.load()) as client:
+        await client.send("hello")                   # raises DeliveryError if not received
+        async for msg in client.messages():          # every string from the server
+            print(msg.text)
+
+asyncio.run(server_side())</code></pre>
+<p>Ready-made programs to try the link without writing anything are in <code>network/apps/</code>; from the <code>network</code> folder, in two terminals:</p>
+<pre class="shell">python3 -m apps.time_server --config link.toml
+python3 -m apps.time_client --config link.toml</pre>
+<p>The full reference — reliability, idle mode, every option of the toml file — is <code>network/udp_link/README.md</code>.</p>
+</section>
+
+<!-- ================================================================ 13 -->
+<section id="together">
+<h2><span class="n">13</span>Window + network</h2>
+<p class="goal">The second example, read slowly.</p>
+
+<pre class="shell">.venv/bin/python examples/02_udp_drag/main.py</pre>
+<p>Two windows open. Drag the circle in side A: side B shows the same circle at the same place, yellow while you hold it. They are two separate programs talking through <code>udp_link</code>, exactly as they would on two computers.</p>
+
+<figure>
+<svg viewBox="0 0 760 230" role="img" aria-label="Side A reads the mouse and sends the position; side B receives it, asks for a redraw, and draws the circle">
+  <rect x="30" y="30" width="300" height="170" rx="10" fill="#101013" stroke="#ff8c1a"/>
+  <text x="46" y="54" font-size="13" font-weight="600">SIDE A — server</text>
+  <circle cx="150" cy="130" r="34" fill="#ffd91a"/>
+  <path d="M158 138 l0 26 l7 -7 l6 12 l5 -3 l-6 -12 l10 0 z" fill="#e6e3dc" stroke="#101013"/>
+  <text x="46" y="188" font-size="11" style="fill:#9a968c">mouse → position → link.send(text)</text>
+
+  <rect x="430" y="30" width="300" height="170" rx="10" fill="#101013" stroke="#2c2c36"/>
+  <text x="446" y="54" font-size="13" font-weight="600">SIDE B — client</text>
+  <circle cx="550" cy="130" r="34" fill="#ffd91a"/>
+  <text x="446" y="188" font-size="11" style="fill:#9a968c">on_text → request_redraw → draw</text>
+
+  <path d="M332 115 H428" stroke="#ff8c1a" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="380" y="104" text-anchor="middle" font-size="11" style="fill:#ff8c1a">x=150;y=130;</text>
+  <text x="380" y="134" text-anchor="middle" font-size="11" style="fill:#ff8c1a">drag=1</text>
+</svg>
+</figure>
+
+<h3>Side A: draw, then tell</h3>
+<pre><code class="py">link = LinkThread("server", app.args.config, on_text=on_text).start()
+sent = None
+
+def draw_frame():
+    global sent
+    …the drag recipe from section 07…
+
+    text = f"x={position[0]:.1f};y={position[1]:.1f};drag={int(dragging)}"
+    if text != sent:              # only when something changed
+        link.send(text)
+        sent = text
+
+    ui.draw_screen_circle(position, RADIUS, YELLOW if dragging else PURPLE)</code></pre>
+
+<h3>Side B: hear, then draw</h3>
+<pre><code class="py">remote = None                      # the last state received
+
+def on_text(text):                 # runs in the link's thread
+    global remote
+    v = parse_kv(text)
+    remote = (v["x"], v["y"], bool(v["drag"]))
+    app.request_redraw()           # wake the sleeping window
+
+link = LinkThread("client", app.args.config, on_text=on_text).start()
+
+def draw_frame():
+    if remote is not None:
+        x, y, held = remote
+        ui.draw_screen_circle((x, y), RADIUS, YELLOW if held else PURPLE)</code></pre>
+
+<div class="box key"><div class="t">The pattern</div>
+<p><code>on_text</code> does three things and nothing more: understand the string, store the value, call <code>app.request_redraw()</code>. All the drawing stays in <code>draw_frame</code>. Side B is still reactive: it sleeps until a message arrives.</p></div>
+
+<h3>On two computers</h3>
+<ol class="steps">
+  <li>Copy the project folder to both, and run the installer on each.</li>
+  <li>Set <code>server_ip</code> in <code>network/link.toml</code> to the address of the side A machine — the same file on both.</li>
+  <li>Machine A: <code>.venv/bin/python examples/02_udp_drag/main.py --side a</code></li>
+  <li>Machine B: <code>.venv/bin/python examples/02_udp_drag/main.py --side b</code></li>
+</ol>
+</section>
+
+<!-- ================================================================ 14 -->
+<section id="video">
+<h2><span class="n">14</span>Video between two windows</h2>
+<p class="goal">The third example: a camera on side A, its picture on side B.</p>
+
+<pre class="shell">.venv/bin/python examples/03_udp_video/main.py</pre>
+<p>Two windows open. Side A shows a moving test pattern with a counter and a clock; side B shows the same picture a few milliseconds later. No camera is needed: the pattern is generated by side A. To use a real camera, name it:</p>
+<pre class="shell">.venv/bin/python examples/03_udp_video/main.py --source 0</pre>
+
+<figure>
+<svg viewBox="0 0 760 240" role="img" aria-label="Side A captures a picture, compresses it to JPEG and sends it; side B receives it, decodes it, updates a texture and draws it">
+  <rect x="30" y="30" width="300" height="180" rx="10" fill="#101013" stroke="#ff8c1a"/>
+  <text x="46" y="54" font-size="13" font-weight="600">SIDE A — server</text>
+  <rect x="60" y="70" width="150" height="100" rx="6" fill="#1f1f26" stroke="#2c2c36"/>
+  <rect x="60" y="70" width="50" height="100" fill="#9440e6"/><rect x="110" y="70" width="50" height="100" fill="#8a5a1a"/><rect x="160" y="70" width="50" height="100" fill="#1f5f9a"/>
+  <circle cx="262" cy="120" r="22" fill="none" stroke="#e6e3dc" stroke-width="2"/><circle cx="262" cy="120" r="9" fill="#e6e3dc"/>
+  <text x="46" y="196" font-size="11" style="fill:#9a968c">capture → JPEG → publish</text>
+
+  <rect x="430" y="30" width="300" height="180" rx="10" fill="#101013" stroke="#2c2c36"/>
+  <text x="446" y="54" font-size="13" font-weight="600">SIDE B — client</text>
+  <rect x="505" y="70" width="150" height="100" rx="6" fill="#1f1f26" stroke="#2c2c36"/>
+  <rect x="505" y="70" width="50" height="100" fill="#9440e6"/><rect x="555" y="70" width="50" height="100" fill="#8a5a1a"/><rect x="605" y="70" width="50" height="100" fill="#1f5f9a"/>
+  <text x="446" y="196" font-size="11" style="fill:#9a968c">decode → texture.update → draw</text>
+
+  <path d="M332 108 H428" stroke="#ff8c1a" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M332 122 H428" stroke="#ff8c1a" stroke-width="1.8" marker-end="url(#arr)" opacity=".55"/>
+  <path d="M332 136 H428" stroke="#ff8c1a" stroke-width="1.8" marker-end="url(#arr)" opacity=".25"/>
+  <text x="380" y="96" text-anchor="middle" font-size="11" style="fill:#ff8c1a">JPEG pieces</text>
+  <text x="380" y="158" text-anchor="middle" font-size="11" style="fill:#9a968c">udp port 50556</text>
+</svg>
+<figcaption>One picture is too big for one UDP datagram, so it travels in pieces and is put back together on arrival.</figcaption>
+</figure>
+
+<h3>Strings and video are opposites</h3>
+<div class="grid2">
+  <div class="card"><h4>Strings — udp_link</h4>
+    <p>Every string must arrive. The receiver confirms each one; an unconfirmed string is sent again.</p></div>
+  <div class="card"><h4>Video — video_link</h4>
+    <p>A late picture is worthless. Nothing is confirmed or sent again: a lost picture is skipped and the next one shown, so the stream never falls behind.</p></div>
+</div>
+
+<h3>Step 1 — VideoThread</h3>
+<p>The same idea as <code>LinkThread</code>: the network and the camera run beside your window, and you receive ready-to-draw pictures.</p>
+<pre><code class="py">from video_link.bridge import VideoThread          # in network/
+
+CONFIG = ROOT / "network" / "link.toml"
+
+# side A: owns the camera
+video = VideoThread("server", CONFIG, source="test", on_frame=on_frame).start()
+
+# side B: watches
+video = VideoThread("client", CONFIG, on_frame=on_frame).start()</code></pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Member</th><th>Meaning</th></tr>
+  <tr><td><code>VideoThread(role, config, on_frame=…)</code></td><td><code>role</code> is <code>"server"</code> (camera) or <code>"client"</code> (viewer).</td></tr>
+  <tr><td><code>source=</code></td><td>Server only. <code>"test"</code> (the default pattern), <code>"0"</code> for the first camera, or a video file.</td></tr>
+  <tr><td><code>width=</code>, <code>height=</code>, <code>fps=</code>, <code>quality=</code></td><td>Server only. Picture size, pictures per second, JPEG quality from 1 to 100.</td></tr>
+  <tr><td><code>on_frame(picture)</code></td><td>Called for each new picture: captured on the server (a preview), received on the client.</td></tr>
+  <tr><td><code>.latest</code></td><td>The newest picture, or <code>None</code>: a NumPy array of shape (height, width, 3), red-green-blue.</td></tr>
+  <tr><td><code>.frames</code></td><td>How many pictures so far. It changes when <code>.latest</code> does.</td></tr>
+  <tr><td><code>.latency</code></td><td>Client: seconds between capture and arrival of the newest picture.</td></tr>
+  <tr><td><code>.viewers</code></td><td>Server: how many clients are watching.</td></tr>
+  <tr><td><code>.error</code>, <code>.close()</code></td><td>As for <code>LinkThread</code>.</td></tr>
+</table></div>
+
+<h3>Step 2 — one texture, updated</h3>
+<p>A <em>texture</em> is a picture stored on the graphics card. Creating one has a cost; changing its pixels is cheap. So video uses a single texture for the whole session: created for the first picture, then updated.</p>
+<pre><code class="py">from texture3d import Texture
+
+texture = Texture(picture, mipmaps=False)     # once
+texture.update(picture)                       # for every later picture</code></pre>
+<p><code>mipmaps=False</code> skips the smaller copies that a picture needs when it lies far away in a 3D scene. Flat on the screen they are useless, and computing them 15 times per second is wasted work.</p>
+
+<h3>Step 3 — the whole viewer</h3>
+<pre><code class="py">def on_frame(picture):                  # runs in the video thread
+    app.request_redraw()                # a picture arrived: wake the window
+
+video = VideoThread("client", CONFIG, on_frame=on_frame).start()
+texture = None
+shown = 0
+
+def draw_frame():
+    global texture, shown
+    picture = video.latest
+    if picture is None:
+        return                                  # nothing received yet
+
+    if video.frames != shown:                   # a new picture since the last frame
+        shown = video.frames
+        if texture is None:
+            texture = Texture(picture, mipmaps=False)
+        else:
+            texture.update(picture)
+
+    anchor, size = screen2d.fit((texture.width, texture.height), (0, 0), app.size())
+    ui.draw_screen_image(anchor, size, texture)
+
+app.run(draw_frame)
+video.close()</code></pre>
+
+<div class="box key"><div class="t">The same pattern as section 13</div>
+<p><code>on_frame</code> only calls <code>app.request_redraw()</code>; the picture waits in <code>video.latest</code> and all the drawing stays in <code>draw_frame</code>. The window is still reactive: it draws once per picture and sleeps in between. Side A is this same code with <code>"server"</code> — its preview is drawn the same way.</p></div>
+
+<div class="box"><div class="t">Why the texture is created inside draw_frame</div>
+<p>Everything that touches the graphics card must happen in the main thread, the one that runs <code>draw_frame</code>. <code>on_frame</code> runs in the video thread: it may store a value and ask for a redraw, never draw or create a texture.</p></div>
+
+<h3>On two computers</h3>
+<p>Exactly as for example 2: the same <code>network/link.toml</code> on both machines, with <code>server_ip</code> set to the address of the camera machine. Video uses UDP port <strong>50556</strong> (strings use 50555), so the firewall of machine A must let that one in too.</p>
+<pre class="shell">.venv/bin/python examples/03_udp_video/main.py --side a --source 0     # machine A, with the camera
+.venv/bin/python examples/03_udp_video/main.py --side b                # machine B</pre>
+<p>On a slow Wi-Fi link, send less: <code>--width 320 --height 240</code>, <code>--fps 10</code> or <code>--quality 50</code> on side A.</p>
+
+<div class="box warn"><div class="t">macOS and a real camera</div>
+<p>The first <code>--source 0</code> run asks the terminal application for camera permission. If nothing is asked and the camera stays closed, allow your terminal in System Settings → Privacy &amp; Security → Camera, and run again. The default test pattern needs no permission.</p></div>
+
+<h3>OpenCV on its own</h3>
+<p>The installer adds OpenCV (<code>cv2</code>), the standard library for cameras and images. Its pictures are NumPy arrays, which the drawing methods accept — with one detail: OpenCV orders the colours blue-green-red, the rest of the world red-green-blue. Reversing the last axis fixes it (<code>VideoThread</code> already does it for you).</p>
+<pre><code class="py">import cv2
+
+image = cv2.imread("photo.jpg")            # BGR
+picture = image[:, :, ::-1].copy()         # RGB, made once, outside draw_frame
+
+def draw_frame():
+    ui.draw_screen_image((20, 20), (320, 240), picture)                              # flat on the screen
+    ui.draw_image((-2, 0, 0), picture, right=(1, 0, 0), up=(0, 0, 1), width=3.0)     # standing in the 3D scene</code></pre>
+<p>The installed build is the <em>headless</em> one: it captures, encodes and decodes but opens no window of its own, so it never conflicts with the window of this project. The stream can also be used without any window, from the <code>network</code> folder (<code>python -m video_link.run_server --source test</code>, <code>python -m video_link.run_client --save-dir snapshots</code>); the full reference is <code>network/video_link/README.md</code>.</p>
+</section>
+
+<!-- ================================================================ 15 -->
+<section id="cheat">
+<h2><span class="n">15</span>Cheat sheet</h2>
+<p class="goal">Everything on one screen.</p>
+
+<h3>Start</h3>
+<pre><code class="py">app = app3d.App(title, size=(w, h), position=(x, y))     ui = app.aa
+app.run(draw_frame)</code></pre>
+
+<h3>Input</h3>
+<pre><code class="py">app.cursor() -&gt; (x, y)      app.mouse_down() -&gt; bool      app.size() -&gt; (w, h)
+app.request_redraw()         app.quit()</code></pre>
+
+<h3>Screen space — pixels, origin top-left, y down</h3>
+<pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius=0)        ui.in_screen_rect(cursor, anchor, size, radius=0)
+ui.draw_screen_circle(center, radius, color)              ui.in_screen_circle(cursor, center, radius)
+ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content_size, anchor, size) -&gt; (anchor, size)
+ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
+screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)</code></pre>
+
+<h3>World space — (x, y, z), z up</h3>
+<pre><code class="py">ui.draw_grid()
+ui.draw_line(start, tip, color, thickness=0)              ui.draw_arrow(start, tip, color)
+ui.draw_circle(center, radius, color, axis=(0, 0, 1))     ui.draw_image(anchor, source, right, up, width, height=None, tint=…)
+ui.draw_point(center, size, color)                        ui.draw_points(points, size, color)
+ui.draw_points_sorted(…)   ui.draw_points_rgba(…)         ui.draw_points_rgba_sorted(…)
+ui.draw_text(anchor, text, size, color, right=…, up=…)    ui.measure_text(text, size)</code></pre>
+
+<h3>Camera</h3>
+<pre><code class="py">app.camera.handle(app.window)      app.camera.reset()      app.camera.floor_point(x, y, w, h)</code></pre>
+
+<h3>Network</h3>
+<pre><code class="py">link = LinkThread("server" | "client", "network/link.toml", on_text=f, latest_only=True).start()
+link.send(text)      link.close()      link.connected      link.error
+
+video = VideoThread("server" | "client", "network/link.toml", on_frame=f, source="test", fps=15).start()
+video.latest         video.frames      video.latency       video.viewers      video.close()
+texture = Texture(picture, mipmaps=False)                  texture.update(picture)</code></pre>
+
+<h3>Command line</h3>
+<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync</pre>
+</section>
+
+<!-- ================================================================ 16 -->
+<section id="trouble">
+<h2><span class="n">16</span>When it does not work</h2>
+
+<div class="tablewrap"><table>
+  <tr><th>What you see</th><th>What to do</th></tr>
+  <tr><td class="wrap"><code>ModuleNotFoundError: No module named 'wgpu'</code></td><td>You used another Python. Start the command with <code>.venv/bin/python</code>, or run the installer again.</td></tr>
+  <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
+  <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
+  <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre.</td></tr>
+  <tr><td>An animation only moves when the mouse moves</td><td>That is the reactive loop doing its job. Add <code>--refresh 60</code>, or call <code>app.request_redraw()</code> when your data changes.</td></tr>
+  <tr><td>Side B stays on "waiting for side A"</td><td>Same <code>link.toml</code> on both sides? <code>server_ip</code> is the address of the <em>server</em> machine? The firewall of that machine allows UDP port 50555? The two clocks agree within two minutes (or set <code>max_clock_skew = 0</code> on both)?</td></tr>
+  <tr><td>Example 3: side B stays on "waiting for side A"</td><td>The same checks, with UDP port <strong>50556</strong>. With <code>--source 0</code>, look at side A first: if its own preview is empty, the camera did not open (permission, or another program is using it).</td></tr>
+  <tr><td class="wrap"><code>Address already in use</code></td><td>A server is already running on that port — often a previous run still open. Close it, or change <code>port</code> on both sides.</td></tr>
+  <tr><td>Linux: no window, or "no adapter"</td><td>Install the Vulkan driver the installer names, or try <code>--backend gl</code>.</td></tr>
+  <tr><td>Anything else</td><td><code>.venv/bin/python toolchain/check_env.py --window</code> tests each layer and names the one that fails.</td></tr>
+</table></div>
+
+<footer>
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+</footer>
+</section>
+
+</main>
+</div>
+
+<script>
+// ---- a very small Python colouriser: comments, strings, keywords, numbers ----
+(function () {
+  var TOKEN = /\b(\d+(?:\.\d+)?)\b|\b(?:import|from|def|return|if|else|elif|not|and|or|global|nonlocal|for|in|while|async|await|with|as|is|None|True|False|class|try|except|raise|lambda)\b/g;
+  document.querySelectorAll("code.py").forEach(function (el) {
+    var out = el.innerHTML.split("\n").map(function (line) {
+      var hash = -1, quote = null;
+      for (var i = 0; i < line.length; i++) {          // find a # that is not inside a string
+        var ch = line[i];
+        if (quote) { if (ch === quote) quote = null; }
+        else if (ch === '"' || ch === "'") quote = ch;
+        else if (ch === "#") { hash = i; break; }
+      }
+      var code = hash < 0 ? line : line.slice(0, hash);
+      var comment = hash < 0 ? "" : '<span class="c">' + line.slice(hash) + "</span>";
+      var parts = code.split(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/);
+      code = parts.map(function (p, n) {
+        if (n % 2) return '<span class="s">' + p + "</span>";
+        // one pass, so a keyword is never searched inside a tag we just wrote
+        return p.replace(TOKEN, function (m, number) {
+          return '<span class="' + (number ? "num" : "k") + '">' + m + "</span>";
+        });
+      }).join("");
+      return code + comment;
+    }).join("\n");
+    el.innerHTML = out;
+  });
+})();
+
+// ---- the two previews: the same hit tests as graphics/screen2d.py ----
+(function () {
+  var PURPLE = "#9440e6", YELLOW = "#ffd91a";
+
+  function inRect(c, a, s, r) {
+    var hw = s[0] / 2, hh = s[1] / 2;
+    var dx = Math.abs(c[0] - (a[0] + hw)), dy = Math.abs(c[1] - (a[1] + hh));
+    if (dx > hw || dy > hh) return false;
+    r = Math.min(Math.max(r, 0), hw, hh);
+    var qx = dx - (hw - r), qy = dy - (hh - r);
+    if (qx <= 0 || qy <= 0) return true;
+    return qx * qx + qy * qy <= r * r;
+  }
+  function inCircle(c, m, r) {
+    var dx = c[0] - m[0], dy = c[1] - m[1];
+    return dx * dx + dy * dy <= r * r;
+  }
+  function roundRect(g, a, s, r) {
+    r = Math.min(r, s[0] / 2, s[1] / 2);
+    g.beginPath();
+    g.moveTo(a[0] + r, a[1]);
+    g.arcTo(a[0] + s[0], a[1], a[0] + s[0], a[1] + s[1], r);
+    g.arcTo(a[0] + s[0], a[1] + s[1], a[0], a[1] + s[1], r);
+    g.arcTo(a[0], a[1] + s[1], a[0], a[1], r);
+    g.arcTo(a[0], a[1], a[0] + s[0], a[1], r);
+    g.closePath();
+  }
+  function setup(id, draw) {
+    var cv = document.getElementById(id);
+    if (!cv || !cv.getContext) return;
+    var g = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr; cv.height = H * dpr; g.scale(dpr, dpr);
+    var state = { cursor: [-99, -99], down: false };
+    function pos(e) {
+      var b = cv.getBoundingClientRect();
+      state.cursor = [(e.clientX - b.left) * W / b.width, (e.clientY - b.top) * H / b.height];
+    }
+    function frame() { g.clearRect(0, 0, W, H); g.fillStyle = "#0f0f12"; g.fillRect(0, 0, W, H); draw(g, state, W, H); }
+    cv.addEventListener("pointermove", function (e) { pos(e); frame(); });
+    cv.addEventListener("pointerdown", function (e) { pos(e); state.down = true; cv.setPointerCapture(e.pointerId); frame(); });
+    cv.addEventListener("pointerup", function (e) { pos(e); state.down = false; frame(); });
+    cv.addEventListener("pointerleave", function () { if (!state.down) { state.cursor = [-99, -99]; frame(); } });
+    frame();                                    // reactive, like the library: one frame per event
+  }
+
+  var A = [50, 60], S = [300, 180], R = 56, C = [500, 150], CR = 85;
+  var out1 = document.getElementById("demo-hit-out");
+  setup("demo-hit", function (g, st) {
+    var overR = inRect(st.cursor, A, S, R), overC = inCircle(st.cursor, C, CR);
+    g.strokeStyle = "#3a3a46"; g.setLineDash([4, 4]); g.strokeRect(A[0], A[1], S[0], S[1]); g.setLineDash([]);
+    g.fillStyle = overR ? YELLOW : PURPLE; roundRect(g, A, S, R); g.fill();
+    g.fillStyle = overC ? YELLOW : PURPLE; g.beginPath(); g.arc(C[0], C[1], CR, 0, 7); g.fill();
+    var inBox = st.cursor[0] >= A[0] && st.cursor[0] <= A[0] + S[0] && st.cursor[1] >= A[1] && st.cursor[1] <= A[1] + S[1];
+    if (out1) out1.innerHTML = "in_screen_rect: <b>" + (overR ? "True" : "False") + "</b>" +
+      (inBox && !overR ? " (in the box, outside the curve)" : "") + " · in_screen_circle: <b>" + (overC ? "True" : "False") + "</b>";
+  });
+
+  var P = [320, 150], PR = 46, grab = [0, 0], dragging = false, wasDown = false;
+  var out2 = document.getElementById("demo-drag-out");
+  setup("demo-drag", function (g, st, W, H) {
+    if (st.down && !wasDown && inCircle(st.cursor, P, PR)) {
+      dragging = true; grab = [P[0] - st.cursor[0], P[1] - st.cursor[1]];
+    }
+    if (!st.down) dragging = false;
+    wasDown = st.down;
+    if (dragging) {
+      P[0] = Math.min(Math.max(st.cursor[0] + grab[0], 0), W);
+      P[1] = Math.min(Math.max(st.cursor[1] + grab[1], 0), H);
+    }
+    g.fillStyle = dragging ? YELLOW : PURPLE; g.beginPath(); g.arc(P[0], P[1], PR, 0, 7); g.fill();
+    if (out2) out2.innerHTML = "position (" + P[0].toFixed(0) + ", " + P[1].toFixed(0) + ") · dragging: <b>" + (dragging ? "True" : "False") + "</b>";
+  });
+})();
+</script>
+</body>
+</html>

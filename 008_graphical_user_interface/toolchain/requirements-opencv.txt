@@ -1,0 +1,12 @@
+# Optional: camera capture + JPEG encoding for network/video_link and
+# examples/03_udp_video (the only parts that need it), and a handy
+# source of frames for draw_image (a BGR frame -> frame[:, :, ::-1] -> RGB).
+#
+# The "headless" build is deliberate: it has no Qt / Cocoa window code of its
+# own, so it cannot fight with the GLFW window this project already owns.
+# It is installed in its own step: when no wheel exists yet for a brand-new
+# Python, the installer warns and carries on — everything else still works.
+opencv-python-headless>=4.9
+
+# The headless build has no window code (cv2.imshow). video_link.run_client
+# --display wants the full build instead: pip install opencv-python
