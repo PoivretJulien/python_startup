@@ -1,4 +1,5 @@
-![Uploading python.png…]()
+<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/27b04610-8799-4202-b4ff-b427431fa6cc" />
+
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
