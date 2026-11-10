@@ -1,5 +1,7 @@
 # 008 — graphical user interface
 
+<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/63190428-8ecd-4d38-955a-e76457f35ff8" />
+
 A small, self-contained Python project: a window you draw into with one
 function, screen-space shapes that know when the mouse is on them, and plain
 strings sent between programs over UDP.
