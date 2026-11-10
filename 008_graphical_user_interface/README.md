@@ -1,3 +1,4 @@
+![Uploading python.png…]()
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
