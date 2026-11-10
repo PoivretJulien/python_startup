@@ -172,6 +172,7 @@ Ready. From the project root:
   .venv\Scripts\python examples\01_hover_shapes\main.py    # hover two shapes
   .venv\Scripts\python examples\02_udp_drag\main.py        # two windows over UDP
   .venv\Scripts\python examples\03_udp_video\main.py       # video between two windows
+  .venv\Scripts\python examples\04_linked_circles\main.py  # two circles and a dashed line
   .venv\Scripts\python graphics\main.py                    # the full 3D scene (--backend vulkan forces Vulkan)
   start guide.html                                         # how to use the API
 

@@ -50,6 +50,13 @@ class SceneRenderer:
         shapes = gpu3d.vertex_layout(*shaders3d.SCREEN_SHAPE_LAYOUT, instanced=True)
         overlay = {"depth_write": False, "depth_compare": "always"}
         self.shape_pipeline = gpu.pipeline(shaders3d.SCREEN_SHAPES, shapes, blend=True, **overlay)
+        # Screen-space lines, solid or dashed: one instanced quad per line.
+        self.screen_line_pipeline = gpu.pipeline(
+            shaders3d.SCREEN_LINES,
+            gpu3d.vertex_layout(*shaders3d.SCREEN_LINE_LAYOUT, instanced=True),
+            blend=True,
+            **overlay,
+        )
         self.sharp_rect_pipelines = {
             blend: gpu.pipeline(shaders3d.SCREEN_RECT_SHARP, shapes, blend=blend, **overlay)
             for blend in (False, True)
@@ -245,6 +252,57 @@ class SceneRenderer:
             row = screen2d.circle_instance(center, radius, color)
             self._submit_points(self.shape_pipeline, self._screen_uniforms(1.0), row)
 
+    def draw_screen_line(
+        self,
+        start: screen2d.Point2,
+        end: screen2d.Point2,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        thickness: float = 2.0,
+    ) -> None:
+        """Draw an anti-aliased straight line in **screen space**.
+
+        ``start`` and ``end`` are ``(x, y)`` in window pixels (top-left origin,
+        y down), ``color`` is ``(r, g, b)`` or ``(r, g, b, a)`` and
+        ``thickness`` is the full width of the line in pixels. Both ends are
+        round, so lines that share a point join cleanly.
+
+        The fragment shader measures each pixel's distance to the segment and
+        fades the edge over one pixel: smooth at any angle, any thickness
+        (including below one pixel) and any HiDPI scale. One instance row, one
+        draw call, drawn on top of the 3D scene in call order.
+        ``in_screen_line`` is the matching hit test.
+        """
+        row = screen2d.line_instance(start, end, color, thickness)
+        if row[0, 8] > 0.0:
+            self._submit_points(self.screen_line_pipeline, self._screen_uniforms(1.0), row)
+
+    def draw_screen_dashed_line(
+        self,
+        start: screen2d.Point2,
+        end: screen2d.Point2,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        thickness: float = 2.0,
+        dash: float = 10.0,
+        spacing: float = 6.0,
+    ) -> None:
+        """Draw an anti-aliased **dashed** line in screen space.
+
+        ``draw_screen_line`` plus two lengths, in pixels: ``dash`` is how long
+        each dash is and ``spacing`` the empty space between two dashes. The
+        pattern starts with a full dash at ``start`` and is cut cleanly at
+        ``end``. Dashes have square ends, so both lengths are exact whatever
+        the thickness; ``dash == thickness`` gives a row of squares.
+
+        The dashes are not separate pieces: the whole line is still one
+        instance row and one draw call, and the shader decides per pixel
+        whether it falls on a dash. A line with a thousand dashes costs the
+        same as a solid one. ``spacing <= 0`` (or ``dash <= 0``) draws the
+        solid line.
+        """
+        row = screen2d.line_instance(start, end, color, thickness, dash, spacing)
+        if row[0, 8] > 0.0:
+            self._submit_points(self.screen_line_pipeline, self._screen_uniforms(1.0), row)
+
     def draw_screen_image(
         self,
         anchor: screen2d.Point2,
@@ -296,6 +354,7 @@ class SceneRenderer:
     # question sits next to the draw call it belongs to (see screen2d).
     in_screen_rect = staticmethod(screen2d.in_rect)
     in_screen_circle = staticmethod(screen2d.in_circle)
+    in_screen_line = staticmethod(screen2d.in_line)
 
     def close(self) -> None:
         self.textures.close()

@@ -1,4 +1,4 @@
-"""Screen-space shapes: rounded rectangles, circles and their hit tests.
+"""Screen-space shapes: rounded rectangles, circles, lines and their hit tests.
 
 Everything here speaks **window pixels** with the origin at the **top-left** and
 y growing down — the convention of ``glfw.get_cursor_pos`` and of
@@ -11,7 +11,7 @@ the raw cursor position, no conversion::
 
 One description, two uses: a rounded rectangle is ``anchor`` (its top-left
 corner), ``size`` (width, height) and ``radius`` (the four corners); a circle is
-``center`` and ``radius``. The draw methods and the hit tests take them in the
+``center`` and ``radius``; a line is ``start``, ``end`` and ``thickness``. The draw methods and the hit tests take them in the
 same order, so the picture and the test cannot drift apart.
 
 The hit tests are the same signed distance function (SDF) the fragment shader
@@ -37,6 +37,8 @@ ColorRGBA = Sequence[float]  # (r, g, b) or (r, g, b, a), each 0..1
 
 # One shape = one instance row: center(2) half_size(2) color(4) radius(1).
 SHAPE_FLOATS = 9
+# One line = one instance row: start(2) end(2) color(4) half_width dash gap.
+LINE_FLOATS = 11
 
 
 def clamp_radius(width: float, height: float, radius: float) -> float:
@@ -80,6 +82,25 @@ def circle_instance(center: Point2, radius: float, color: ColorRGBA) -> np.ndarr
     row[0, 1] = float(center[1])
     row[0, 2] = row[0, 3] = row[0, 8] = radius
     row[0, 4:8] = rgba(color)
+    return row
+
+
+def line_instance(
+    start: Point2,
+    end: Point2,
+    color: ColorRGBA,
+    thickness: float,
+    dash: float = 0.0,
+    spacing: float = 0.0,
+) -> np.ndarray:
+    """One line (solid when ``dash`` is 0) as a ``(1, 11)`` float32 instance row."""
+    row = np.empty((1, LINE_FLOATS), dtype=np.float32)
+    row[0, 0:2] = (float(start[0]), float(start[1]))
+    row[0, 2:4] = (float(end[0]), float(end[1]))
+    row[0, 4:8] = rgba(color)
+    row[0, 8] = 0.5 * max(float(thickness), 0.0)
+    row[0, 9] = max(float(dash), 0.0)
+    row[0, 10] = max(float(spacing), 0.0)
     return row
 
 
@@ -134,6 +155,26 @@ def in_circle(cursor: Point2, center: Point2, radius: float) -> bool:
     """True when ``cursor`` is inside the circle (edge included)."""
     dx, dy = cursor[0] - center[0], cursor[1] - center[1]
     return dx * dx + dy * dy <= radius * radius
+
+
+def line_distance(cursor: Point2, start: Point2, end: Point2) -> float:
+    """Distance in pixels from ``cursor`` to the segment ``start``-``end`` (>= 0)."""
+    px, py = cursor[0] - start[0], cursor[1] - start[1]
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    length_sq = dx * dx + dy * dy
+    # Where the cursor projects on the line, clamped to stay between the ends.
+    t = 0.0 if length_sq <= 0.0 else min(max((px * dx + py * dy) / length_sq, 0.0), 1.0)
+    return math.hypot(px - t * dx, py - t * dy)
+
+
+def in_line(cursor: Point2, start: Point2, end: Point2, thickness: float = 2.0) -> bool:
+    """True when ``cursor`` is on the line drawn with ``thickness`` (caps included).
+
+    Same description as ``draw_screen_line``. A thin line is a small target:
+    pass a larger ``thickness`` than the drawn one to make it easy to grab. For
+    a dashed line the gaps count as part of the line.
+    """
+    return line_distance(cursor, start, end) <= 0.5 * thickness
 
 
 def rect_distance(

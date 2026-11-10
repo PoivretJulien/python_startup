@@ -1,7 +1,5 @@
 # 008 — graphical user interface
 
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/63190428-8ecd-4d38-955a-e76457f35ff8" />
-
 A small, self-contained Python project: a window you draw into with one
 function, screen-space shapes that know when the mouse is on them, and plain
 strings sent between programs over UDP.
@@ -12,11 +10,13 @@ whole API step by step.
 ```
 toolchain/   installers for macOS, Linux and Windows + an environment checker
 graphics/    the drawing library (wgpu): 3D lines, arrows, particles, pictures, text,
-             and screen-space rectangles / circles / pictures with their hit tests
+             and screen-space rectangles / circles / lines / dashed lines / pictures
+             with their hit tests
 network/     udp_link (strings over UDP) and video_link (camera over UDP)
 examples/    01_hover_shapes   two shapes that change colour under the cursor
              02_udp_drag       drag a circle in window A, window B follows over UDP
              03_udp_video      a camera (or test pattern) in window A, shown in window B over UDP
+             04_linked_circles two draggable circles joined by a dashed line
 guide.html   the step-by-step guide
 ```
 
@@ -40,6 +40,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/01_hover_shapes/main.py
 .venv/bin/python examples/02_udp_drag/main.py
 .venv/bin/python examples/03_udp_video/main.py            # add --source 0 for a real camera
+.venv/bin/python examples/04_linked_circles/main.py
 .venv/bin/python graphics/main.py
 ```
 
@@ -58,6 +59,8 @@ def draw_frame():
     over = ui.in_screen_rect(app.cursor(), (60, 90), (260, 150), 28)
     ui.draw_screen_rect((60, 90), (260, 150), (1, .85, .1) if over else (.58, .25, .9), 28)
     ui.draw_screen_circle((500, 165), 75, (.58, .25, .9))
+    ui.draw_screen_line((60, 280), (575, 280), (1, 1, 1), 2)                              # thickness
+    ui.draw_screen_dashed_line((60, 310), (575, 310), (1, .55, .1), 4, dash=12, spacing=6)
 
 app.run(draw_frame)
 ```

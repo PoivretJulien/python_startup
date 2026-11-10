@@ -204,7 +204,7 @@
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
   <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures and text in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Three small complete programs that use the libraries: hover, drag over UDP, video over UDP.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Four small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -333,7 +333,7 @@ app.run(draw_frame)</code></pre>
   <div class="card"><h4>Screen space</h4>
     <p>Units are <strong>pixels of the window</strong>. <code>(0, 0)</code> is the top-left corner, <code>x</code> grows to the right, <code>y</code> grows <strong>down</strong>.</p>
     <p>It is exactly what the mouse reports, so a shape and the cursor speak the same language. Things drawn here ignore the camera and always sit on top.</p>
-    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
+    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
   <div class="card"><h4>World space</h4>
     <p>Units are whatever you decide (metres, say). Three numbers <code>(x, y, z)</code>; the floor is the <code>x, y</code> plane and <code>z</code> points <strong>up</strong>.</p>
     <p>What you see depends on the camera: orbit, pan and zoom change the picture, not your numbers.</p>
@@ -347,7 +347,7 @@ app.run(draw_frame)</code></pre>
 <!-- ================================================================ 5 -->
 <section id="shapes">
 <h2><span class="n">05</span>Shapes on the screen</h2>
-<p class="goal">A rectangle, a circle and a picture. Three methods.</p>
+<p class="goal">A rectangle, a circle, a line, a dashed line and a picture.</p>
 
 <h3>The rounded rectangle</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius)</code></pre>
@@ -389,6 +389,59 @@ ui.draw_screen_rect((60, 320), (260, 40), PURPLE, 999)   # a pill: the radius is
 ui.draw_screen_circle((500, 165), 75, PURPLE)</code></pre>
 <p>A circle is described from its middle, a rectangle from its corner. That is the only asymmetry to remember.</p>
 
+<h3>The line</h3>
+<pre><code class="py">ui.draw_screen_line(start, end, color, thickness)
+
+WHITE, ORANGE = (1, 1, 1), (1.0, 0.55, 0.1)
+
+ui.draw_screen_line((60, 40), (580, 40), WHITE)                # thickness 2 by default
+ui.draw_screen_line((60, 70), (580, 120), ORANGE, 6)</code></pre>
+<p>Two points and a <code>thickness</code>, the full width of the line in pixels. The line is smooth at any angle and its two ends are round, so lines that meet at a point join cleanly: a polygon is just several of them.</p>
+
+<h3>The dashed line</h3>
+<pre><code class="py">ui.draw_screen_dashed_line(start, end, color, thickness, dash, spacing)
+
+ui.draw_screen_dashed_line((60, 160), (580, 160), ORANGE, 6, dash=20, spacing=10)</code></pre>
+
+<figure>
+<svg viewBox="0 0 760 200" role="img" aria-label="A solid line with round ends and its thickness, above a dashed line with the dash length and the spacing marked">
+  <line x1="80" y1="50" x2="680" y2="50" stroke="#ff8c1a" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="80" cy="50" r="4" fill="#101013"/><circle cx="680" cy="50" r="4" fill="#101013"/>
+  <text x="80" y="26" text-anchor="middle" font-size="12" style="fill:#9a968c">start</text>
+  <text x="680" y="26" text-anchor="middle" font-size="12" style="fill:#9a968c">end</text>
+  <path d="M380 40 V28 M380 60 V72" stroke="#e6e3dc"/>
+  <path d="M372 43 H388 M372 57 H388" stroke="#e6e3dc"/>
+  <text x="396" y="80" font-size="12">thickness</text>
+
+  <g fill="#ff8c1a">
+    <rect x="80" y="123" width="90" height="14"/><rect x="215" y="123" width="90" height="14"/>
+    <rect x="350" y="123" width="90" height="14"/><rect x="485" y="123" width="90" height="14"/>
+    <rect x="620" y="123" width="60" height="14"/>
+  </g>
+  <path d="M80 152 H170" stroke="#e6e3dc" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="125" y="172" text-anchor="middle" font-size="12">dash</text>
+  <path d="M170 152 H215" stroke="#ffd91a" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="192" y="172" text-anchor="middle" font-size="12" style="fill:#ffd91a">spacing</text>
+  <text x="650" y="172" text-anchor="middle" font-size="12" style="fill:#9a968c">cut at end</text>
+</svg>
+<figcaption><code>dash</code> is the length of one dash, <code>spacing</code> the empty space between two dashes, both in pixels. The pattern starts with a full dash at <code>start</code> and is cut at <code>end</code>.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th><th>Default</th></tr>
+  <tr><td><code>start</code>, <code>end</code></td><td>The two end points <code>(x, y)</code>, in pixels.</td><td></td></tr>
+  <tr><td><code>color</code></td><td><code>(r, g, b)</code> or <code>(r, g, b, a)</code>.</td><td></td></tr>
+  <tr><td><code>thickness</code></td><td>Full width of the line, in pixels.</td><td><code>2</code></td></tr>
+  <tr><td><code>dash</code></td><td>Length of each dash. Dashed line only.</td><td><code>10</code></td></tr>
+  <tr><td><code>spacing</code></td><td>Empty space between two dashes. Dashed line only.</td><td><code>6</code></td></tr>
+</table></div>
+<p>Dashes have square ends, so both lengths are exact whatever the thickness. Three looks from the same method:</p>
+<pre><code class="py">ui.draw_screen_dashed_line(a, b, WHITE, 2)                          # the default: 10 on, 6 off
+ui.draw_screen_dashed_line(a, b, WHITE, 2, dash=2, spacing=4)       # dotted
+ui.draw_screen_dashed_line(a, b, ORANGE, 6, dash=6, spacing=6)      # a row of squares</code></pre>
+<div class="box"><div class="t">A long dashed line is not expensive</div>
+<p>The dashes are not separate pieces. The whole line is sent to the graphics card as one item, and for each pixel the card decides whether it falls on a dash or in a gap. A line with a thousand dashes costs the same as a solid one.</p></div>
+
 <h3>The picture</h3>
 <pre><code class="py">ui.draw_screen_image(anchor, size, source)
 
@@ -422,7 +475,8 @@ ui.draw_screen_image(anchor, size, "photo.png")</code></pre>
 <p class="goal">Two questions that answer True or False.</p>
 
 <pre><code class="py">ui.in_screen_rect(cursor, anchor, size, radius)     # -&gt; True / False
-ui.in_screen_circle(cursor, center, radius)         # -&gt; True / False</code></pre>
+ui.in_screen_circle(cursor, center, radius)         # -&gt; True / False
+ui.in_screen_line(cursor, start, end, thickness)    # -&gt; True / False</code></pre>
 
 <p>Look at the arguments: after <code>cursor</code>, they are <strong>the same, in the same order</strong>, as the drawing method. Describe a shape once, then use the description twice.</p>
 
@@ -440,8 +494,12 @@ def draw_frame():
   <div class="bar"><span>preview drawn by this page, same maths as the library</span><span id="demo-hit-out">move the mouse over a shape</span></div>
 </div>
 
+<p>A thin line is a small target. Nothing forces the test to use the drawn thickness: draw at 2 pixels and test at 12, and the line becomes easy to grab.</p>
+<pre><code class="py">over = ui.in_screen_line(cursor, START, END, 12)                  # generous
+ui.draw_screen_line(START, END, YELLOW if over else PURPLE, 2)    # thin</code></pre>
+
 <div class="box"><div class="t">These are plain functions</div>
-<p>The tests need no window and no graphics card. They also live in <code>graphics/screen2d.py</code> as <code>screen2d.in_rect</code> and <code>screen2d.in_circle</code>, next to two more that return the <em>distance</em> to the edge in pixels (negative inside): <code>screen2d.rect_distance</code> and <code>screen2d.circle_distance</code>. Useful for a forgiving button: <code>rect_distance(…) &lt;= 6</code> also accepts a cursor 6 pixels outside.</p></div>
+<p>The tests need no window and no graphics card. They also live in <code>graphics/screen2d.py</code> as <code>screen2d.in_rect</code> and <code>screen2d.in_circle</code>, next to two more that return the <em>distance</em> to the edge in pixels (negative inside): <code>screen2d.rect_distance</code>, <code>screen2d.circle_distance</code> and <code>screen2d.line_distance</code>. Useful for a forgiving button: <code>rect_distance(…) &lt;= 6</code> also accepts a cursor 6 pixels outside.</p></div>
 </section>
 
 <!-- ================================================================ 7 -->
@@ -504,6 +562,31 @@ def draw_frame():
 </div>
 
 <p>The complete program for hover is <code>examples/01_hover_shapes/main.py</code>; the drag is in <code>examples/02_udp_drag/main.py</code>.</p>
+
+<h3>Several things to drag, and a line between them</h3>
+<pre class="shell">.venv/bin/python examples/04_linked_circles/main.py</pre>
+<p>Two circles, each draggable, joined by a dashed line that brightens under the cursor. It is the drag recipe with two small changes:</p>
+<pre><code class="py">circles = [[180.0, 220.0], [460.0, 160.0]]     # two centres
+dragged = None                                 # which one is held: 0, 1 or None
+
+def draw_frame():
+    …
+    hovered = None
+    for index in (1, 0):                       # the last one drawn is on top: ask it first
+        if ui.in_screen_circle(cursor, circles[index], RADIUS):
+            hovered = index
+            break
+
+    if down and not was_down and hovered is not None:
+        dragged = hovered                      # remember WHICH circle, not just "dragging"
+    …
+    a, b = circles
+    on_line = hovered is None and ui.in_screen_line(cursor, a, b, 14)
+    ui.draw_screen_dashed_line(a, b, ORANGE if on_line else GREY, 3, dash=12, spacing=8)
+    for index, centre in enumerate(circles):
+        ui.draw_screen_circle(centre, RADIUS, YELLOW if index in (dragged, hovered) else PURPLE)</code></pre>
+<div class="box key"><div class="t">Nothing links the line to the circles</div>
+<p>There is no "connection" object to keep up to date. The line is drawn from one centre to the other on every frame, so it is always where the circles are. Keep a few values, describe the whole picture from them each time: that is the entire method, for two circles or two hundred.</p></div>
 </section>
 
 <!-- ================================================================ 8 -->
@@ -852,7 +935,7 @@ sent = None
 
 def draw_frame():
     global sent
-    …the drag recipe from section 07…
+    # … the drag recipe from section 07 …
 
     text = f"x={position[0]:.1f};y={position[1]:.1f};drag={int(dragging)}"
     if text != sent:              # only when something changed
@@ -1034,9 +1117,12 @@ app.request_redraw()         app.quit()</code></pre>
 <h3>Screen space — pixels, origin top-left, y down</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius=0)        ui.in_screen_rect(cursor, anchor, size, radius=0)
 ui.draw_screen_circle(center, radius, color)              ui.in_screen_circle(cursor, center, radius)
+ui.draw_screen_line(start, end, color, thickness=2)       ui.in_screen_line(cursor, start, end, thickness=2)
+ui.draw_screen_dashed_line(start, end, color, thickness=2, dash=10, spacing=6)
 ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content_size, anchor, size) -&gt; (anchor, size)
 ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
-screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)</code></pre>
+screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)
+screen2d.line_distance(cursor, start, end)</code></pre>
 
 <h3>World space — (x, y, z), z up</h3>
 <pre><code class="py">ui.draw_grid()
@@ -1080,7 +1166,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

@@ -80,6 +80,7 @@ Ready. From the project root:
   .venv/bin/python examples/01_hover_shapes/main.py    # hover two shapes
   .venv/bin/python examples/02_udp_drag/main.py        # two windows over UDP
   .venv/bin/python examples/03_udp_video/main.py       # video between two windows
+  .venv/bin/python examples/04_linked_circles/main.py  # two circles and a dashed line
   .venv/bin/python graphics/main.py                    # the full 3D scene (--backend gl forces the GL fallback)
   xdg-open guide.html                                  # how to use the API
 DONE

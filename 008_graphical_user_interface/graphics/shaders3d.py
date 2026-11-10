@@ -427,8 +427,102 @@ fn fs_main(i: SOut) -> @location(0) vec4<f32> {
 """
 )
 
+# ------------------------------------------------ screen-space lines (SDF)
+# A straight line in window pixels, solid or dashed: one instance per line,
+# however many dashes it has. The quad is laid along the line and each fragment
+# knows where it is in the line's own frame: `along` (pixels from the start
+# point) and `across` (pixels from the centre line). Dashes are therefore not
+# geometry: they are one `fract`-style fold of `along` in the fragment shader.
+SCREEN_LINES = (
+    COMMON
+    + """
+struct LIn {
+    @location(0) start: vec2<f32>,       // window points, top-left origin
+    @location(1) end: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) half_width: f32,        // points
+    @location(4) dash: f32,              // dash length, points (0 = solid)
+    @location(5) gap: f32,               // empty space between two dashes
+};
+
+struct LOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) local: vec2<f32>,    // (along, across), pixels
+    @location(2) @interpolate(flat) shape: vec4<f32>,      // length, half width, dash, gap
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, l: LIn) -> LOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+        vec2<f32>(0.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0),
+    );
+    let scale = u.viewport / u.screen;          // points -> framebuffer pixels
+    let unit = min(scale.x, scale.y);
+    let a = l.start * scale;
+    let b = l.end * scale;
+    let delta = b - a;
+    let len = length(delta);
+    var dir = vec2<f32>(1.0, 0.0);
+    if (len > 1e-6) {
+        dir = delta / len;
+    }
+    let normal = vec2<f32>(-dir.y, dir.x);
+    let half_px = l.half_width * unit;
+    // The quad covers the line plus its round caps plus the fade margin.
+    let reach = half_px + u.feather;
+    let corner = corners[vertex];
+    let along = mix(-reach, len + reach, corner.x);
+    let across = corner.y * reach;
+    let pixel = a + dir * along + normal * across;
+    var out: LOut;
+    out.position = vec4<f32>(
+        pixel.x / u.viewport.x * 2.0 - 1.0,
+        1.0 - pixel.y / u.viewport.y * 2.0,
+        0.0,
+        1.0
+    );
+    out.color = l.color;
+    out.local = vec2<f32>(along, across);
+    out.shape = vec4<f32>(len, half_px, l.dash * unit, l.gap * unit);
+    return out;
+}
+
+@fragment
+fn fs_main(i: LOut) -> @location(0) vec4<f32> {
+    let len = i.shape.x;
+    let half_px = i.shape.y;
+    let dash = i.shape.z;
+    let period = dash + i.shape.w;
+    var coverage: f32;
+    if (dash <= 0.0 || period <= dash) {
+        // Solid: distance to the segment, so both ends are round caps.
+        let nearest = clamp(i.local.x, 0.0, len);
+        let d = length(vec2<f32>(i.local.x - nearest, i.local.y));
+        coverage = clamp(half_px + 0.5 - d, 0.0, 1.0);
+    } else {
+        // Dashed: fold `along` so every dash is centred on 0, then it is a
+        // box test — exact dash and gap lengths, square ends. The last factor
+        // cuts the pattern at the two end points of the line.
+        var c = i.local.x - 0.5 * dash;
+        c = c - period * round(c / period);
+        let on_width = clamp(half_px + 0.5 - abs(i.local.y), 0.0, 1.0);
+        let on_dash = clamp(0.5 * dash + 0.5 - abs(c), 0.0, 1.0);
+        let on_line = clamp(0.5 + min(i.local.x, len - i.local.x), 0.0, 1.0);
+        coverage = on_width * on_dash * on_line;
+    }
+    if (coverage <= 0.001) {
+        discard;
+    }
+    return vec4<f32>(i.color.rgb, i.color.a * coverage);
+}
+"""
+)
+
 # --------------------------------------------------------------- vertex layouts
 # (location, components, float offset) — the same triples the GL VAOs used.
+SCREEN_LINE_LAYOUT = (11, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8), (4, 1, 9), (5, 1, 10)))
 SCREEN_SHAPE_LAYOUT = (9, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8)))
 LINE_LAYOUT = (6, ((0, 3, 0), (1, 3, 3)))
 QUAD_LAYOUT = (5, ((0, 3, 0), (1, 2, 3)))
@@ -447,4 +541,5 @@ ALL_SHADERS = {
     "image": IMAGE,
     "screen_shapes": SCREEN_SHAPES,
     "screen_rect_sharp": SCREEN_RECT_SHARP,
+    "screen_lines": SCREEN_LINES,
 }
