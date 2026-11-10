@@ -57,6 +57,16 @@ class SceneRenderer:
             blend=True,
             **overlay,
         )
+        # Screen-space triangles: the SDF one (anti-aliased, a blended quad) and
+        # the plain twins (three vertices; opaque = no blending, or blended).
+        triangles = gpu3d.vertex_layout(*shaders3d.SCREEN_TRIANGLE_LAYOUT, instanced=True)
+        self.triangle_pipeline = gpu.pipeline(
+            shaders3d.SCREEN_TRIANGLES, triangles, blend=True, **overlay
+        )
+        self.sharp_triangle_pipelines = {
+            blend: gpu.pipeline(shaders3d.SCREEN_TRIANGLE_SHARP, triangles, blend=blend, **overlay)
+            for blend in (False, True)
+        }
         self.sharp_rect_pipelines = {
             blend: gpu.pipeline(shaders3d.SCREEN_RECT_SHARP, shapes, blend=blend, **overlay)
             for blend in (False, True)
@@ -252,6 +262,55 @@ class SceneRenderer:
             row = screen2d.circle_instance(center, radius, color)
             self._submit_points(self.shape_pipeline, self._screen_uniforms(1.0), row)
 
+    def draw_screen_triangle(
+        self,
+        anchor: screen2d.Point2,
+        base: float,
+        height: float,
+        direction: screen2d.Point2 = screen2d.UP,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        *,
+        antialias: bool = True,
+    ) -> None:
+        """Draw a filled isosceles triangle in **screen space**.
+
+        ``anchor`` is the **middle of the base**, ``base`` the width of the
+        base and ``height`` the distance from the base to the tip, all in
+        window pixels (top-left origin, y down). ``direction`` is where the
+        height points, from the base towards the tip: an ``(x, y)`` tuple or a
+        ``Vec2`` of any length. Screen y grows down, so ``(0, -1)`` (the
+        default) points up and ``(1, 0)`` right. ``color`` is ``(r, g, b)`` or
+        ``(r, g, b, a)``.
+
+        ``antialias=True`` (default): the fragment shader measures each pixel's
+        signed distance to the triangle and fades the three edges over one
+        pixel — smooth at any orientation and HiDPI scale.
+
+        ``antialias=False``: the triangle is drawn as three plain vertices with
+        a constant colour — no distance field, no ``discard`` and, when the
+        colour is opaque, no blending. The cheapest path; slanted edges show
+        the pixel staircase.
+
+        Either way it is one instance row (10 floats) and one draw call, on top
+        of the 3D scene in call order. ``in_screen_triangle`` is the matching
+        hit test; ``screen2d.triangle_points`` returns the three corners.
+        """
+        if base <= 0.0 or height == 0.0:
+            return
+        row = screen2d.triangle_instance(anchor, base, height, direction, color)
+        if antialias:
+            self._submit_points(self.triangle_pipeline, self._screen_uniforms(1.0), row)
+            return
+        self.gpu.submit(
+            gpu3d.DrawCall(
+                pipeline=self.sharp_triangle_pipelines[bool(row[0, 9] < 1.0)],
+                uniforms=self._screen_uniforms(0.0),
+                vertex_count=3,  # the three corners themselves, not a quad
+                instance_count=1,
+                vertices=row,
+            )
+        )
+
     def draw_screen_line(
         self,
         start: screen2d.Point2,
@@ -355,6 +414,7 @@ class SceneRenderer:
     in_screen_rect = staticmethod(screen2d.in_rect)
     in_screen_circle = staticmethod(screen2d.in_circle)
     in_screen_line = staticmethod(screen2d.in_line)
+    in_screen_triangle = staticmethod(screen2d.in_triangle)
 
     def close(self) -> None:
         self.textures.close()

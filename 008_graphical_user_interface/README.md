@@ -1,5 +1,3 @@
-
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/f1499363-633a-4afe-a925-8c16877299cd" />
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -12,7 +10,7 @@ whole API step by step.
 ```
 toolchain/   installers for macOS, Linux and Windows + an environment checker
 graphics/    the drawing library (wgpu): 3D lines, arrows, particles, pictures, text,
-             and screen-space rectangles / circles / lines / dashed lines / pictures
+             and screen-space rectangles / circles / triangles / lines / dashed lines / pictures
              with their hit tests
 network/     udp_link (strings over UDP) and video_link (camera over UDP)
 examples/    01_hover_shapes   two shapes that change colour under the cursor
@@ -63,6 +61,7 @@ def draw_frame():
     over = ui.in_screen_rect(app.cursor(), (60, 90), (260, 150), 28)
     ui.draw_screen_rect((60, 90), (260, 150), (1, .85, .1) if over else (.58, .25, .9), 28)
     ui.draw_screen_circle((500, 165), 75, (.58, .25, .9))
+    ui.draw_screen_triangle((320, 250), 60, 80, (0, -1), (1, .55, .1))                    # base, height, direction
     ui.draw_screen_line((60, 280), (575, 280), (1, 1, 1), 2)                              # thickness
     ui.draw_screen_dashed_line((60, 310), (575, 310), (1, .55, .1), 4, dash=12, spacing=6)
 

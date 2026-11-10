@@ -335,7 +335,7 @@ app.run(draw_frame)</code></pre>
   <div class="card"><h4>Screen space</h4>
     <p>Units are <strong>pixels of the window</strong>. <code>(0, 0)</code> is the top-left corner, <code>x</code> grows to the right, <code>y</code> grows <strong>down</strong>.</p>
     <p>It is exactly what the mouse reports, so a shape and the cursor speak the same language. Things drawn here ignore the camera and always sit on top.</p>
-    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
+    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_triangle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
   <div class="card"><h4>World space</h4>
     <p>Units are whatever you decide (metres, say). Three numbers <code>(x, y, z)</code>; the floor is the <code>x, y</code> plane and <code>z</code> points <strong>up</strong>.</p>
     <p>What you see depends on the camera: orbit, pan and zoom change the picture, not your numbers.</p>
@@ -349,7 +349,7 @@ app.run(draw_frame)</code></pre>
 <!-- ================================================================ 5 -->
 <section id="shapes">
 <h2><span class="n">05</span>Shapes on the screen</h2>
-<p class="goal">A rectangle, a circle, a line, a dashed line and a picture.</p>
+<p class="goal">A rectangle, a circle, a triangle, a line, a dashed line and a picture.</p>
 
 <h3>The rounded rectangle</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius)</code></pre>
@@ -390,6 +390,59 @@ ui.draw_screen_rect((60, 320), (260, 40), PURPLE, 999)   # a pill: the radius is
 
 ui.draw_screen_circle((500, 165), 75, PURPLE)</code></pre>
 <p>A circle is described from its middle, a rectangle from its corner. That is the only asymmetry to remember.</p>
+
+<h3>The triangle</h3>
+<pre><code class="py">ui.draw_screen_triangle(anchor, base, height, direction, color)
+
+ui.draw_screen_triangle((320, 300), 120, 160, (0, -1), PURPLE)      # pointing up</code></pre>
+
+<figure>
+<svg viewBox="0 0 760 270" role="img" aria-label="A triangle with its anchor at the middle of the base, the base width, the height, and the direction arrow from the anchor to the tip">
+  <polygon points="250,210 510,210 380,50" fill="#9440e6"/>
+  <path d="M380 210 V62" stroke="#ff8c1a" stroke-width="2" marker-end="url(#arr)"/>
+  <circle cx="380" cy="210" r="6" fill="#ff8c1a"/>
+  <text x="380" y="232" text-anchor="middle" font-size="13" style="fill:#ff8c1a">anchor (x, y)</text>
+  <text x="392" y="140" font-size="13" style="fill:#ff8c1a">direction</text>
+  <path d="M250 250 H510" stroke="#e6e3dc" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="380" y="266" text-anchor="middle" font-size="13">base</text>
+  <path d="M540 50 V210" stroke="#e6e3dc" marker-start="url(#arr)" marker-end="url(#arr)"/>
+  <text x="552" y="134" font-size="13">height</text>
+  <text x="380" y="38" text-anchor="middle" font-size="12" style="fill:#9a968c">tip</text>
+
+  <g font-size="11">
+    <polygon points="60,110 100,110 80,76" fill="#3a3a46"/><text x="80" y="128" text-anchor="middle" style="fill:#9a968c">(0, -1)</text>
+    <polygon points="140,74 140,114 174,94" fill="#3a3a46"/><text x="155" y="128" text-anchor="middle" style="fill:#9a968c">(1, 0)</text>
+    <polygon points="60,160 100,160 80,194" fill="#3a3a46"/><text x="80" y="212" text-anchor="middle" style="fill:#9a968c">(0, 1)</text>
+    <polygon points="174,158 174,198 140,178" fill="#3a3a46"/><text x="158" y="212" text-anchor="middle" style="fill:#9a968c">(-1, 0)</text>
+  </g>
+</svg>
+<figcaption>The anchor is the middle of the base. The triangle grows from there towards its tip, along <code>direction</code>. On the left: the four simple directions. Screen <code>y</code> grows down, so "up" is <code>(0, -1)</code>.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>anchor</code></td><td>The middle of the base, in pixels.</td><td><code>(320, 300)</code></td></tr>
+  <tr><td><code>base</code></td><td>Width of the base, in pixels.</td><td><code>120</code></td></tr>
+  <tr><td><code>height</code></td><td>Distance from the base to the tip, in pixels.</td><td><code>160</code></td></tr>
+  <tr><td><code>direction</code></td><td>Where the height points: an <code>(x, y)</code> tuple or a <code>Vec2</code>. Only where it points matters, not how long it is. Optional: up by default.</td><td><code>(0, -1)</code></td></tr>
+  <tr><td><code>color</code></td><td><code>(r, g, b)</code> or <code>(r, g, b, a)</code>.</td><td><code>PURPLE</code></td></tr>
+  <tr><td><code>antialias=</code></td><td><code>True</code> (default) for smooth edges, <code>False</code> for the plain, fastest triangle.</td><td><code>antialias=False</code></td></tr>
+</table></div>
+
+<p>Because <code>direction</code> is just a vector, a triangle can point at anything. Subtract two positions and you have the direction from one to the other:</p>
+<pre><code class="py">from vec2 import Vec2
+
+centre = Vec2(320, 200)
+to_mouse = Vec2(*app.cursor()) - centre                 # from the centre to the cursor
+ui.draw_screen_triangle(centre, 40, 70, to_mouse, YELLOW)        # an arrowhead that follows the mouse</code></pre>
+<p>The same vector makes an arrowhead for a line: put the anchor at the end of the line and give the line's own direction.</p>
+
+<div class="grid2">
+  <div class="card"><h4>antialias=True — smooth</h4>
+    <p>The same idea as the rounded rectangle: for each pixel, the distance to the nearest of the three edges, and a one-pixel fade across it. Slanted edges stay clean at any angle.</p></div>
+  <div class="card"><h4>antialias=False — plain</h4>
+    <p>The three corners are handed to the graphics card as they are, with one flat colour. Nothing is computed per pixel, and an opaque colour is not even blended. Slanted edges show small steps, one pixel high.</p></div>
+</div>
 
 <h3>The line</h3>
 <pre><code class="py">ui.draw_screen_line(start, end, color, thickness)
@@ -478,7 +531,8 @@ ui.draw_screen_image(anchor, size, "photo.png")</code></pre>
 
 <pre><code class="py">ui.in_screen_rect(cursor, anchor, size, radius)     # -&gt; True / False
 ui.in_screen_circle(cursor, center, radius)         # -&gt; True / False
-ui.in_screen_line(cursor, start, end, thickness)    # -&gt; True / False</code></pre>
+ui.in_screen_line(cursor, start, end, thickness)    # -&gt; True / False
+ui.in_screen_triangle(cursor, anchor, base, height, direction)   # -&gt; True / False</code></pre>
 
 <p>Look at the arguments: after <code>cursor</code>, they are <strong>the same, in the same order</strong>, as the drawing method. Describe a shape once, then use the description twice.</p>
 
@@ -501,7 +555,7 @@ def draw_frame():
 ui.draw_screen_line(START, END, YELLOW if over else PURPLE, 2)    # thin</code></pre>
 
 <div class="box"><div class="t">These are plain functions</div>
-<p>The tests need no window and no graphics card. They also live in <code>graphics/screen2d.py</code> as <code>screen2d.in_rect</code> and <code>screen2d.in_circle</code>, next to two more that return the <em>distance</em> to the edge in pixels (negative inside): <code>screen2d.rect_distance</code>, <code>screen2d.circle_distance</code> and <code>screen2d.line_distance</code>. Useful for a forgiving button: <code>rect_distance(…) &lt;= 6</code> also accepts a cursor 6 pixels outside.</p></div>
+<p>The tests need no window and no graphics card. They also live in <code>graphics/screen2d.py</code> as <code>screen2d.in_rect</code> and <code>screen2d.in_circle</code>, next to two more that return the <em>distance</em> to the edge in pixels (negative inside): <code>screen2d.rect_distance</code>, <code>screen2d.circle_distance</code> and <code>screen2d.line_distance</code>. <code>screen2d.triangle_points(anchor, base, height, direction)</code> returns the three corners of a triangle, for when you need them yourself. Useful for a forgiving button: <code>rect_distance(…) &lt;= 6</code> also accepts a cursor 6 pixels outside.</p></div>
 </section>
 
 <!-- ================================================================ 7 -->
@@ -1239,12 +1293,14 @@ app.request_redraw()         app.quit()</code></pre>
 <h3>Screen space — pixels, origin top-left, y down</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius=0)        ui.in_screen_rect(cursor, anchor, size, radius=0)
 ui.draw_screen_circle(center, radius, color)              ui.in_screen_circle(cursor, center, radius)
+ui.draw_screen_triangle(anchor, base, height, direction=(0, -1), color, antialias=True)
+ui.in_screen_triangle(cursor, anchor, base, height, direction=(0, -1))
 ui.draw_screen_line(start, end, color, thickness=2)       ui.in_screen_line(cursor, start, end, thickness=2)
 ui.draw_screen_dashed_line(start, end, color, thickness=2, dash=10, spacing=6)
 ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content_size, anchor, size) -&gt; (anchor, size)
 ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
 screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)
-screen2d.line_distance(cursor, start, end)</code></pre>
+screen2d.line_distance(cursor, start, end)                screen2d.triangle_points(anchor, base, height, direction) -&gt; (a, b, tip)</code></pre>
 
 <h3>World space — (x, y, z), z up</h3>
 <pre><code class="py">ui.draw_grid()
@@ -1278,7 +1334,8 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>ModuleNotFoundError: No module named 'wgpu'</code></td><td>You used another Python. Start the command with <code>.venv/bin/python</code>, or run the installer again.</td></tr>
   <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
   <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
-  <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre.</td></tr>
+  <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
+  <tr><td>A triangle points the wrong way</td><td>"Up" is <code>(0, -1)</code>, not <code>(0, 1)</code>: screen <code>y</code> grows downward.</td></tr>
   <tr><td>An animation only moves when the mouse moves</td><td>That is the reactive loop doing its job. Add <code>--refresh 60</code>, or call <code>app.request_redraw()</code> when your data changes.</td></tr>
   <tr><td>Side B stays on "waiting for side A"</td><td>Same <code>link.toml</code> on both sides? <code>server_ip</code> is the address of the <em>server</em> machine? The firewall of that machine allows UDP port 50555? The two clocks agree within two minutes (or set <code>max_clock_skew = 0</code> on both)?</td></tr>
   <tr><td>Example 3: side B stays on "waiting for side A"</td><td>The same checks, with UDP port <strong>50556</strong>. With <code>--source 0</code>, look at side A first: if its own preview is empty, the camera did not open (permission, or another program is using it).</td></tr>

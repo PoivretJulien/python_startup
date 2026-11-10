@@ -520,8 +520,122 @@ fn fs_main(i: LOut) -> @location(0) vec4<f32> {
 """
 )
 
+# --------------------------------------------- screen-space triangles (SDF)
+# One instance per triangle: its three corners (window points) and a colour.
+_TRIANGLE_IO = """
+struct TIn {
+    @location(0) a: vec2<f32>,           // the three corners, window points
+    @location(1) b: vec2<f32>,
+    @location(2) c: vec2<f32>,
+    @location(3) color: vec4<f32>,
+};
+
+struct TOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) pixel: vec2<f32>,    // framebuffer pixels
+    @location(2) @interpolate(flat) ab: vec4<f32>,         // corners a and b, pixels
+    @location(3) @interpolate(flat) c: vec2<f32>,
+};
+
+fn to_clip(pixel: vec2<f32>) -> vec4<f32> {
+    return vec4<f32>(
+        pixel.x / u.viewport.x * 2.0 - 1.0,
+        1.0 - pixel.y / u.viewport.y * 2.0,
+        0.0,
+        1.0
+    );
+}
+"""
+
+# Anti-aliased: a quad around the triangle, one signed distance per fragment.
+SCREEN_TRIANGLES = (
+    COMMON
+    + _TRIANGLE_IO
+    + """
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, t: TIn) -> TOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
+        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0),
+    );
+    let scale = u.viewport / u.screen;          // points -> framebuffer pixels
+    let a = t.a * scale;
+    let b = t.b * scale;
+    let c = t.c * scale;
+    // The bounding box of the three corners, grown by the fade margin.
+    let low = min(a, min(b, c)) - vec2<f32>(u.feather);
+    let high = max(a, max(b, c)) + vec2<f32>(u.feather);
+    let pixel = mix(low, high, corners[vertex]);
+    var out: TOut;
+    out.position = to_clip(pixel);
+    out.color = t.color;
+    out.pixel = pixel;
+    out.ab = vec4<f32>(a, b);
+    out.c = c;
+    return out;
+}
+
+// For one edge: the squared distance from p to that segment, and which side of
+// it p is on (positive = the inside, once multiplied by the winding).
+fn edge(p: vec2<f32>, start: vec2<f32>, finish: vec2<f32>, winding: f32) -> vec2<f32> {
+    let e = finish - start;
+    let v = p - start;
+    let nearest = v - e * clamp(dot(v, e) / max(dot(e, e), 1e-12), 0.0, 1.0);
+    return vec2<f32>(dot(nearest, nearest), winding * (v.x * e.y - v.y * e.x));
+}
+
+@fragment
+fn fs_main(i: TOut) -> @location(0) vec4<f32> {
+    let a = i.ab.xy;
+    let b = i.ab.zw;
+    let c = i.c;
+    let e0 = b - a;
+    let e2 = a - c;
+    let winding = sign(e0.x * e2.y - e0.y * e2.x);
+    // Signed distance to the triangle: negative inside, 0 on an edge.
+    let d = min(min(edge(i.pixel, a, b, winding), edge(i.pixel, b, c, winding)),
+                edge(i.pixel, c, a, winding));
+    let signed_distance = -sqrt(d.x) * sign(d.y);
+    let coverage = clamp(0.5 - signed_distance, 0.0, 1.0);
+    if (coverage <= 0.001) {
+        discard;
+    }
+    return vec4<f32>(i.color.rgb, i.color.a * coverage);
+}
+"""
+)
+
+# Not anti-aliased: the three corners *are* the geometry. Three vertices, a
+# constant colour, no distance field, no discard: the rasteriser decides each
+# pixel in or out, so slanted edges show the pixel staircase.
+SCREEN_TRIANGLE_SHARP = (
+    COMMON
+    + _TRIANGLE_IO
+    + """
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, t: TIn) -> TOut {
+    let scale = u.viewport / u.screen;
+    var points = array<vec2<f32>, 3>(t.a * scale, t.b * scale, t.c * scale);
+    var out: TOut;
+    out.position = to_clip(points[vertex]);
+    out.color = t.color;
+    out.pixel = points[vertex];
+    out.ab = vec4<f32>(0.0);
+    out.c = vec2<f32>(0.0);
+    return out;
+}
+
+@fragment
+fn fs_main(i: TOut) -> @location(0) vec4<f32> {
+    return i.color;
+}
+"""
+)
+
 # --------------------------------------------------------------- vertex layouts
 # (location, components, float offset) — the same triples the GL VAOs used.
+SCREEN_TRIANGLE_LAYOUT = (10, ((0, 2, 0), (1, 2, 2), (2, 2, 4), (3, 4, 6)))
 SCREEN_LINE_LAYOUT = (11, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8), (4, 1, 9), (5, 1, 10)))
 SCREEN_SHAPE_LAYOUT = (9, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8)))
 LINE_LAYOUT = (6, ((0, 3, 0), (1, 3, 3)))
@@ -542,4 +656,6 @@ ALL_SHADERS = {
     "screen_shapes": SCREEN_SHAPES,
     "screen_rect_sharp": SCREEN_RECT_SHARP,
     "screen_lines": SCREEN_LINES,
+    "screen_triangles": SCREEN_TRIANGLES,
+    "screen_triangle_sharp": SCREEN_TRIANGLE_SHARP,
 }

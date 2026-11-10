@@ -1,4 +1,4 @@
-"""Screen-space shapes: rounded rectangles, circles, lines and their hit tests.
+"""Screen-space shapes: rounded rectangles, circles, triangles, lines and their hit tests.
 
 Everything here speaks **window pixels** with the origin at the **top-left** and
 y growing down — the convention of ``glfw.get_cursor_pos`` and of
@@ -11,7 +11,9 @@ the raw cursor position, no conversion::
 
 One description, two uses: a rounded rectangle is ``anchor`` (its top-left
 corner), ``size`` (width, height) and ``radius`` (the four corners); a circle is
-``center`` and ``radius``; a line is ``start``, ``end`` and ``thickness``. The draw methods and the hit tests take them in the
+``center`` and ``radius``; a line is ``start``, ``end`` and ``thickness``; a
+triangle is ``anchor`` (the middle of its base), ``base``, ``height`` and
+``direction`` (where the height points). The draw methods and the hit tests take them in the
 same order, so the picture and the test cannot drift apart.
 
 The hit tests are the same signed distance function (SDF) the fragment shader
@@ -39,6 +41,10 @@ ColorRGBA = Sequence[float]  # (r, g, b) or (r, g, b, a), each 0..1
 SHAPE_FLOATS = 9
 # One line = one instance row: start(2) end(2) color(4) half_width dash gap.
 LINE_FLOATS = 11
+# One triangle = one instance row: corner a(2) b(2) c(2) color(4).
+TRIANGLE_FLOATS = 10
+
+UP = (0.0, -1.0)  # screen y grows down, so "up" is minus y
 
 
 def clamp_radius(width: float, height: float, radius: float) -> float:
@@ -101,6 +107,56 @@ def line_instance(
     row[0, 8] = 0.5 * max(float(thickness), 0.0)
     row[0, 9] = max(float(dash), 0.0)
     row[0, 10] = max(float(spacing), 0.0)
+    return row
+
+
+def triangle_points(
+    anchor: Point2,
+    base: float,
+    height: float,
+    direction: Point2 = UP,
+) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+    """The three corners of an isosceles triangle: ``(base_a, base_b, tip)``.
+
+    ``anchor`` is the **middle of the base**. ``direction`` is where the height
+    points, from that middle to the tip: any ``(x, y)`` (a tuple or a Vec2), of
+    any length — only where it points matters. The tip is therefore
+    ``anchor + height * unit(direction)`` and the base lies across it,
+    ``base`` pixels wide. A zero ``direction`` points up.
+
+    Screen y grows **down**: ``(0, -1)`` points up, ``(1, 0)`` right, ``(0, 1)``
+    down, ``(-1, 0)`` left.
+    """
+    dx, dy = float(direction[0]), float(direction[1])
+    length = math.hypot(dx, dy)
+    if length <= 1e-12:
+        dx, dy = UP
+    else:
+        dx, dy = dx / length, dy / length
+    ax, ay = float(anchor[0]), float(anchor[1])
+    half = 0.5 * float(base)
+    # (-dy, dx) is the direction turned a quarter turn: the line of the base.
+    return (
+        (ax - dy * half, ay + dx * half),
+        (ax + dy * half, ay - dx * half),
+        (ax + dx * float(height), ay + dy * float(height)),
+    )
+
+
+def triangle_instance(
+    anchor: Point2,
+    base: float,
+    height: float,
+    direction: Point2,
+    color: ColorRGBA,
+) -> np.ndarray:
+    """One triangle as a ``(1, 10)`` float32 instance row (its three corners)."""
+    a, b, c = triangle_points(anchor, base, height, direction)
+    row = np.empty((1, TRIANGLE_FLOATS), dtype=np.float32)
+    row[0, 0:2] = a
+    row[0, 2:4] = b
+    row[0, 4:6] = c
+    row[0, 6:10] = rgba(color)
     return row
 
 
@@ -175,6 +231,29 @@ def in_line(cursor: Point2, start: Point2, end: Point2, thickness: float = 2.0) 
     a dashed line the gaps count as part of the line.
     """
     return line_distance(cursor, start, end) <= 0.5 * thickness
+
+
+def in_triangle(
+    cursor: Point2,
+    anchor: Point2,
+    base: float,
+    height: float,
+    direction: Point2 = UP,
+) -> bool:
+    """True when ``cursor`` is inside the triangle (edges included).
+
+    Same description as ``draw_screen_triangle``. The point is inside when it
+    is on the same side of the three edges.
+    """
+    a, b, c = triangle_points(anchor, base, height, direction)
+
+    def side(p, q) -> float:  # > 0 on one side of the edge p-q, < 0 on the other
+        return (cursor[0] - q[0]) * (p[1] - q[1]) - (p[0] - q[0]) * (cursor[1] - q[1])
+
+    d1, d2, d3 = side(a, b), side(b, c), side(c, a)
+    negative = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
+    positive = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
+    return not (negative and positive)
 
 
 def rect_distance(
