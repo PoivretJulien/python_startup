@@ -1,0 +1,22 @@
+# The whole project on Linux / macOS / Windows, Python >= 3.11. No OpenGL.
+# All of these ship binary wheels; nothing is compiled on install.
+# (network/udp_link needs nothing: it is standard library only.)
+
+# Windowing + input + the blocking event queue. The wheel bundles the GLFW C
+# library. Windows are created with CLIENT_API = NO_API (no GL context).
+glfw>=2.7,<3
+
+# WebGPU for Python: drives the Rust wgpu-native library
+# (wgpu.backends.wgpu_native, formerly wgpu.backends.rs).
+# Metal on macOS, Vulkan on Linux, DX12/Vulkan on Windows.
+wgpu>=0.33,<0.40
+
+# Only used for its GLFW helper that turns a window into a wgpu surface
+# (native NSWindow / X11 / Wayland handles).
+rendercanvas>=3.0
+
+# Vector/matrix math and all vertex packing.
+numpy>=1.26
+
+# Picture decoding for draw_image.
+Pillow>=10.1

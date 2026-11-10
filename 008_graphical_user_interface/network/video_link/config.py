@@ -1,0 +1,60 @@
+"""Video settings. Addressing and the secret come from udp_link's LinkConfig
+(same link.toml / env vars); this file only adds video-specific knobs, read
+from an optional [video] table in the same TOML file."""
+
+from __future__ import annotations
+
+import os
+import socket
+import tomllib
+from dataclasses import dataclass, fields
+from typing import Any
+
+from udp_link._net import open_udp_socket
+from udp_link.config import resolve_config_path
+
+DEFAULT_VIDEO_PORT = 50556
+
+
+@dataclass(frozen=True, slots=True)
+class VideoConfig:
+    port: int = DEFAULT_VIDEO_PORT
+    # Keep-alive. 0 = idle mode: the client subscribes once and then only
+    # re-subscribes while video is arriving (see "Idle mode" in README.md).
+    subscribe_interval: float = 1.0  # client SUB keep-alive period (s); 0 = off
+    subscriber_ttl: float = 4.0  # server stops streaming to clients silent this long *while streaming* (s)
+    max_subscribers: int = 4  # each subscriber costs full upload bandwidth
+    max_frame_bytes: int = 1_000_000  # reject frames larger than this
+    max_partial_frames: int = 4  # frames being reassembled at once (client)
+    buffer_frames: int = 30  # client keeps the N most recent frames
+    socket_buffer: int = 4 * 1024 * 1024  # SO_SNDBUF / SO_RCVBUF request
+    max_write_buffer: int = 2 * 1024 * 1024  # server skips frames above this backlog
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.port <= 65535:
+            raise ValueError(f"port out of range: {self.port}")
+        for f in fields(self):
+            if f.name == "subscribe_interval":
+                if self.subscribe_interval < 0:
+                    raise ValueError("subscribe_interval must be >= 0 (0 = idle mode)")
+            elif f.name != "port" and getattr(self, f.name) <= 0:
+                raise ValueError(f"{f.name} must be > 0")
+
+    @classmethod
+    def load(cls, path: str | os.PathLike[str] | None = None, **overrides: Any) -> VideoConfig:
+        values: dict[str, Any] = {}
+        if (found := resolve_config_path(path)) is not None:
+            with found.open("rb") as fh:
+                values.update(tomllib.load(fh).get("video", {}))
+        if (port := os.environ.get("UDP_LINK_VIDEO_PORT")) is not None:
+            values["port"] = int(port)
+        values.update({k: v for k, v in overrides.items() if v is not None})
+        known = {f.name for f in fields(cls)}
+        if unknown := set(values) - known:
+            raise ValueError(f"unknown [video] keys: {sorted(unknown)}")
+        return cls(**values)
+
+
+def make_udp_socket(bind: tuple[str, int], buffer_size: int) -> socket.socket:
+    """IPv4 UDP socket with enlarged kernel buffers (video sends bursts); Windows-safe."""
+    return open_udp_socket(bind[0], bind[1], buffer_size=buffer_size)
