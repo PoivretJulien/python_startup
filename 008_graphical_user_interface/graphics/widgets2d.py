@@ -17,12 +17,17 @@ control's current value::
 
     app.run(draw_frame)
 
+``Slider`` picks a value; ``Ruler`` is a measuring overlay for laying out an
+interface (also available in any program with the ``--ruler`` option).
+
 Nothing here touches the GPU directly: a slider is one ``draw_screen_line``, one
 ``draw_screen_circle`` and the hit tests of ``screen2d``. Read it as a worked
 example of the drag recipe, then write your own controls the same way.
 """
 
 from __future__ import annotations
+
+import math
 
 import screen2d
 
@@ -180,3 +185,126 @@ class Slider:
             handle, self.radius, self.hover_color if self.hovered else self.handle_color
         )
         return self._value
+
+
+class Ruler:
+    """A measuring overlay: where the cursor is, and how far it was dragged.
+
+    A tool for *you*, while laying out an interface. Draw it last, so it is on
+    top of everything::
+
+        ruler = Ruler()
+
+        def draw_frame():
+            ...your interface...
+            ruler.draw(app)
+
+    or do not write anything: every program built on ``app3d.App`` shows it when
+    started with ``--ruler`` (and F1 switches it on and off while running).
+
+    What it shows, all in window pixels — the units of every screen method:
+
+    * always: a crosshair through the cursor and its position ``x, y``;
+    * while the mouse button is held: the point where the click happened
+      (``from``), a line from there to the cursor with its length ``d``, and the rectangle
+      between the two points with its width ``dx`` and height ``dy`` — which
+      are exactly the ``anchor`` and ``size`` of ``draw_screen_rect``.
+
+    The ruler only watches the mouse; the program underneath still receives the
+    same clicks. After ``draw`` these can be read:
+
+    * ``measuring`` — True while the button is held,
+    * ``start`` — where the click happened, ``end`` — the cursor,
+    * ``distance`` — the length between them, in pixels (0.0 when not measuring).
+    """
+
+    def __init__(
+        self,
+        color: screen2d.ColorRGBA = (1.00, 0.55, 0.10, 1.0),
+        text_color: screen2d.ColorRGBA = (1.00, 1.00, 1.00),
+        panel_color: screen2d.ColorRGBA = (0.05, 0.05, 0.07, 0.85),
+        text_size: float = 12.0,
+    ) -> None:
+        self.color = screen2d.rgba(color)
+        self.text_color = text_color
+        self.panel_color = panel_color
+        self.text_size = float(text_size)
+        self.measuring = False
+        self.start = (0.0, 0.0)
+        self.end = (0.0, 0.0)
+        self.distance = 0.0
+        self._was_down = False
+
+    def _label(self, app, near: screen2d.Point2, lines: list[str]) -> None:
+        """A small text panel next to ``near``, kept inside the window."""
+        ui = app.aa
+        size = self.text_size
+        pad, gap = 7.0, 5.0
+        width = max(ui.measure_screen_text(line, size) for line in lines) + 2 * pad
+        height = len(lines) * size + (len(lines) - 1) * gap + 2 * pad
+        window_w, window_h = app.size()
+        x, y = near[0] + 16, near[1] + 18  # below-right of the point ...
+        if x + width > window_w:
+            x = near[0] - 16 - width  # ... or on the other side near an edge
+        if y + height > window_h:
+            y = near[1] - 18 - height
+        x, y = max(x, 0.0), max(y, 0.0)
+        ui.draw_screen_rect((x, y), (width, height), self.panel_color, 6)
+        for index, line in enumerate(lines):
+            baseline = y + pad + size + index * (size + gap)
+            ui.draw_screen_text(x + pad, baseline, line, size, self.text_color)
+
+    def draw(self, app) -> float:
+        """Draw the overlay for this frame; return the measured distance.
+
+        Call it once per frame, after everything else. ``app`` is the
+        ``app3d.App``.
+        """
+        ui = app.aa
+        cursor = app.cursor()
+        down = app.mouse_down()
+        if down and not self._was_down:
+            self.start = (float(cursor[0]), float(cursor[1]))  # the click
+        self._was_down = down
+        self.measuring = down
+        self.end = (float(cursor[0]), float(cursor[1]))
+
+        r, g, b, _a = self.color
+        faint = (r, g, b, 0.45)
+        window_w, window_h = app.size()
+
+        # The crosshair: one dashed line across the window in each direction.
+        ui.draw_screen_dashed_line((0, cursor[1]), (window_w, cursor[1]), faint, 1, 6, 5)
+        ui.draw_screen_dashed_line((cursor[0], 0), (cursor[0], window_h), faint, 1, 6, 5)
+
+        if not self.measuring:
+            self.distance = 0.0
+            self._label(app, cursor, [f"x {cursor[0]:.0f}   y {cursor[1]:.0f}"])
+            return 0.0
+
+        sx, sy = self.start
+        dx, dy = cursor[0] - sx, cursor[1] - sy
+        self.distance = math.hypot(dx, dy)
+
+        # The rectangle between the two points: its top-left corner and size
+        # are what draw_screen_rect calls `anchor` and `size`.
+        anchor = (min(sx, cursor[0]), min(sy, cursor[1]))
+        size = (abs(dx), abs(dy))
+        if size[0] >= 1.0 and size[1] >= 1.0:
+            ui.draw_screen_rect(anchor, size, (r, g, b, 0.10))
+            ui.draw_screen_rect_outline(anchor, size, faint, 0, 1)
+        ui.draw_screen_line(self.start, cursor, self.color, 2)  # the measured length
+        ui.draw_screen_circle_outline(self.start, 6, self.color, 2)  # where the click was
+        ui.draw_screen_circle(cursor, 3, self.color)
+
+        self._label(
+            app,
+            cursor,
+            [
+                f"x {cursor[0]:.0f}   y {cursor[1]:.0f}",
+                f"from ({sx:.0f}, {sy:.0f})   d {self.distance:.1f}",
+                f"dx {dx:+.0f}   dy {dy:+.0f}",
+                f"anchor ({anchor[0]:.0f}, {anchor[1]:.0f})   size ({size[0]:.0f}, {size[1]:.0f})",
+            ],
+        )
+        return self.distance

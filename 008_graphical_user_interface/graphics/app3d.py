@@ -32,7 +32,8 @@ Nothing in the existing modules changes: ``App`` only calls them, in the order
 
 The loop is the reactive one by default: no event, no frame, no CPU. The
 command line of ``main.py`` is kept: ``--poll`` (always redraw), ``--refresh
-HZ``, ``--wait SECONDS``, ``--backend``, ``--no-vsync``, ``--seconds``. Pass
+HZ``, ``--wait SECONDS``, ``--backend``, ``--no-vsync``, ``--seconds``, plus
+``--ruler`` for the layout ruler (cursor position and click-drag distance). Pass
 your own ``argparse`` parser to add options next to them.
 """
 
@@ -123,6 +124,12 @@ def add_loop_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     group.add_argument(
         "--seconds", type=float, default=0.0, help="auto-exit after N seconds (0 = never)"
     )
+    group.add_argument(
+        "--ruler",
+        action="store_true",
+        help="show the measuring overlay: cursor position, and distance while the "
+        "mouse button is held (F1 switches it on and off)",
+    )
     return parser
 
 
@@ -174,6 +181,10 @@ class App:
         self._pan = (0.0, 0.0)
         self._zoom = 1.0
         self.gestures = gestures3d.install(glfw_window, self._on_pan, self._on_zoom)
+        # The layout ruler (widgets2d.Ruler), drawn over every frame when on.
+        # `--ruler` starts with it on; F1 switches it at any time.
+        self.ruler_on = bool(getattr(self.args, "ruler", False))
+        self._ruler = None
 
     def _open(self, title, size, position):
         from window3d import create_window
@@ -189,6 +200,8 @@ class App:
         if action == glfw.PRESS:
             if key == glfw.KEY_ESCAPE:
                 glfw.set_window_should_close(window, True)
+            if key == glfw.KEY_F1:
+                self.ruler_on = not self.ruler_on
             name = key_name(key, scancode)
             self._held[key] = name
             self._pending_pressed.append((name, False))
@@ -346,6 +359,12 @@ class App:
             def frame() -> None:
                 self._begin_frame_input()  # this frame's key presses and text
                 draw_frame()
+                if self.ruler_on:  # last, so it is on top of the program's picture
+                    if self._ruler is None:
+                        from widgets2d import Ruler
+
+                        self._ruler = Ruler()
+                    self._ruler.draw(self)
 
             stats = loop3d.run(
                 self.gpu,

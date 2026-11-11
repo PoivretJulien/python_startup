@@ -1,5 +1,3 @@
-
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/d8520157-4c84-4a30-bb35-e8cb7ca520ad" />
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -54,6 +52,10 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python graphics/main.py
 ```
 
+Add `--ruler` to any of them for a measuring overlay (cursor position, and the
+distance, `anchor` and `size` of a click-drag), to help place interface
+elements; F1 switches it on and off.
+
 On Windows the interpreter is `.venv\Scripts\python`. Every program is reactive
 by default (no event, no frame, no CPU) and accepts `--poll` to redraw
 continuously.
@@ -97,12 +99,3 @@ video = VideoThread("client", "network/link.toml", on_frame=lambda picture: app.
 The connection settings (same machine by default, or two machines on a local
 network) are in `network/link.toml`; the guide and the headers of
 `examples/02_udp_drag/main.py` and `examples/03_udp_video/main.py` explain them.
-
-## Python take a clear place in front-end with simple syntax and easy API
-
-articulating code as never have been as easy... letting place to the backend where 
-heavier compiled, planned infrastructures still a legitimate solution ( where time 
-and budget allow it ), but python api is rich, for instance a library warper like open_cv
-let us to deal with compiled language with the ease needed for a crystal clear mind and 
-productivity all along the journey, scripted language offer to the final user a stimulating 
-scripting environment that keep possibility and creativity at the edge of the day. 

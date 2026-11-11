@@ -143,6 +143,7 @@
     <li><a href="#recipes">Hover, click, drag</a></li>
     <li><a href="#keyboard">The keyboard</a></li>
     <li><a href="#gestures">Pan and zoom</a></li>
+    <li><a href="#ruler">The ruler</a></li>
     <li><a href="#text">Text</a></li>
     <li><a href="#world">Drawing in 3D</a></li>
     <li><a href="#camera">The camera</a></li>
@@ -846,6 +847,9 @@ size = Slider((640, 240), (640, 70), 0, 85, 28, step=1)       # vertical: 0 at t
 <div class="box"><div class="t">Nothing new inside</div>
 <p><code>graphics/widgets2d.py</code> is under 200 lines, built only from what this chapter showed: <code>was_down</code> to see the click, a <code>dragging</code> flag, a grab offset, <code>draw_screen_line</code> and <code>draw_screen_circle</code>. Read it, then write your own controls — a checkbox, a button, a knob — the same way: an object that keeps its state, and one <code>draw(app)</code> that returns its value.</p></div>
 
+<div class="box"><div class="t">Finding the right numbers</div>
+<p>Placing shapes by guessing coordinates is slow. Start any program with <code>--ruler</code> and measure on screen instead: see <a href="#ruler">The ruler</a>.</p></div>
+
 <!-- ================================================================ keyboard -->
 <section id="keyboard">
 <h2><span class="n">08</span>The keyboard</h2>
@@ -1057,9 +1061,93 @@ ui.draw_screen_image(offset, (texture.width * scale, texture.height * scale), te
 <p>The map of example 8 is computed by the program when it starts — random terrain coloured by height — so nothing is downloaded and the picture belongs to nobody. Imagery from Google Maps and most online map services may not be copied into your own program. To view a real map, pass a picture you have the right to use: <code>--image world.jpg</code>. NASA's "Blue Marble" images are public domain and come in very high resolution.</p></div>
 </section>
 
+<!-- ================================================================ ruler -->
+<section id="ruler">
+<h2><span class="n">10</span>The ruler</h2>
+<p class="goal">A measuring overlay, to find the numbers your interface needs.</p>
+
+<p>Every screen method wants positions and sizes in pixels, and finding them by trial and error is slow. The ruler is a tool for <em>you</em>, the person writing the program: it draws over any program of the project and tells you where the cursor is and how far you dragged.</p>
+
+<h3>Switching it on</h3>
+<p>Add <code>--ruler</code> to the command of <strong>any</strong> program built on <code>App</code> — the examples, or your own. No code to write:</p>
+<pre class="shell">.venv/bin/python examples/01_hover_shapes/main.py --ruler</pre>
+<div class="tablewrap"><table>
+  <tr><th>How</th><th>Effect</th></tr>
+  <tr><td><code>--ruler</code> on the command line</td><td>The program starts with the ruler on.</td></tr>
+  <tr><td>The <kbd>F1</kbd> key</td><td>Switches it on or off at any time, in any program, even one started without <code>--ruler</code>.</td></tr>
+  <tr><td><code>app.ruler_on = True</code></td><td>The same switch, from your code.</td></tr>
+</table></div>
+
+<h3>What it shows</h3>
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="The ruler overlay: a crosshair through the cursor, and while the button is held a line from the click point to the cursor, the rectangle between them and a label with x, y, distance, dx, dy, anchor and size">
+  <rect x="150" y="50" width="250" height="130" rx="22" fill="#9440e6"/>
+  <rect x="150" y="50" width="250" height="130" fill="rgba(255,140,26,0.10)" stroke="#ff8c1a" stroke-opacity=".5"/>
+  <path d="M0 180 H760 M400 0 V250" stroke="#ff8c1a" stroke-opacity=".5" stroke-dasharray="6 5"/>
+  <line x1="150" y1="50" x2="400" y2="180" stroke="#ff8c1a" stroke-width="2"/>
+  <circle cx="150" cy="50" r="6" fill="none" stroke="#ff8c1a" stroke-width="2"/>
+  <circle cx="400" cy="180" r="3" fill="#ff8c1a"/>
+  <text x="140" y="40" text-anchor="end" font-size="12" style="fill:#9a968c">the click</text>
+  <text x="392" y="200" text-anchor="end" font-size="12" style="fill:#9a968c">the cursor</text>
+  <rect x="418" y="194" width="250" height="52" rx="6" fill="#0d0d12" stroke="#2c2c36"/>
+  <g font-size="11">
+    <text x="428" y="210">x 310   y 240   from (60, 110)   d 281.8</text>
+    <text x="428" y="225">dx +250   dy +130</text>
+    <text x="428" y="240">anchor (60, 110)   size (250, 130)</text>
+  </g>
+</svg>
+<figcaption>Click on one corner of where the shape should be, drag to the opposite corner, and read the last line: it is what <code>draw_screen_rect</code> wants.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>When</th><th>On screen</th><th>In the label</th></tr>
+  <tr><td>Always</td><td>A dashed crosshair through the cursor, across the whole window.</td><td><code>x</code>, <code>y</code>: the cursor position.</td></tr>
+  <tr><td rowspan="3">While the mouse button is held</td><td>A small ring where the click happened, and a line from it to the cursor.</td><td><code>from (x, y)</code>: where the click happened. <code>d</code>: the length of the line.</td></tr>
+  <tr><td>The rectangle that has the click and the cursor as opposite corners.</td><td><code>dx</code>, <code>dy</code>: its width and height, with a sign (<code>+</code> = to the right / downward).</td></tr>
+  <tr><td></td><td><code>anchor (x, y)   size (w, h)</code>: the same rectangle, the way <code>draw_screen_rect</code> wants it.</td></tr>
+</table></div>
+<p>Release the button and the measurement disappears; the crosshair and the position stay. Everything is in window pixels with the origin at the top-left — the units of every screen method — so each number can be copied into your code as it is.</p>
+
+<h3>From a measurement to a line of code</h3>
+<div class="tablewrap"><table>
+  <tr><th>You want to place</th><th>Do this with the ruler</th><th>Read</th><th>Write</th></tr>
+  <tr><td>A rectangle, a picture, a frame</td><td>Click where one corner should be, drag to the opposite corner.</td><td><code>anchor</code>, <code>size</code></td><td class="wrap"><code>ui.draw_screen_rect(anchor, size, …)</code></td></tr>
+  <tr><td>A circle</td><td>Click where the centre should be, drag to where the edge should be.</td><td><code>from</code>, <code>d</code></td><td class="wrap"><code>ui.draw_screen_circle(from, d, …)</code></td></tr>
+  <tr><td>A line, a slider</td><td>Click on one end, drag to the other.</td><td><code>from</code>, and <code>x</code>, <code>y</code></td><td class="wrap"><code>ui.draw_screen_line(from, (x, y), …)</code></td></tr>
+  <tr><td>A text, a single point</td><td>Just point at it.</td><td><code>x</code>, <code>y</code></td><td class="wrap"><code>ui.draw_screen_text(x, y, …)</code></td></tr>
+  <tr><td>A gap between two elements</td><td>Drag from one edge to the other.</td><td><code>dx</code> or <code>dy</code></td><td>the spacing constant of your layout</td></tr>
+</table></div>
+<p>Dragging along the crosshair keeps a measurement perfectly horizontal or vertical: watch <code>dy</code> or <code>dx</code> stay at <code>+0</code>.</p>
+
+<div class="box key"><div class="t">Check an existing layout</div>
+<p>The ruler also verifies what is already drawn. Drag across the rounded rectangle of example 1, corner to corner: the label reads <code>anchor (60, 90)   size (260, 150)</code>, the very numbers in its source file.</p></div>
+
+<div class="box warn"><div class="t">The ruler does not take the mouse away</div>
+<p>It only watches. The program underneath receives the same clicks and the same movement, so a slider or a draggable circle under the cursor moves while you measure. Measure next to them, or measure the static parts first.</p></div>
+
+<h3>In your own code</h3>
+<p>With <code>--ruler</code> and <kbd>F1</kbd> you rarely need this, but the ruler is also an object, like the slider, if you want it always on, in other colours, or want to use what it measures:</p>
+<pre><code class="py">from widgets2d import Ruler                    # in graphics/
+
+ruler = Ruler()                                # or Ruler(color=(0.3, 0.9, 1.0), text_size=14)
+
+def draw_frame():
+    # … your interface …
+    distance = ruler.draw(app)                 # the LAST line: the overlay goes on top</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Member</th><th>Meaning</th></tr>
+  <tr><td><code>ruler.draw(app)</code></td><td>Once per frame, after everything else. Returns the measured distance in pixels, <code>0.0</code> when the button is up.</td></tr>
+  <tr><td><code>ruler.measuring</code></td><td><code>True</code> while the mouse button is held.</td></tr>
+  <tr><td><code>ruler.start</code>, <code>ruler.end</code></td><td>Where the click happened, and the cursor: two <code>(x, y)</code>.</td></tr>
+  <tr><td><code>ruler.distance</code></td><td>The same number <code>draw</code> returned.</td></tr>
+  <tr><td><code>Ruler(color=…, text_color=…, panel_color=…, text_size=…)</code></td><td>Its look: the lines, the label's text, the label's background, the size of the text.</td></tr>
+</table></div>
+<p>It is built from the methods of chapter 05 only — two dashed lines, a line, a rectangle and its outline, a ring, a text panel — in <code>graphics/widgets2d.py</code>.</p>
+</section>
+
 <!-- ================================================================ 8 -->
 <section id="text">
-<h2><span class="n">10</span>Text</h2>
+<h2><span class="n">11</span>Text</h2>
 <p class="goal">Labels, in pixels or lying in the 3D scene.</p>
 
 <pre><code class="py">ui.draw_screen_text(x, y, text, size_px, color)</code></pre>
@@ -1087,7 +1175,7 @@ ui.draw_text((0, 0, 0), "wall", 0.30, (1, 1, 0), right=(1, 0, 0), up=(0, 0, 1)) 
 
 <!-- ================================================================ 9 -->
 <section id="world">
-<h2><span class="n">11</span>Drawing in 3D</h2>
+<h2><span class="n">12</span>Drawing in 3D</h2>
 <p class="goal">The world-space methods, shortest first.</p>
 
 <p>Points are three numbers. A tuple works, and so does the small <code>Vec3</code> class when you want to do arithmetic on them.</p>
@@ -1158,7 +1246,7 @@ a.x, a[0]        # both work: a Vec3 can be used anywhere a tuple can</code></pr
 
 <!-- ================================================================ 10 -->
 <section id="camera">
-<h2><span class="n">12</span>The camera</h2>
+<h2><span class="n">13</span>The camera</h2>
 <p class="goal">One line to make the 3D scene explorable.</p>
 
 <pre><code class="py">def draw_frame():
@@ -1192,7 +1280,7 @@ if hit is not None:
 
 <!-- ================================================================ 11 -->
 <section id="loop">
-<h2><span class="n">13</span>The loop</h2>
+<h2><span class="n">14</span>The loop</h2>
 <p class="goal">Why an idle window costs nothing, and when to change that.</p>
 
 <figure>
@@ -1234,6 +1322,7 @@ if hit is not None:
   <tr><td><code>--refresh 30</code></td><td>Stay reactive, and also redraw 30 times per second. For things that move on their own: a clock, an animation.</td></tr>
   <tr><td><code>--wait 0.5</code></td><td>The longest the loop sleeps in one go, in seconds. <code>0</code> sleeps until an event.</td></tr>
   <tr><td><code>--seconds 5</code></td><td>Quit after 5 seconds. Handy for measuring.</td></tr>
+  <tr><td><code>--ruler</code></td><td>Show the measuring overlay: cursor position, and distance while the mouse button is held. <kbd>F1</kbd> switches it on and off. See <a href="#ruler">The ruler</a>.</td></tr>
   <tr><td><code>--backend vulkan</code></td><td>Force a graphics backend: <code>metal</code>, <code>vulkan</code>, <code>dx12</code>, <code>gl</code>.</td></tr>
 </table></div>
 <pre class="shell">.venv/bin/python examples/01_hover_shapes/main.py --poll</pre>
@@ -1256,7 +1345,7 @@ print(app.args.count)</code></pre>
 
 <!-- ================================================================ 12 -->
 <section id="network">
-<h2><span class="n">14</span>Sending strings</h2>
+<h2><span class="n">15</span>Sending strings</h2>
 <p class="goal">Two programs, one of them says something, the other hears it.</p>
 
 <p>The <code>udp_link</code> library sends <strong>Python strings</strong> between two programs — on the same computer or on two computers of the same network. One side is the <em>server</em>, the other the <em>client</em>; once connected, both can send and receive.</p>
@@ -1372,7 +1461,7 @@ python3 -m apps.time_client --config link.toml</pre>
 
 <!-- ================================================================ 13 -->
 <section id="together">
-<h2><span class="n">15</span>Window + network</h2>
+<h2><span class="n">16</span>Window + network</h2>
 <p class="goal">The second example, read slowly.</p>
 
 <pre class="shell">.venv/bin/python examples/02_udp_drag/main.py</pre>
@@ -1442,7 +1531,7 @@ def draw_frame():
 
 <!-- ================================================================ 14 -->
 <section id="video">
-<h2><span class="n">16</span>Video between two windows</h2>
+<h2><span class="n">17</span>Video between two windows</h2>
 <p class="goal">The third example: a camera on side A, its picture on side B.</p>
 
 <pre class="shell">.venv/bin/python examples/03_udp_video/main.py</pre>
@@ -1541,7 +1630,7 @@ def draw_frame():
 app.run(draw_frame)
 video.close()</code></pre>
 
-<div class="box key"><div class="t">The same pattern as section 15</div>
+<div class="box key"><div class="t">The same pattern as section 16</div>
 <p><code>on_frame</code> only calls <code>app.request_redraw()</code>; the picture waits in <code>video.latest</code> and all the drawing stays in <code>draw_frame</code>. The window is still reactive: it draws once per picture and sleeps in between. Side A is this same code with <code>"server"</code> — its preview is drawn the same way.</p></div>
 
 <div class="box"><div class="t">Why the texture is created inside draw_frame</div>
@@ -1571,7 +1660,7 @@ def draw_frame():
 
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">17</span>Cheat sheet</h2>
+<h2><span class="n">18</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -1607,7 +1696,11 @@ screen2d.line_distance(cursor, start, end)                screen2d.triangle_poin
 <h3>Controls</h3>
 <pre><code class="py">slider = Slider(start, end, minimum=0, maximum=1, value=None, line_color=…, handle_color=…, hover_color=…,
                 fill_color=None, thickness=4, radius=10, step=0)
-value = slider.draw(app)      slider.value      slider.dragging      slider.hovered      slider.changed</code></pre>
+value = slider.draw(app)      slider.value      slider.dragging      slider.hovered      slider.changed
+
+ruler = Ruler()                                           # or run any program with --ruler (F1 toggles)
+distance = ruler.draw(app)    ruler.start       ruler.end           ruler.measuring       ruler.distance
+app.ruler_on = True                                       # the same switch, from code</code></pre>
 
 <h3>World space — (x, y, z), z up</h3>
 <pre><code class="py">ui.draw_grid()
@@ -1629,19 +1722,19 @@ video.latest         video.frames      video.latency       video.viewers      vi
 texture = Texture(picture, mipmaps=False)                  texture.update(picture)</code></pre>
 
 <h3>Command line</h3>
-<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync</pre>
+<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler</pre>
 </section>
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">18</span>When it does not work</h2>
+<h2><span class="n">19</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
   <tr><td class="wrap"><code>ModuleNotFoundError: No module named 'wgpu'</code></td><td>You used another Python. Start the command with <code>.venv/bin/python</code>, or run the installer again.</td></tr>
   <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
   <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
-  <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
+  <tr><td>A shape is in the wrong place</td><td>Run the program with <code>--ruler</code> and read the real positions (see <a href="#ruler">The ruler</a>). Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
   <tr><td>Pinch does nothing (Linux)</td><td>Linux desktops do not pass the pinch to the window. Hold <kbd>Ctrl</kbd> and scroll with two fingers, or use the wheel.</td></tr>
   <tr><td class="wrap"><code>a gradient needs one colour per stop</code></td><td>The <code>stops</code> and <code>colors</code> lists do not have the same length. Count them: one colour for each position.</td></tr>
   <tr><td>A gradient runs the wrong way</td><td>Position <code>0.0</code> is where the direction <em>comes from</em>. Bottom to top is <code>(0, -1)</code>. Or keep the direction and reverse the colours.</td></tr>
