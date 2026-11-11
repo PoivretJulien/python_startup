@@ -1,3 +1,5 @@
+
+<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/d8520157-4c84-4a30-bb35-e8cb7ca520ad" />
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
