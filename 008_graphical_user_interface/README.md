@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/27b04610-8799-4202-b4ff-b427431fa6cc" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -12,7 +10,7 @@ whole API step by step.
 ```
 toolchain/   installers for macOS, Linux and Windows + an environment checker
 graphics/    the drawing library (wgpu): 3D lines, arrows, particles, pictures, text,
-             and screen-space rectangles / circles (plain or gradient) / triangles / lines / dashed lines / pictures
+             and screen-space rectangles / circles (filled, outlined or gradient) / inverted frames / triangles / lines / dashed lines / pictures
              with their hit tests
 network/     udp_link (strings over UDP) and video_link (camera over UDP)
 examples/    01_hover_shapes   two shapes that change colour under the cursor
@@ -22,6 +20,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              05_keyboard       the keys held, the last presses and the typed text, on screen
              06_slider         sliders that set a colour and a corner radius
              07_gradient_gauge a gradient gauge whose marker moves with the Up / Down keys
+             08_map_viewer     pinch / wheel zoom and pan of a large map inside a rounded frame
 guide.html   the step-by-step guide
 ```
 
@@ -49,6 +48,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/05_keyboard/main.py
 .venv/bin/python examples/06_slider/main.py
 .venv/bin/python examples/07_gradient_gauge/main.py
+.venv/bin/python examples/08_map_viewer/main.py           # add --image your_map.jpg for your own picture
 .venv/bin/python graphics/main.py
 ```
 

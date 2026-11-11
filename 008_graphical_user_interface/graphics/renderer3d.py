@@ -57,6 +57,13 @@ class SceneRenderer:
             blend=True,
             **overlay,
         )
+        # Outlines and the inverted box: the same distance field, used on its edge.
+        self.edge_pipeline = gpu.pipeline(
+            shaders3d.SCREEN_SHAPE_EDGES,
+            gpu3d.vertex_layout(*shaders3d.SCREEN_EDGE_LAYOUT, instanced=True),
+            blend=True,
+            **overlay,
+        )
         # Gradient shapes: the SDF of the plain shapes, coloured by a 1D gradient
         # texture. Textures are cached per distinct gradient (see _gradient).
         self.gradient_pipeline = gpu.pipeline(
@@ -267,6 +274,76 @@ class SceneRenderer:
         if radius > 0.0:
             row = screen2d.circle_instance(center, radius, color)
             self._submit_points(self.shape_pipeline, self._screen_uniforms(1.0), row)
+
+    # -- borders and the inverted box ----------------------------------------
+    def draw_screen_rect_outline(
+        self,
+        anchor: screen2d.Point2,
+        size: screen2d.Size2,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        radius: float = 0.0,
+        thickness: float = 2.0,
+    ) -> None:
+        """Draw only the border of a rounded rectangle, in **screen space**.
+
+        ``anchor``, ``size``, ``color`` and ``radius`` are those of
+        ``draw_screen_rect``; ``thickness`` is the width of the border in
+        pixels. The border lies **inside** the rectangle: its outer edge is
+        exactly the edge ``draw_screen_rect`` would fill, so an outline drawn
+        with the same arguments frames the filled shape without growing it.
+
+        Anti-aliased on both sides by the distance field; the inside stays
+        untouched (whatever was drawn before shows through). One instance, one
+        draw call. ``in_screen_rect`` is still the hit test of the whole shape.
+        """
+        shape = screen2d.rect_instance(anchor, size, color, radius)
+        if thickness > 0.0 and shape[0, 2] > 0.0 and shape[0, 3] > 0.0:
+            row = screen2d.edge_instance(shape, thickness, inverted=False)
+            self._submit_points(self.edge_pipeline, self._screen_uniforms(1.0), row)
+
+    def draw_screen_circle_outline(
+        self,
+        center: screen2d.Point2,
+        radius: float,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        thickness: float = 2.0,
+    ) -> None:
+        """Draw only the border of a circle (a ring), in **screen space**.
+
+        ``center``, ``radius`` and ``color`` are those of ``draw_screen_circle``;
+        ``thickness`` is the width of the ring in pixels, measured inwards from
+        the circle of that radius.
+        """
+        if radius > 0.0 and thickness > 0.0:
+            shape = screen2d.circle_instance(center, radius, color)
+            row = screen2d.edge_instance(shape, thickness, inverted=False)
+            self._submit_points(self.edge_pipeline, self._screen_uniforms(1.0), row)
+
+    def draw_screen_inverted_rect(
+        self,
+        anchor: screen2d.Point2,
+        size: screen2d.Size2,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        radius: float = 0.0,
+    ) -> None:
+        """Fill everything **outside** a rounded rectangle; leave its inside clear.
+
+        The opposite of ``draw_screen_rect`` with the same arguments: the
+        rounded box is a transparent hole and ``color`` (``(r, g, b)`` or
+        ``(r, g, b, a)``) covers the rest of the window, up to its edges.
+
+        This is how to make a *frame* (or a mask): draw the content first, as
+        large as it likes, then this on top — only what is inside the box stays
+        visible, with smooth rounded corners. An opaque colour hides the
+        outside completely; an alpha below 1 dims it instead, like a spotlight.
+
+        ``in_screen_rect(cursor, anchor, size, radius)`` tells whether the
+        cursor is in the hole, which is the test for "is the user pointing at
+        the content?". One instance, one draw call covering the window.
+        """
+        shape = screen2d.rect_instance(anchor, size, color, radius)
+        row = screen2d.edge_instance(shape, 0.0, inverted=True)
+        self._submit_points(self.edge_pipeline, self._screen_uniforms(1.0), row)
 
     # -- gradient shapes ----------------------------------------------------
     MAX_GRADIENTS = 64  # distinct gradients kept on the GPU before the oldest goes

@@ -87,6 +87,7 @@ def check_project() -> None:
         ("renderer_aa3d", "graphics: the drawing API"),
         ("app3d", "graphics: window + loop in one object"),
         ("widgets2d", "graphics: ready-made controls (slider)"),
+        ("gestures3d", "graphics: pan / zoom gestures on every system"),
         ("udp_link", "network: strings over UDP"),
         ("udp_link.bridge", "network: the link in a background thread"),
         ("video_link", "network: video over UDP"),

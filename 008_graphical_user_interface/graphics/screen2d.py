@@ -115,6 +115,18 @@ def line_instance(
     return row
 
 
+EDGE_FLOATS = 11  # a shape row + thickness + mode (0 = outline, 1 = inverted)
+
+
+def edge_instance(shape_row: np.ndarray, thickness: float, inverted: bool) -> np.ndarray:
+    """A ``rect_instance`` / ``circle_instance`` row extended for the edge program."""
+    row = np.empty((1, EDGE_FLOATS), dtype=np.float32)
+    row[0, :SHAPE_FLOATS] = shape_row[0]
+    row[0, 9] = max(float(thickness), 0.0)
+    row[0, 10] = 1.0 if inverted else 0.0
+    return row
+
+
 def gradient_stops(
     stops: Sequence[float],
     colors: Sequence[ColorRGBA],

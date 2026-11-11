@@ -266,6 +266,7 @@ Ready. From the project root:
   .venv/bin/python examples/05_keyboard/main.py        # the keyboard, on screen
   .venv/bin/python examples/06_slider/main.py          # sliders that set values
   .venv/bin/python examples/07_gradient_gauge/main.py  # a gradient gauge and the arrow keys
+  .venv/bin/python examples/08_map_viewer/main.py      # pan and zoom a large map in a frame
   .venv/bin/python graphics/main.py                    # the full 3D scene
   open guide.html                                      # how to use the API
 

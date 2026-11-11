@@ -142,6 +142,7 @@
     <li><a href="#hit">Is the mouse on it?</a></li>
     <li><a href="#recipes">Hover, click, drag</a></li>
     <li><a href="#keyboard">The keyboard</a></li>
+    <li><a href="#gestures">Pan and zoom</a></li>
     <li><a href="#text">Text</a></li>
     <li><a href="#world">Drawing in 3D</a></li>
     <li><a href="#camera">The camera</a></li>
@@ -205,7 +206,7 @@
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
   <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures and text in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Seven small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Eight small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -280,6 +281,7 @@ app.run(draw_frame)</code></pre>
   <tr><td><code>app.cursor()</code></td><td>The mouse position as <code>(x, y)</code> in window pixels.</td></tr>
   <tr><td><code>app.mouse_down()</code></td><td><code>True</code> while the left button is held.</td></tr>
   <tr><td><code>app.keys_down()</code>, <code>app.key_pressed(name)</code>, <code>app.typed()</code></td><td>The keyboard (see <a href="#keyboard">The keyboard</a>).</td></tr>
+  <tr><td><code>app.pan()</code>, <code>app.zoom()</code></td><td>The pan and zoom gestures (see <a href="#gestures">Pan and zoom</a>).</td></tr>
   <tr><td><code>app.size()</code></td><td>The window size as <code>(width, height)</code>.</td></tr>
   <tr><td><code>app.camera</code></td><td>The 3D camera (see <a href="#camera">The camera</a>).</td></tr>
   <tr><td><code>app.request_redraw()</code></td><td>"Please call <code>draw_frame</code> once more." Safe from another thread.</td></tr>
@@ -335,7 +337,7 @@ app.run(draw_frame)</code></pre>
   <div class="card"><h4>Screen space</h4>
     <p>Units are <strong>pixels of the window</strong>. <code>(0, 0)</code> is the top-left corner, <code>x</code> grows to the right, <code>y</code> grows <strong>down</strong>.</p>
     <p>It is exactly what the mouse reports, so a shape and the cursor speak the same language. Things drawn here ignore the camera and always sit on top.</p>
-    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_gradient_rect</code>, <code>draw_screen_gradient_circle</code>, <code>draw_screen_triangle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
+    <p>Methods: <code>draw_screen_rect</code>, <code>draw_screen_circle</code>, <code>draw_screen_gradient_rect</code>, <code>draw_screen_gradient_circle</code>, <code>draw_screen_rect_outline</code>, <code>draw_screen_circle_outline</code>, <code>draw_screen_inverted_rect</code>, <code>draw_screen_triangle</code>, <code>draw_screen_line</code>, <code>draw_screen_dashed_line</code>, <code>draw_screen_image</code>, <code>draw_screen_text</code>.</p></div>
   <div class="card"><h4>World space</h4>
     <p>Units are whatever you decide (metres, say). Three numbers <code>(x, y, z)</code>; the floor is the <code>x, y</code> plane and <code>z</code> points <strong>up</strong>.</p>
     <p>What you see depends on the camera: orbit, pan and zoom change the picture, not your numbers.</p>
@@ -349,7 +351,7 @@ app.run(draw_frame)</code></pre>
 <!-- ================================================================ 5 -->
 <section id="shapes">
 <h2><span class="n">05</span>Shapes on the screen</h2>
-<p class="goal">A rectangle, a circle, a triangle, a line, a dashed line, a picture — and gradients.</p>
+<p class="goal">A rectangle, a circle, a triangle, a line, a dashed line, a picture — plus gradients, borders and a frame.</p>
 
 <h3>The rounded rectangle</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius)</code></pre>
@@ -390,6 +392,50 @@ ui.draw_screen_rect((60, 320), (260, 40), PURPLE, 999)   # a pill: the radius is
 
 ui.draw_screen_circle((500, 165), 75, PURPLE)</code></pre>
 <p>A circle is described from its middle, a rectangle from its corner. That is the only asymmetry to remember.</p>
+
+<h3>Just the border</h3>
+<pre><code class="py">ui.draw_screen_rect_outline(anchor, size, color, radius, thickness)
+ui.draw_screen_circle_outline(center, radius, color, thickness)
+
+ui.draw_screen_rect_outline((60, 90), (260, 150), ORANGE, 28, 3)     # a 3-pixel border
+ui.draw_screen_circle_outline((500, 165), 75, ORANGE, 8)             # a ring</code></pre>
+<p>The arguments of the filled shape, plus <code>thickness</code>, the width of the border in pixels (2 by default). The inside is left alone: what was drawn before shows through.</p>
+<p>The border lies <strong>inside</strong> the shape. Its outer edge is exactly the edge the filled method would draw, so the two fit together with the same arguments:</p>
+<pre><code class="py">ui.draw_screen_rect(ANCHOR, SIZE, PURPLE, RADIUS)                    # the fill
+ui.draw_screen_rect_outline(ANCHOR, SIZE, WHITE, RADIUS, 2)          # its border, drawn after: on top</code></pre>
+
+<h3>The inverted rectangle: a frame</h3>
+<pre><code class="py">ui.draw_screen_inverted_rect(anchor, size, color, radius)</code></pre>
+<p>The opposite of <code>draw_screen_rect</code>, with the same arguments: the rounded box stays <strong>transparent</strong>, and the colour covers everything <strong>outside</strong> it, up to the edges of the window.</p>
+
+<figure>
+<svg viewBox="0 0 760 230" role="img" aria-label="Left: draw_screen_rect fills the rounded box. Right: draw_screen_inverted_rect fills everything except the rounded box, through which the content shows">
+  <defs>
+    <linearGradient id="content" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2f6f3a"/><stop offset="0.5" stop-color="#d9cc94"/><stop offset="1" stop-color="#1c4f9e"/>
+    </linearGradient>
+  </defs>
+  <rect x="40" y="30" width="300" height="150" fill="url(#content)"/>
+  <rect x="100" y="60" width="180" height="90" rx="22" fill="#9440e6"/>
+  <text x="190" y="205" text-anchor="middle" font-size="12">draw_screen_rect</text>
+  <text x="190" y="222" text-anchor="middle" font-size="11" style="fill:#9a968c">the box is painted</text>
+
+  <rect x="420" y="30" width="300" height="150" fill="url(#content)"/>
+  <path fill-rule="evenodd" fill="#101013" d="M420 30 H720 V180 H420 Z M502 60 H638 a22 22 0 0 1 22 22 V128 a22 22 0 0 1 -22 22 H502 a22 22 0 0 1 -22 -22 V82 a22 22 0 0 1 22 -22 Z"/>
+  <rect x="480" y="60" width="180" height="90" rx="22" fill="none" stroke="#ff8c1a" stroke-width="2"/>
+  <text x="570" y="205" text-anchor="middle" font-size="12">draw_screen_inverted_rect</text>
+  <text x="570" y="222" text-anchor="middle" font-size="11" style="fill:#9a968c">everything but the box is painted</text>
+</svg>
+<figcaption>The content (a map, a picture, a 3D scene) is drawn first, as large as it likes. The inverted rectangle, drawn after, hides whatever is outside the box.</figcaption>
+</figure>
+
+<p>That is how a <em>frame</em> is made, in three lines, in this order:</p>
+<pre><code class="py">ui.draw_screen_image(position, size, picture)                        # 1. the content, even larger than the window
+ui.draw_screen_inverted_rect(ANCHOR, SIZE, BACKGROUND, RADIUS)       # 2. hide what is outside the box
+ui.draw_screen_rect_outline(ANCHOR, SIZE, ORANGE, RADIUS, 3)         # 3. the border of the box</code></pre>
+<p>With an opaque colour the outside disappears. With an alpha below 1 it is only dimmed — a spotlight on the box:</p>
+<pre><code class="py">ui.draw_screen_inverted_rect(ANCHOR, SIZE, (0, 0, 0, 0.6), RADIUS)   # darken everything but the box</code></pre>
+<p>And the question "is the cursor in the frame?" is the hit test you already know, with the same arguments: <code>ui.in_screen_rect(cursor, ANCHOR, SIZE, RADIUS)</code>. Chapter 09, <a href="#gestures">Pan and zoom</a>, uses it to switch gestures on and off.</p>
 
 <h3>Gradients: several colours in one shape</h3>
 <pre><code class="py">ui.draw_screen_gradient_rect(anchor, size, stops, colors, direction, radius)
@@ -917,9 +963,103 @@ def draw_frame():
 <p><strong>Font:</strong> the built-in font draws the usual ASCII characters; one it does not know (an accented letter) is drawn as <code>?</code>. The string in your program is still correct.</p></div>
 </section>
 
+<!-- ================================================================ gestures -->
+<section id="gestures">
+<h2><span class="n">09</span>Pan and zoom</h2>
+<p class="goal">Two fingers on a trackpad, or a mouse wheel: two numbers per frame.</p>
+
+<pre class="shell">.venv/bin/python examples/08_map_viewer/main.py</pre>
+<p>A large map is shown through a rounded frame. Put the cursor in the frame, then pinch or turn the wheel to zoom, scroll with two fingers or drag to pan. Move the cursor out of the frame: the gestures stop working and the border turns grey.</p>
+
+<h3>The two questions</h3>
+<pre><code class="py">dx, dy = app.pan()        # pixels to move the content by, since the previous frame
+factor = app.zoom()       # number to multiply the scale by, since the previous frame</code></pre>
+<p>When nothing happened they answer <code>(0.0, 0.0)</code> and <code>1.0</code>, so you can use them without an <code>if</code>: adding zero and multiplying by one change nothing.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>Gesture</th><th>macOS</th><th>Windows</th><th>Linux</th></tr>
+  <tr><td>Pinch with two fingers</td><td>zoom</td><td>zoom</td><td>—</td></tr>
+  <tr><td>Two-finger scroll</td><td>pan</td><td>pan</td><td>pan on Wayland, zoom on X11</td></tr>
+  <tr><td>Mouse wheel</td><td>zoom</td><td>zoom</td><td>zoom</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + scroll or wheel</td><td>zoom</td><td>zoom</td><td>zoom</td></tr>
+  <tr><td><kbd>Shift</kbd> + wheel</td><td>pan</td><td>pan</td><td>pan</td></tr>
+</table></div>
+<p>Your program does not need to know which system it runs on: it reads <code>app.pan()</code> and <code>app.zoom()</code>, and <code>app.gestures</code> holds one line of text describing what works here, ready to show to the user.</p>
+
+<div class="box warn"><div class="t">Why the systems differ</div>
+<p>The window library receives one kind of message for all of this: "something scrolled". On <strong>macOS</strong> the project adds what is missing (the real pinch, and whether a scroll comes from a trackpad), so everything is exact. On <strong>Windows</strong>, the system itself turns a trackpad pinch into "Ctrl + wheel" before any program sees it, which is why Ctrl + scroll zooms. On <strong>Linux</strong> no desktop passes the pinch on, and under X11 a trackpad scroll looks exactly like a wheel: use Ctrl + scroll to zoom and Shift + scroll or a drag to pan. The Windows and Linux paths are written from how those systems are documented to behave; only macOS could be tried on the machine this guide was written on.</p></div>
+
+<h3>A view is two values</h3>
+<p>Whatever you show — a map, a drawing, a graph — panning and zooming it needs only two things remembered:</p>
+<pre><code class="py">scale = 1.0               # screen pixels per picture pixel: 2.0 = twice as big
+offset = [0.0, 0.0]       # where the picture's top-left corner is on the screen</code></pre>
+<p>They are the bridge between the two kinds of position, in both directions:</p>
+<pre><code class="py">screen_x = offset[0] + picture_x * scale        # picture -> screen: to draw
+picture_x = (screen_x - offset[0]) / scale      # screen -> picture: what is under the cursor?</code></pre>
+
+<h3>Recipe: pan</h3>
+<pre><code class="py">dx, dy = app.pan()
+offset[0] += dx
+offset[1] += dy</code></pre>
+
+<h3>Recipe: zoom around the cursor</h3>
+<p>Multiplying <code>scale</code> alone would zoom around the picture's corner, and what you were looking at would slide away. The point under the cursor must stay under the cursor. Its distance to the corner grows by the same factor as everything else, so the corner must move back by that much:</p>
+<pre><code class="py">def zoom_at(point, factor):
+    global scale
+    offset[0] = point[0] - (point[0] - offset[0]) * factor
+    offset[1] = point[1] - (point[1] - offset[1]) * factor
+    scale *= factor
+
+zoom_at(app.cursor(), app.zoom())</code></pre>
+
+<figure>
+<svg viewBox="0 0 760 210" role="img" aria-label="Before and after a zoom: the point under the cursor stays in place while the picture's corner moves away from it">
+  <rect x="170" y="70" width="150" height="90" fill="#1f1f26" stroke="#4a4a56"/>
+  <circle cx="170" cy="70" r="5" fill="#ff8c1a"/><text x="160" y="60" text-anchor="end" font-size="12" style="fill:#ff8c1a">offset</text>
+  <circle cx="270" cy="130" r="5" fill="#ffd91a"/><text x="282" y="134" font-size="12" style="fill:#ffd91a">cursor</text>
+  <path d="M170 70 L266 127" stroke="#9a968c" stroke-dasharray="4 4"/>
+  <text x="245" y="185" text-anchor="middle" font-size="12">before</text>
+
+  <rect x="430" y="10" width="300" height="180" fill="#1f1f26" stroke="#4a4a56"/>
+  <circle cx="430" cy="10" r="5" fill="#ff8c1a"/><text x="420" y="24" text-anchor="end" font-size="12" style="fill:#ff8c1a">offset</text>
+  <circle cx="630" cy="130" r="5" fill="#ffd91a"/><text x="642" y="134" font-size="12" style="fill:#ffd91a">cursor</text>
+  <path d="M430 10 L626 127" stroke="#9a968c" stroke-dasharray="4 4"/>
+  <text x="580" y="206" text-anchor="middle" font-size="12">after a zoom of 2: the dashed distance doubled, the cursor did not move</text>
+</svg>
+</figure>
+
+<h3>Recipe: only inside the frame</h3>
+<p>Ask where the cursor is, and apply the gestures only if the answer is yes. Read the two values on every frame even when you ignore them: they are "since the previous frame", and unread ones are simply dropped.</p>
+<pre><code class="py">def draw_frame():
+    cursor = app.cursor()
+    inside = ui.in_screen_rect(cursor, ANCHOR, SIZE, RADIUS)     # in the frame?
+
+    pan, zoom = app.pan(), app.zoom()
+    if inside:                                                    # the switch
+        zoom_at(cursor, zoom)
+        offset[0] += pan[0]
+        offset[1] += pan[1]
+
+    ui.draw_screen_image(offset, (PICTURE_W * scale, PICTURE_H * scale), texture)
+    ui.draw_screen_inverted_rect(ANCHOR, SIZE, BACKGROUND, RADIUS)
+    ui.draw_screen_rect_outline(ANCHOR, SIZE, ORANGE if inside else GREY, RADIUS, 3)</code></pre>
+<p>A drag is treated differently on purpose: it <em>starts</em> only inside the frame, but once started it continues wherever the cursor goes, as in section 07. Example 8 does both, and also keeps the map from being lost off-screen and limits how far one can zoom.</p>
+
+<h3>A large picture</h3>
+<pre><code class="py">from texture3d import Texture
+
+texture = Texture("map.png")          # once, before the loop
+…
+ui.draw_screen_image(offset, (texture.width * scale, texture.height * scale), texture)</code></pre>
+<p>Create the texture once and draw it every frame. Zoomed in, the picture is far larger than the window; that costs nothing, the graphics card only works on the pixels that are visible. Zoomed out, the smaller copies the texture keeps (its <em>mipmaps</em>, on by default) stop it from shimmering. One side of a picture can be at most 8192 pixels.</p>
+
+<div class="box"><div class="t">About the map</div>
+<p>The map of example 8 is computed by the program when it starts — random terrain coloured by height — so nothing is downloaded and the picture belongs to nobody. Imagery from Google Maps and most online map services may not be copied into your own program. To view a real map, pass a picture you have the right to use: <code>--image world.jpg</code>. NASA's "Blue Marble" images are public domain and come in very high resolution.</p></div>
+</section>
+
 <!-- ================================================================ 8 -->
 <section id="text">
-<h2><span class="n">09</span>Text</h2>
+<h2><span class="n">10</span>Text</h2>
 <p class="goal">Labels, in pixels or lying in the 3D scene.</p>
 
 <pre><code class="py">ui.draw_screen_text(x, y, text, size_px, color)</code></pre>
@@ -947,7 +1087,7 @@ ui.draw_text((0, 0, 0), "wall", 0.30, (1, 1, 0), right=(1, 0, 0), up=(0, 0, 1)) 
 
 <!-- ================================================================ 9 -->
 <section id="world">
-<h2><span class="n">10</span>Drawing in 3D</h2>
+<h2><span class="n">11</span>Drawing in 3D</h2>
 <p class="goal">The world-space methods, shortest first.</p>
 
 <p>Points are three numbers. A tuple works, and so does the small <code>Vec3</code> class when you want to do arithmetic on them.</p>
@@ -1018,7 +1158,7 @@ a.x, a[0]        # both work: a Vec3 can be used anywhere a tuple can</code></pr
 
 <!-- ================================================================ 10 -->
 <section id="camera">
-<h2><span class="n">11</span>The camera</h2>
+<h2><span class="n">12</span>The camera</h2>
 <p class="goal">One line to make the 3D scene explorable.</p>
 
 <pre><code class="py">def draw_frame():
@@ -1052,7 +1192,7 @@ if hit is not None:
 
 <!-- ================================================================ 11 -->
 <section id="loop">
-<h2><span class="n">12</span>The loop</h2>
+<h2><span class="n">13</span>The loop</h2>
 <p class="goal">Why an idle window costs nothing, and when to change that.</p>
 
 <figure>
@@ -1116,7 +1256,7 @@ print(app.args.count)</code></pre>
 
 <!-- ================================================================ 12 -->
 <section id="network">
-<h2><span class="n">13</span>Sending strings</h2>
+<h2><span class="n">14</span>Sending strings</h2>
 <p class="goal">Two programs, one of them says something, the other hears it.</p>
 
 <p>The <code>udp_link</code> library sends <strong>Python strings</strong> between two programs — on the same computer or on two computers of the same network. One side is the <em>server</em>, the other the <em>client</em>; once connected, both can send and receive.</p>
@@ -1232,7 +1372,7 @@ python3 -m apps.time_client --config link.toml</pre>
 
 <!-- ================================================================ 13 -->
 <section id="together">
-<h2><span class="n">14</span>Window + network</h2>
+<h2><span class="n">15</span>Window + network</h2>
 <p class="goal">The second example, read slowly.</p>
 
 <pre class="shell">.venv/bin/python examples/02_udp_drag/main.py</pre>
@@ -1302,7 +1442,7 @@ def draw_frame():
 
 <!-- ================================================================ 14 -->
 <section id="video">
-<h2><span class="n">15</span>Video between two windows</h2>
+<h2><span class="n">16</span>Video between two windows</h2>
 <p class="goal">The third example: a camera on side A, its picture on side B.</p>
 
 <pre class="shell">.venv/bin/python examples/03_udp_video/main.py</pre>
@@ -1401,7 +1541,7 @@ def draw_frame():
 app.run(draw_frame)
 video.close()</code></pre>
 
-<div class="box key"><div class="t">The same pattern as section 14</div>
+<div class="box key"><div class="t">The same pattern as section 15</div>
 <p><code>on_frame</code> only calls <code>app.request_redraw()</code>; the picture waits in <code>video.latest</code> and all the drawing stays in <code>draw_frame</code>. The window is still reactive: it draws once per picture and sleeps in between. Side A is this same code with <code>"server"</code> — its preview is drawn the same way.</p></div>
 
 <div class="box"><div class="t">Why the texture is created inside draw_frame</div>
@@ -1431,7 +1571,7 @@ def draw_frame():
 
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">16</span>Cheat sheet</h2>
+<h2><span class="n">17</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -1443,11 +1583,15 @@ app.run(draw_frame)</code></pre>
 app.keys_down() -&gt; ["A", "LEFT SHIFT"]                     app.key_down("SPACE") -&gt; bool
 app.keys_pressed(repeat=False) -&gt; ("ENTER",)               app.key_pressed("ENTER", repeat=False) -&gt; bool
 app.typed() -&gt; "a"
+app.pan() -&gt; (dx, dy)       app.zoom() -&gt; factor          app.gestures -&gt; "pinch = zoom, …"
 app.request_redraw()         app.quit()</code></pre>
 
 <h3>Screen space — pixels, origin top-left, y down</h3>
 <pre><code class="py">ui.draw_screen_rect(anchor, size, color, radius=0)        ui.in_screen_rect(cursor, anchor, size, radius=0)
 ui.draw_screen_circle(center, radius, color)              ui.in_screen_circle(cursor, center, radius)
+ui.draw_screen_rect_outline(anchor, size, color, radius=0, thickness=2)
+ui.draw_screen_circle_outline(center, radius, color, thickness=2)
+ui.draw_screen_inverted_rect(anchor, size, color, radius=0)            # colour outside, hole inside
 ui.draw_screen_gradient_rect(anchor, size, stops, colors, direction=(1, 0), radius=0)
 ui.draw_screen_gradient_circle(center, radius, stops, colors, direction=(1, 0))
 screen2d.gradient_color(stops, colors, t) -&gt; (r, g, b, a)
@@ -1490,7 +1634,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">17</span>When it does not work</h2>
+<h2><span class="n">18</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
@@ -1498,6 +1642,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
   <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
   <tr><td>A shape is in the wrong place</td><td>Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
+  <tr><td>Pinch does nothing (Linux)</td><td>Linux desktops do not pass the pinch to the window. Hold <kbd>Ctrl</kbd> and scroll with two fingers, or use the wheel.</td></tr>
   <tr><td class="wrap"><code>a gradient needs one colour per stop</code></td><td>The <code>stops</code> and <code>colors</code> lists do not have the same length. Count them: one colour for each position.</td></tr>
   <tr><td>A gradient runs the wrong way</td><td>Position <code>0.0</code> is where the direction <em>comes from</em>. Bottom to top is <code>(0, -1)</code>. Or keep the direction and reverse the colours.</td></tr>
   <tr><td>A triangle points the wrong way</td><td>"Up" is <code>(0, -1)</code>, not <code>(0, 1)</code>: screen <code>y</code> grows downward.</td></tr>
@@ -1510,7 +1655,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

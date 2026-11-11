@@ -520,6 +520,82 @@ fn fs_main(i: LOut) -> @location(0) vec4<f32> {
 """
 )
 
+# ------------------------------- screen-space outlines and inverted box (SDF)
+# The rounded-box distance field once more, used on its *edge* instead of its
+# inside. One program, two uses, chosen per instance by `mode`:
+#   0  outline   a band `thickness` wide just inside the edge: a border;
+#   1  inverted  everything OUTSIDE the box, over the whole window: a frame
+#                with a transparent rounded hole in it.
+SCREEN_SHAPE_EDGES = (
+    COMMON
+    + """
+struct EIn {
+    @location(0) center: vec2<f32>,      // window points, top-left origin
+    @location(1) half_size: vec2<f32>,   // half width / half height, points
+    @location(2) color: vec4<f32>,
+    @location(3) edge: vec3<f32>,        // corner radius, thickness (points), mode
+};
+
+struct EOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) local: vec2<f32>,    // from the centre, pixels
+    @location(2) @interpolate(flat) half_px: vec2<f32>,
+    @location(3) @interpolate(flat) edge: vec3<f32>,       // radius, thickness (pixels), mode
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, s: EIn) -> EOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+    );
+    let scale = u.viewport / u.screen;          // points -> framebuffer pixels
+    let unit = min(scale.x, scale.y);
+    let half_px = s.half_size * scale;
+    let center_px = s.center * scale;
+    var pixel: vec2<f32>;
+    if (s.edge.z > 0.5) {
+        // Inverted: the quad is the whole window, wherever the box is.
+        pixel = (corners[vertex] * 0.5 + 0.5) * u.viewport;
+    } else {
+        pixel = center_px + corners[vertex] * (half_px + vec2<f32>(u.feather));
+    }
+    var out: EOut;
+    out.position = vec4<f32>(
+        pixel.x / u.viewport.x * 2.0 - 1.0,
+        1.0 - pixel.y / u.viewport.y * 2.0,
+        0.0,
+        1.0
+    );
+    out.color = s.color;
+    out.local = pixel - center_px;
+    out.half_px = half_px;
+    out.edge = vec3<f32>(s.edge.x * unit, s.edge.y * unit, s.edge.z);
+    return out;
+}
+
+@fragment
+fn fs_main(i: EOut) -> @location(0) vec4<f32> {
+    // Signed distance to the rounded box: negative inside, 0 on the edge.
+    let radius = i.edge.x;
+    let q = abs(i.local) - i.half_px + vec2<f32>(radius);
+    let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - radius;
+    var coverage: f32;
+    if (i.edge.z > 0.5) {
+        coverage = clamp(0.5 + d, 0.0, 1.0);                 // outside the box
+    } else {
+        // Inside the outer edge AND outside the inner one, `thickness` further in.
+        coverage = clamp(0.5 - d, 0.0, 1.0) * clamp(0.5 + d + i.edge.y, 0.0, 1.0);
+    }
+    if (coverage <= 0.001) {
+        discard;
+    }
+    return vec4<f32>(i.color.rgb, i.color.a * coverage);
+}
+"""
+)
+
 # ------------------------------------- screen-space gradient shapes (SDF)
 # The rounded-box distance field of SCREEN_SHAPES, but the colour comes from a
 # gradient instead of one constant. The gradient itself — any number of colour
@@ -712,6 +788,7 @@ fn fs_main(i: TOut) -> @location(0) vec4<f32> {
 
 # --------------------------------------------------------------- vertex layouts
 # (location, components, float offset) — the same triples the GL VAOs used.
+SCREEN_EDGE_LAYOUT = (11, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 3, 8)))
 SCREEN_TRIANGLE_LAYOUT = (10, ((0, 2, 0), (1, 2, 2), (2, 2, 4), (3, 4, 6)))
 SCREEN_LINE_LAYOUT = (11, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8), (4, 1, 9), (5, 1, 10)))
 SCREEN_SHAPE_LAYOUT = (9, ((0, 2, 0), (1, 2, 2), (2, 4, 4), (3, 1, 8)))
@@ -734,6 +811,7 @@ ALL_SHADERS = {
     "screen_rect_sharp": SCREEN_RECT_SHARP,
     "screen_lines": SCREEN_LINES,
     "screen_gradient_shapes": SCREEN_GRADIENT_SHAPES,
+    "screen_shape_edges": SCREEN_SHAPE_EDGES,
     "screen_triangles": SCREEN_TRIANGLES,
     "screen_triangle_sharp": SCREEN_TRIANGLE_SHARP,
 }

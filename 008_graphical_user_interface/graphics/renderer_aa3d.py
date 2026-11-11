@@ -341,7 +341,7 @@ class AAGridArrowRenderer(SceneRenderer):
             anchor,
             text,
             size,
-            color=color,
+            color=tuple(color[:3]),
             right=right,
             up=up,
             tracking=tracking,
@@ -386,7 +386,7 @@ class AAGridArrowRenderer(SceneRenderer):
             (x, y, 0.0),
             text,
             size_px,
-            color=color,
+            color=tuple(color[:3]),  # strokes carry rgb only: a 4th value is dropped
             right=(1.0, 0.0, 0.0),
             up=(0.0, -1.0, 0.0),  # screen y grows down
             tracking=tracking,

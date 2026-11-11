@@ -24,6 +24,8 @@ Nothing in the existing modules changes: ``App`` only calls them, in the order
 * ``app.keys_down()`` / ``app.key_down(name)`` / ``app.key_pressed(name)`` /
   ``app.typed()`` — the keyboard: what is held, what was just pressed, and the
   text that was typed,
+* ``app.pan()`` / ``app.zoom()`` — the pan and zoom gestures (trackpad pinch
+  and two-finger scroll, mouse wheel), the same on macOS, Windows and Linux,
 * ``app.request_redraw()`` — ask for one frame from anywhere, **including
   another thread** (a network message arrived, a file changed ...),
 * ``app.args`` — the parsed command line.
@@ -41,6 +43,7 @@ import signal
 import time
 from collections.abc import Callable, Sequence
 
+import gestures3d
 import glfw
 import loop3d
 import reactive3d
@@ -164,6 +167,13 @@ class App:
         self._typed = ""
         glfw.set_key_callback(glfw_window, self._on_key)
         glfw.set_char_callback(glfw_window, self._on_char)
+        # Pan / zoom gestures, collected like the key presses: the callbacks
+        # add up what happened, the next frame receives the total.
+        self._pending_pan = [0.0, 0.0]
+        self._pending_zoom = 1.0
+        self._pan = (0.0, 0.0)
+        self._zoom = 1.0
+        self.gestures = gestures3d.install(glfw_window, self._on_pan, self._on_zoom)
 
     def _open(self, title, size, position):
         from window3d import create_window
@@ -196,8 +206,21 @@ class App:
         self._pending_typed.append(chr(codepoint))
         self.reactive.mark()
 
+    def _on_pan(self, dx: float, dy: float) -> None:
+        self._pending_pan[0] += dx
+        self._pending_pan[1] += dy
+        self.reactive.mark()
+
+    def _on_zoom(self, factor: float) -> None:
+        self._pending_zoom *= factor  # zooms multiply: two steps of 10 % make 21 %
+        self.reactive.mark()
+
     def _begin_frame_input(self) -> None:
         """Hand the events collected since the last frame to the frame starting now."""
+        self._pan = (self._pending_pan[0], self._pending_pan[1])
+        self._zoom = self._pending_zoom
+        self._pending_pan[:] = (0.0, 0.0)
+        self._pending_zoom = 1.0
         self._pressed = tuple(self._pending_pressed)
         self._typed = "".join(self._pending_typed)
         self._pending_pressed.clear()
@@ -256,6 +279,25 @@ class App:
         here: ask ``key_pressed`` for those.
         """
         return self._typed
+
+    def pan(self) -> tuple[float, float]:
+        """The pan gesture since the previous frame, as ``(dx, dy)`` pixels.
+
+        Add it to the position of what you are showing and the content follows
+        the fingers. ``(0.0, 0.0)`` when nothing happened. It comes from a
+        two-finger scroll on a trackpad, or Shift + mouse wheel; see
+        ``gestures3d`` for what each system provides, and ``app.gestures`` for
+        a one-line description of this one.
+        """
+        return self._pan
+
+    def zoom(self) -> float:
+        """The zoom gesture since the previous frame, as a factor to multiply by.
+
+        ``1.0`` when nothing happened; above 1 to come closer, below 1 to move
+        away. It comes from a trackpad pinch, the mouse wheel, or Ctrl + scroll.
+        """
+        return self._zoom
 
     def size(self) -> tuple[int, int]:
         """Window size in the same pixels as ``cursor()``."""
