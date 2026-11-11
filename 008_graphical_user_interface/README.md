@@ -102,7 +102,7 @@ network) are in `network/link.toml`; the guide and the headers of
 
 articulating code as never have been as easy... letting place to the backend where 
 heavier compiled, planned infrastructures still a legitimate solution ( where time 
-and budget allow it), but python api is rich, for instance a library warper like open_cv
+and budget allow it ), but python api is rich, for instance a library warper like open_cv
 let us to deal with compiled language with the ease needed for a crystal clear mind and 
 productivity all along the journey, scripted language offer to the final user a stimulating 
 scripting environment that keep possibility and creativity at the edge of the day. 
