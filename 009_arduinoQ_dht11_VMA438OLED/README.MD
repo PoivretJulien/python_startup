@@ -1,8 +1,8 @@
-Arduino Q sensor reading.
+# Arduino Q sensor reading.
 
--> the zip file is the Arduino lab app project 
-the folder is the pyhton app client on host computer
-it leverage the python graphical user interface to display 
+the zip file is the Arduino lab app project the  
+folder is the pyhton app client on host computer  
+it leverage the python graphical user interface to display  
 the sensor data of the dht11 temperature/moisture data via udp server.
 
 identification between servers is done by sharing the same link.toml
