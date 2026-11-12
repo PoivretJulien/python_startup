@@ -208,7 +208,7 @@
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
   <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures, text and lit solid shapes in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Nine small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer, solid shapes.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Ten small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer, solid shapes, curves.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -637,6 +637,30 @@ ui.draw_screen_dashed_line(a, b, WHITE, 2, dash=2, spacing=4)       # dotted
 ui.draw_screen_dashed_line(a, b, ORANGE, 6, dash=6, spacing=6)      # a row of squares</code></pre>
 <div class="box"><div class="t">A long dashed line is not expensive</div>
 <p>The dashes are not separate pieces. The whole line is sent to the graphics card as one item, and for each pixel the card decides whether it falls on a dash or in a gap. A line with a thousand dashes costs the same as a solid one.</p></div>
+
+<h3>The polyline and the curve</h3>
+<p>A <em>polyline</em> is a line through a list of points. A <em>NURBS</em> is a smooth curve pulled toward a few control points. Both exist on the screen and in 3D, and work the same way in both; they are explained once, in <a href="#curves">Curves: polylines and NURBS</a>.</p>
+<pre><code class="py">ui.draw_screen_polyline([(60, 300), (160, 220), (260, 300), (360, 220)], WHITE, 2)          # points, colour, thickness
+ui.draw_screen_nurbs([(60, 380), (160, 300), (260, 460), (360, 380)], ORANGE, 4)            # control points</code></pre>
+
+<h3>Acrylic: a panel of frosted glass</h3>
+<p>A rectangle that blurs whatever is behind it — the 3D scene, a picture, the interface underneath — like the translucent panels of modern desktops:</p>
+<pre><code class="py">GLASS = (0.10, 0.10, 0.14, 0.45)                       # the tint: r, g, b, and how much of it covers the blur
+
+def draw_frame():
+    # … the scene and everything that must show through …
+    ui.draw_screen_acrylic_rect((20, 20), (320, 120), GLASS, radius=16, blur=18)
+    ui.draw_screen_text(40, 60, "sharp, on the panel", 16, WHITE)      # after the panel: on top of it</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>anchor</code>, <code>size</code>, <code>radius</code></td><td>Exactly those of <code>draw_screen_rect</code>; the hit test is <code>in_screen_rect</code>.</td></tr>
+  <tr><td><code>tint</code></td><td><code>(r, g, b, a)</code>: the colour of the glass, and with <code>a</code> how much of it covers the blur. 0 is clear frosted glass, 1 a plain rectangle.</td></tr>
+  <tr><td><code>blur</code></td><td>The radius of the blur in pixels. 18 by default; 6 is lightly frosted, 40 very milky.</td></tr>
+</table></div>
+<div class="box key"><div class="t">Order is the whole rule</div>
+<p>What is drawn <strong>before</strong> the panel is blurred by it; what is drawn <strong>after</strong> is sharp, on top. So: scene, panel, then the panel's text and buttons. Several panels work, each with its own content after it.</p></div>
+<div class="box warn"><div class="t">What it costs</div>
+<p>A frame that contains a panel is drawn in one more step (the picture behind must be finished before it can be blurred), and each pixel of the panel reads the picture 28 times. A frame without a panel costs nothing extra. <code>--no-transparency</code>, <kbd>F3</kbd> or <code>app.transparency = False</code> — the switch of the see-through solids — turns every panel into a plain, mostly opaque rectangle of the tint colour. One limit: a panel does not blur another panel that it overlaps.</p></div>
 
 <h3>The picture</h3>
 <pre><code class="py">ui.draw_screen_image(anchor, size, source)
@@ -1199,6 +1223,8 @@ def draw_frame():
   <tr><td><code>draw_line(start, tip, color, thickness=0)</code></td><td>A segment</td><td><code>thickness</code> is in world units; 0 is a thin line of constant width.</td></tr>
   <tr><td><code>draw_arrow(start, tip, color)</code></td><td>A vector</td><td>The head is at <code>tip</code>.</td></tr>
   <tr><td><code>draw_circle(center, radius, color, axis=(0,0,1))</code></td><td>A circle outline</td><td><code>axis</code> is the direction the circle faces.</td></tr>
+  <tr><td><code>draw_polyline(points, color, thickness=0)</code></td><td>A line through many points</td><td>One call whatever the length. See <a href="#curves">Curves</a>.</td></tr>
+  <tr><td><code>draw_nurbs(control_points, color, thickness=0)</code></td><td>A smooth curve</td><td>See <a href="#curves">Curves</a>.</td></tr>
   <tr><td><code>draw_point(center, size, color)</code></td><td>One particle</td><td><code>size</code> is its radius in world units.</td></tr>
   <tr><td><code>draw_points(points, size, color)</code></td><td>Many particles at once</td><td>See below.</td></tr>
   <tr><td><code>draw_image(anchor, source, right, up, width)</code></td><td>A picture</td><td>See below.</td></tr>
@@ -1233,6 +1259,97 @@ ui.draw_points(points, 0.02, (1, 1, 1))     # … or one colour for all</code></
     width=1.8,                 # world units; the height follows the picture's shape
 )</code></pre>
 <p>The picture is sent to the graphics card the first time and remembered, so drawing the same one every frame costs almost nothing.</p>
+
+<h3 id="curves">Curves: polylines and NURBS</h3>
+<p>To draw a line through many points, do not loop over <code>draw_line</code>: give the whole list to <code>draw_polyline</code>. The points travel to the graphics card as one array and are drawn by one call, so the length hardly matters.</p>
+<pre><code class="py">import numpy as np
+
+t = np.linspace(0, 1, 20_000)
+spiral = np.stack((3 * np.cos(60 * t), 3 * np.sin(60 * t), 3 * t), axis=1)      # N rows of (x, y, z)
+
+ui.draw_polyline(spiral, (0.2, 0.85, 0.95))                    # one colour …
+ui.draw_polyline(spiral, colors)                               # … or one (r, g, b) per point
+ui.draw_polyline(square, YELLOW, thickness=0.05, closed=True)  # world-unit thickness, back to the start</code></pre>
+
+<p>A <strong>NURBS</strong> is the smooth curve of drawing and modelling programs. You place a few <em>control points</em>; the curve is pulled toward them without (usually) touching them. Control points are <code>(x, y, z)</code>, each with its own height, so a curve can wind through space exactly like a polyline — it is not limited to a plane.</p>
+<pre><code class="py">ui.draw_nurbs([(-4, -3, 0), (-2, 3, 1.5), (0, -3, 3), (2, 3, 1.5), (4, -3, 0)], PINK, thickness=0.06)</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th><th>Default</th></tr>
+  <tr><td><code>degree</code></td><td>1: straight segments between the control points. 2: arcs. 3: the smooth curve.</td><td>3</td></tr>
+  <tr><td><code>weights</code></td><td>One number per control point. A larger weight pulls the curve closer to that point. This is what lets a NURBS be an exact circle.</td><td>all 1</td></tr>
+  <tr><td><code>closed</code></td><td>The curve loops back smoothly onto itself.</td><td><code>False</code></td></tr>
+  <tr><td><code>samples</code></td><td>How many points are computed along the curve before it is drawn as a polyline. Raise it for long or very bent curves.</td><td>64</td></tr>
+  <tr><td><code>knots</code></td><td>For those who know them: the knot vector. Left out, the curve starts on the first control point and ends on the last.</td><td>clamped</td></tr>
+</table></div>
+
+<p>To keep a curve and edit it — move a point, change a weight — make it an object:</p>
+<pre><code class="py">from curve3d import Nurbs                         # in graphics/
+
+curve = Nurbs([(0, 0, 0), (1, 2, 1), (3, 2, 2), (4, 0, 0)])
+curve.control_points[1] = (1, 3, 1)               # move a control point
+curve.weights[2] = 4.0                            # pull the curve toward the third one
+curve.degree = 2
+
+ui.draw_nurbs(curve, ORANGE)                      # in draw_frame
+points = curve.points(200)                        # or just the points: an array of 200 (x, y, z)
+
+circle = Nurbs.circle((0, 0, 0), 3.0)             # an exact circle, ready-made</code></pre>
+
+<h3>A point on the curve</h3>
+<p><code>curve.point(t)</code> turns a number into a position: <code>t = 0</code> is the start of the curve, <code>t = 1</code> its end, and everything between is on the curve. It returns <code>(x, y, z)</code> for a 3D curve, <code>(x, y)</code> for a screen curve.</p>
+<pre><code class="py">start = curve.point(0.0)
+middle = curve.point(0.5)
+
+t = 0.5                                          # kept between frames, changed by a key
+def draw_frame():
+    nonlocal t
+    for key in app.keys_pressed(repeat=True):
+        if key == "RIGHT": t = min(t + 0.02, 1.0)
+        if key == "LEFT":  t = max(t - 0.02, 0.0)
+    ui.draw_nurbs(curve, PINK)
+    ui.draw_point(curve.point(t), 0.14, YELLOW)  # a marker that travels along the curve</code></pre>
+<p>The point is computed from the curve as it is now, so it follows when a control point is moved. Values of <code>t</code> below 0 or above 1 give the nearest end; on a closed curve they wrap around instead, so a <code>t</code> that keeps growing goes round and round. Example 10 moves such a marker with <kbd>Left</kbd> and <kbd>Right</kbd>.</p>
+<div class="box warn"><div class="t">t is not a distance</div>
+<p><code>t</code> is the curve's own parameter. Equal steps of <code>t</code> are not exactly equal steps along the curve: the marker moves more slowly where control points are close together. For evenly spaced positions, take <code>curve.points(n)</code> and walk along that polyline.</p></div>
+
+<h3>Editing a 3D curve with the mouse</h3>
+<p>Add <code>pick=True</code> and the control points of a <code>Nurbs</code> object become handles. Nothing else to write: the picking, the gizmo and the dragging are inside the call.</p>
+<pre><code class="py">curve = Nurbs([(-4, -3, 0), (-2, 3, 1.5), (0, -3, 3), (2, 3, 1.5), (4, -3, 0)])
+
+def draw_frame():
+    if not curve.busy:                 # the mouse is not on the curve's handles …
+        app.handle_camera()            # … so it may move the camera
+    ui.draw_nurbs(curve, PINK, thickness=0.06, pick=True)</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>The user does</th><th>What happens</th></tr>
+  <tr><td>Moves the cursor over a control point</td><td>The dot lights up.</td></tr>
+  <tr><td>Clicks a control point</td><td>It becomes <em>active</em>: a gizmo pops up on it — three arrows (red x, green y, blue z) and three small squares between them.</td></tr>
+  <tr><td>Drags an arrow</td><td>The point slides along that axis only. The arrow turns yellow.</td></tr>
+  <tr><td>Drags a square</td><td>The point moves in the plane of the two arrows the square lies between, and keeps its third coordinate exactly. A square has the colour of the axis it does <em>not</em> move along: the blue one moves in x and y, at constant height.</td></tr>
+  <tr><td>Drags the dot itself</td><td>The point moves freely, in the plane that faces the camera.</td></tr>
+  <tr><td>Clicks the background (without dragging)</td><td>The gizmo is put away. Dragging the background still moves the camera and keeps the selection.</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+  <tr><th>On the curve</th><th>Meaning</th></tr>
+  <tr><td><code>curve.busy</code></td><td><code>True</code> while the cursor is on a dot or an arrow, or dragging one. The moment not to move the camera: one mouse cannot do both.</td></tr>
+  <tr><td><code>curve.active</code></td><td>The index of the active control point, or <code>None</code>. You may set it yourself to show or hide the gizmo.</td></tr>
+  <tr><td><code>curve.changed</code></td><td><code>True</code> in a frame where a point moved: the moment to save, or to send the new points over the network.</td></tr>
+  <tr><td><code>curve.control_points</code></td><td>The points themselves, always up to date.</td></tr>
+</table></div>
+<div class="box"><div class="t">Two dimensions of mouse, three of space</div>
+<p>The mouse moves on a flat screen, so one drag cannot say "nearer" and "higher" at once. The arrows solve it: each restricts the movement to one axis, and the movement of the mouse <em>along the arrow as it appears on screen</em> becomes the distance. An arrow pointing straight at you has no length on screen and cannot be dragged, and a square seen edge-on is a thin sliver that moves the point a long way for a small gesture: turn the camera a little. The helper behind all this is also yours: <code>ui.world_to_screen((x, y, z))</code> gives the pixel where a 3D point appears, or <code>None</code> behind the camera.</p></div>
+
+<div class="tablewrap"><table>
+  <tr><th>Method</th><th>Where</th><th>Thickness</th></tr>
+  <tr><td><code>draw_polyline(points, color, thickness=0, closed=False)</code></td><td>3D, points <code>(x, y, z)</code></td><td>World units; 0 = a thin line of constant width</td></tr>
+  <tr><td><code>draw_nurbs(curve, color, thickness=0, …)</code></td><td>3D</td><td>The same</td></tr>
+  <tr><td><code>draw_screen_polyline(points, color, thickness=2, closed=False)</code></td><td>Screen, points <code>(x, y)</code> in pixels</td><td>Pixels</td></tr>
+  <tr><td><code>draw_screen_nurbs(curve, color, thickness=2, …)</code></td><td>Screen</td><td>Pixels</td></tr>
+</table></div>
+<div class="box key"><div class="t">How fast</div>
+<p>On the machine this was written on, example 10 draws a 20 000-point polyline at 189 frames per second, 200 000 points at 114 and a million at 32. Moving a control point of a NURBS costs one small matrix product: the part of the computation that does not depend on the positions is remembered between frames.</p></div>
+<pre class="shell">.venv/bin/python examples/10_curves/main.py</pre>
+<p>Example 10 has a screen curve to edit with the mouse (drag its control points, change its degree and weights), a spiral of 20 000 points, and a pink curve in space whose control points you can pick and move with the gizmo.</p>
 
 <h3>Vec2 and Vec3</h3>
 <pre><code class="py">from vec2 import Vec2
@@ -1875,6 +1992,8 @@ ui.draw_screen_triangle(anchor, base, height, direction=(0, -1), color, antialia
 ui.in_screen_triangle(cursor, anchor, base, height, direction=(0, -1))
 ui.draw_screen_line(start, end, color, thickness=2)       ui.in_screen_line(cursor, start, end, thickness=2)
 ui.draw_screen_dashed_line(start, end, color, thickness=2, dash=10, spacing=6)
+ui.draw_screen_polyline(points, color, thickness=2, closed=False)       ui.draw_screen_nurbs(curve, color, thickness=2, …)
+ui.draw_screen_acrylic_rect(anchor, size, tint=(r, g, b, a), radius=0, blur=18)   # frosted glass: draw it after what it blurs
 ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content_size, anchor, size) -&gt; (anchor, size)
 ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
 screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)
@@ -1892,6 +2011,12 @@ app.ruler_on = True                                       # the same switch, fro
 <h3>World space — (x, y, z), z up</h3>
 <pre><code class="py">ui.draw_grid()
 ui.draw_line(start, tip, color, thickness=0)              ui.draw_arrow(start, tip, color)
+ui.draw_polyline(points, color, thickness=0, closed=False)             # one call for any number of points
+ui.draw_nurbs(curve_or_control_points, color, thickness=0, degree=3, weights=None, samples=64, closed=False)
+curve = Nurbs(control_points, degree=3, weights=None, closed=False)    curve.points(samples)    Nurbs.circle(center, radius)
+curve.point(t) -&gt; (x, y, z)                  # t from 0 (start) to 1 (end)
+ui.draw_nurbs(curve, color, pick=True)       # pick and move its control points with a 3D gizmo:   curve.busy   curve.active   curve.changed
+ui.world_to_screen((x, y, z)) -&gt; (x, y) | None
 ui.draw_circle(center, radius, color, axis=(0, 0, 1))     ui.draw_image(anchor, source, right, up, width, height=None, tint=…)
 ui.draw_point(center, size, color)                        ui.draw_points(points, size, color)
 ui.draw_points_sorted(…)   ui.draw_points_rgba(…)         ui.draw_points_rgba_sorted(…)
@@ -1949,7 +2074,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

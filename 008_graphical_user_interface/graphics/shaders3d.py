@@ -182,6 +182,37 @@ fn vs_main(v: VIn) -> VOut {
 """
 )
 
+# Polylines: the same stroke, one *instance* per segment. The six corners are
+# generated from the vertex number, so a segment is 10 floats instead of 72 and
+# a curve of any length is one draw call.
+POLYLINE_STROKES = (
+    STROKES.replace("@vertex\nfn vs_main(v: VIn) -> VOut {", "fn stroke_vertex(v: VIn) -> VOut {")
+    + """
+struct SegmentIn {
+    @location(0) a: vec3<f32>,
+    @location(1) b: vec3<f32>,
+    @location(2) color: vec3<f32>,
+    @location(3) half_width: f32,        // pixels
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) number: u32, s: SegmentIn) -> VOut {
+    var ends = array<f32, 6>(0.0, 0.0, 1.0, 0.0, 1.0, 1.0);
+    var sides = array<f32, 6>(1.0, -1.0, -1.0, 1.0, -1.0, 1.0);
+    var v: VIn;
+    v.segment_a = s.a;
+    v.segment_b = s.b;
+    v.color = s.color;
+    v.end = ends[number];
+    v.side = sides[number];
+    v.half_width = s.half_width;
+    return stroke_vertex(v);
+}
+"""
+)
+assert "fn stroke_vertex" in POLYLINE_STROKES
+POLYLINE_LAYOUT = (10, ((0, 3, 0), (1, 3, 3), (2, 3, 6), (3, 1, 9)))
+
 # Screen-space (HUD) strokes: pixel input, top-left origin, y down.
 SCREEN_STROKES = (
     COMMON
@@ -410,6 +441,51 @@ fn fs_main(i: SOut) -> @location(0) vec4<f32> {
         discard;
     }
     return vec4<f32>(i.color.rgb, i.color.a * coverage);
+}
+"""
+)
+
+# Acrylic: a panel of frosted glass. The picture behind is blurred (many taps
+# on a spiral, turned by a per-pixel random angle so the eye sees grain instead
+# of bands), tinted, and given a faint grain and a light border.
+SCREEN_ACRYLIC = (
+    COMMON
+    + """
+@group(1) @binding(0) var behind: texture_2d<f32>;
+@group(1) @binding(1) var behind_sampler: sampler;
+"""
+    + _SHAPE_VERTEX
+    + """
+const TAPS: i32 = 28;
+
+fn random(p: vec2<f32>) -> f32 {
+    return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+}
+
+@fragment
+fn fs_main(i: SOut) -> @location(0) vec4<f32> {
+    let q = abs(i.local) - i.half_px + vec2<f32>(i.radius_px);
+    let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - i.radius_px;
+    let coverage = clamp(0.5 - d, 0.0, 1.0);
+    if (coverage <= 0.001) {
+        discard;
+    }
+    let pixel = i.position.xy;
+    let blur = u.pixel_scale;                  // radius of the blur, pixels
+    let turn = random(pixel) * 6.2831853;
+    var sum = vec3<f32>(0.0);
+    for (var n = 0; n < TAPS; n++) {
+        // Golden-angle spiral: the taps cover the disc evenly.
+        let r = sqrt((f32(n) + 0.5) / f32(TAPS)) * blur;
+        let a = f32(n) * 2.3999632 + turn;
+        let uv = (pixel + r * vec2<f32>(cos(a), sin(a))) / u.viewport;
+        sum += textureSampleLevel(behind, behind_sampler, uv, 0.0).rgb;
+    }
+    var color = sum / f32(TAPS);
+    color = mix(color, i.color.rgb, i.color.a);                 // the tint
+    color += (random(pixel + 17.0) - 0.5) * 0.025;              // grain
+    color += 0.10 * smoothstep(-1.5, 0.0, d);                   // a light edge
+    return vec4<f32>(color, coverage);
 }
 """
 )
@@ -802,6 +878,7 @@ ALL_SHADERS = {
     "lines": LINES,
     "strokes": STROKES,
     "screen_strokes": SCREEN_STROKES,
+    "polyline_strokes": POLYLINE_STROKES,
     "points_plain": POINTS_PLAIN,
     "points_plain_rgba": POINTS_PLAIN_RGBA,
     "points_aa": POINTS_AA,
@@ -809,6 +886,7 @@ ALL_SHADERS = {
     "image": IMAGE,
     "screen_shapes": SCREEN_SHAPES,
     "screen_rect_sharp": SCREEN_RECT_SHARP,
+    "screen_acrylic": SCREEN_ACRYLIC,
     "screen_lines": SCREEN_LINES,
     "screen_gradient_shapes": SCREEN_GRADIENT_SHAPES,
     "screen_shape_edges": SCREEN_SHAPE_EDGES,

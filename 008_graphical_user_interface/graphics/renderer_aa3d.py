@@ -29,6 +29,7 @@ size or HiDPI scale.
 from __future__ import annotations
 
 import font3d
+import curve3d
 import geometry3d
 import geometry_aa3d
 import gpu3d
@@ -57,6 +58,12 @@ class AAGridArrowRenderer(SceneRenderer):
         # strokes drawn later (the clock over the grid) win the depth fight.
         strokes = gpu3d.vertex_layout(*shaders3d.STROKE_LAYOUT)
         self.stroke_pipeline = gpu.pipeline(shaders3d.STROKES, strokes, blend=True)
+        # Polylines: the same stroke with one instance per segment.
+        self.polyline_pipeline = gpu.pipeline(
+            shaders3d.POLYLINE_STROKES,
+            gpu3d.vertex_layout(*shaders3d.POLYLINE_LAYOUT, instanced=True),
+            blend=True,
+        )
         # Screen-space text: same distance-field fragment shader, pixel input,
         # never depth-tested — the HUD always sits on top of the scene.
         self.screen_pipeline = gpu.pipeline(
@@ -154,6 +161,39 @@ class AAGridArrowRenderer(SceneRenderer):
                 self._framebuffer()[1],
             )
         self._draw_strokes(vertices, half_width)
+
+    def draw_polyline(self, points, color=ARROW_COLOR, thickness: float = 0.0, closed: bool = False) -> None:
+        """Draw connected anti-aliased segments through ``points``.
+
+        ``points`` is a list or array of ``(x, y, z)``: the line goes through
+        them in order, and back to the first when ``closed``. ``color`` is one
+        ``(r, g, b)`` for the whole line, or an array with one colour per
+        point. ``thickness`` is in world units (0 = a thin line of constant
+        width on screen); joints are round.
+
+        Made for long lines: the points go to the graphics card as one array
+        and the whole polyline is one draw call, with no Python loop — a
+        hundred thousand points cost about the same as a hundred calls to
+        ``draw_line``.
+        """
+        starts, ends = curve3d.segments(np.asarray(points, dtype=np.float32)[:, :3], closed)
+        count = len(starts)
+        if not count:
+            return
+        rows = np.empty((count, 10), dtype=np.float32)
+        rows[:, 0:3] = starts
+        rows[:, 3:6] = ends
+        colors = np.asarray(color, dtype=np.float32)
+        rows[:, 6:9] = colors[:count, :3] if colors.ndim == 2 else colors[:3]
+        if thickness <= 0.0:
+            rows[:, 9] = AA_LINE_WIDTH_PX * 0.5
+        else:
+            # World thickness -> pixels, at the depth of each segment's middle.
+            height = self._framebuffer()[1]
+            depth = (0.5 * (starts + ends) - self.camera.eye()) @ self.camera.forward()
+            scale = self.camera.pixel_scale(height) / np.maximum(depth, 1e-6)
+            rows[:, 9] = np.where(depth > 1e-6, 0.5 * thickness * scale, 0.0)
+        self._submit_points(self.polyline_pipeline, self._stroke_uniforms(), rows)
 
     def draw_circle(
         self,

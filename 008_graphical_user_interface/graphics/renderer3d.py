@@ -19,6 +19,8 @@ import geometry3d
 import gpu3d
 import numpy as np
 import screen2d
+import curve3d
+import curve_edit3d
 import shaders3d
 import solid_renderer3d
 import texture3d
@@ -74,7 +76,7 @@ class SceneRenderer(solid_renderer3d.SolidMethods):
         # Screen-space triangles: the SDF one (anti-aliased, a blended quad) and
         # the plain twins (three vertices; opaque = no blending, or blended).
         triangles = gpu3d.vertex_layout(*shaders3d.SCREEN_TRIANGLE_LAYOUT, instanced=True)
-        self.triangle_pipeline = gpu.pipeline(
+        self.screen_triangle_pipeline = gpu.pipeline(
             shaders3d.SCREEN_TRIANGLES, triangles, blend=True, **overlay
         )
         self.sharp_triangle_pipelines = {
@@ -256,6 +258,63 @@ class SceneRenderer(solid_renderer3d.SolidMethods):
         else:
             pipeline = self.sharp_rect_pipelines[bool(row[0, 7] < 1.0)]
             self._submit_points(pipeline, self._screen_uniforms(0.0), row)
+
+    def draw_screen_acrylic_rect(
+        self,
+        anchor: screen2d.Point2,
+        size: screen2d.Size2,
+        tint: screen2d.ColorRGBA = (0.10, 0.10, 0.13, 0.55),
+        radius: float = 0.0,
+        blur: float = 18.0,
+    ) -> None:
+        """Draw a panel of frosted glass ("acrylic") in screen space.
+
+        Same ``anchor``, ``size`` and ``radius`` as ``draw_screen_rect`` (and
+        the same hit test, ``in_screen_rect``). Everything drawn **before** it
+        — the 3D scene and the interface under the panel — shows through,
+        blurred over ``blur`` pixels. ``tint`` is ``(r, g, b, a)``: the colour
+        of the glass and how much of it covers the blur (0 = clear frosted
+        glass, 1 = a plain rectangle). What you draw after the panel (its
+        text, its buttons) is sharp, on top.
+
+        The blur needs the finished picture behind the panel, so a frame that
+        contains a panel is drawn in one more step. ``ui.transparency = False``
+        (``--no-transparency``, F3) removes that step: the panel becomes a
+        plain, mostly opaque rectangle of the tint colour.
+        """
+        r, g, b, a = screen2d.rgba(tint)
+        if not self.transparency or blur <= 0.0:
+            self.draw_screen_rect(anchor, size, (r, g, b, max(a, 0.9)), radius)
+            return
+        row = screen2d.rect_instance(anchor, size, (r, g, b, a), radius)
+        if self.__dict__.get("_acrylic_pipeline") is None:
+            self._acrylic_pipeline = self.gpu.pipeline(
+                shaders3d.SCREEN_ACRYLIC,
+                gpu3d.vertex_layout(*shaders3d.SCREEN_SHAPE_LAYOUT, instanced=True),
+                blend=True,
+                textured=True,
+                depth_write=False,
+                depth_compare="always",
+            )
+        width, height = self._framebuffer()
+        window = tuple(float(max(v, 1)) for v in self.gpu.window_size())
+        uniforms = gpu3d.pack_uniforms(
+            viewport=(float(max(width, 1)), float(max(height, 1))),
+            screen=window,
+            feather=1.0,
+            pixel_scale=float(blur) * min(width / window[0], height / window[1]),
+        )
+        self.gpu.submit(
+            gpu3d.DrawCall(
+                pipeline=self._acrylic_pipeline,
+                uniforms=uniforms,
+                vertex_count=6,
+                instance_count=1,
+                vertices=row,
+                backdrop=True,
+                overlay=True,
+            )
+        )
 
     def draw_screen_circle(
         self,
@@ -472,7 +531,7 @@ class SceneRenderer(solid_renderer3d.SolidMethods):
             return
         row = screen2d.triangle_instance(anchor, base, height, direction, color)
         if antialias:
-            self._submit_points(self.triangle_pipeline, self._screen_uniforms(1.0), row)
+            self._submit_points(self.screen_triangle_pipeline, self._screen_uniforms(1.0), row)
             return
         self.gpu.submit(
             gpu3d.DrawCall(
@@ -534,6 +593,105 @@ class SceneRenderer(solid_renderer3d.SolidMethods):
         row = screen2d.line_instance(start, end, color, thickness, dash, spacing)
         if row[0, 8] > 0.0:
             self._submit_points(self.screen_line_pipeline, self._screen_uniforms(1.0), row)
+
+    # -- curves -------------------------------------------------------------
+    def draw_screen_polyline(
+        self,
+        points,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        thickness: float = 2.0,
+        closed: bool = False,
+    ) -> None:
+        """Draw connected anti-aliased segments in screen space.
+
+        ``points`` is a list or array of ``(x, y)`` in window pixels: the line
+        goes through them in order, and back to the first when ``closed``.
+        ``thickness`` is in pixels, joints are round. Whatever the number of
+        points, the whole polyline is one array handed to the graphics card and
+        one draw call — use it instead of a loop of ``draw_screen_line``.
+        """
+        starts, ends = curve3d.segments(np.asarray(points, dtype=np.float32)[:, :2], closed)
+        if not len(starts) or thickness <= 0.0:
+            return
+        rows = np.zeros((len(starts), screen2d.LINE_FLOATS), dtype=np.float32)
+        rows[:, 0:2] = starts
+        rows[:, 2:4] = ends
+        rows[:, 4:8] = screen2d.rgba(color)
+        rows[:, 8] = 0.5 * float(thickness)
+        self._submit_points(self.screen_line_pipeline, self._screen_uniforms(1.0), rows)
+
+    @staticmethod
+    def _curve_points(curve, degree, weights, knots, samples, closed) -> tuple[np.ndarray, bool]:
+        """Points along a NURBS given as a ``Nurbs`` object or as control points."""
+        if isinstance(curve, curve3d.Nurbs):
+            return curve.points(samples), curve.closed
+        return curve3d.nurbs_points(curve, degree, weights, knots, samples, closed), closed
+
+    def draw_nurbs(
+        self,
+        curve,
+        color=ARROW_COLOR,
+        thickness: float = 0.0,
+        *,
+        degree: int = 3,
+        weights=None,
+        knots=None,
+        samples: int = 64,
+        closed: bool = False,
+        pick: bool = False,
+    ) -> None:
+        """Draw a NURBS curve in the 3D scene.
+
+        ``curve`` is a ``curve3d.Nurbs``, or simply its control points — a
+        list of ``(x, y, z)`` — with ``degree``, ``weights``, ``knots`` and
+        ``closed`` given here. ``samples`` is how many points are computed
+        along the curve: raise it for long or very bent curves. ``thickness``
+        is as in ``draw_polyline``.
+
+        ``pick=True`` (with a ``Nurbs`` object) lets the user edit the curve
+        with the mouse. Its control points are drawn as dots; a click on one
+        makes it active and pops up a gizmo of three arrows. Dragging an arrow
+        slides the point along x, y or z; dragging the dot moves it freely,
+        facing the camera; a click on the background puts the gizmo away.
+        Read ``curve.busy`` to know when the mouse belongs to the curve::
+
+            if not curve.busy:
+                app.handle_camera()
+            ui.draw_nurbs(curve, PINK, pick=True)
+        """
+        if pick:
+            if not isinstance(curve, curve3d.Nurbs):
+                raise TypeError("pick=True needs a curve3d.Nurbs object: it remembers which point is active")
+            curve_edit3d.edit(self, curve)  # first: the curve is drawn where the mouse just put it
+        points, loop = self._curve_points(curve, degree, weights, knots, samples, closed)
+        self.draw_polyline(points, color, thickness, loop)
+        if pick:
+            curve_edit3d.draw_handles(self, curve)  # last: the dots and the gizmo are on top
+
+    def world_to_screen(self, point) -> tuple[float, float] | None:
+        """Where a 3D point appears in the window, in pixels, or ``None`` if it is behind the camera.
+
+        The bridge from world space to screen space: use it to put a label, a
+        circle or a hit test on something that lives in the scene.
+        """
+        spots, visible = curve_edit3d.to_screen(self, point)
+        return (float(spots[0, 0]), float(spots[0, 1])) if visible[0] else None
+
+    def draw_screen_nurbs(
+        self,
+        curve,
+        color: screen2d.ColorRGBA = ARROW_COLOR,
+        thickness: float = 2.0,
+        *,
+        degree: int = 3,
+        weights=None,
+        knots=None,
+        samples: int = 64,
+        closed: bool = False,
+    ) -> None:
+        """Draw a NURBS curve in screen space: control points are ``(x, y)`` pixels."""
+        points, loop = self._curve_points(curve, degree, weights, knots, samples, closed)
+        self.draw_screen_polyline(points, color, thickness, loop)
 
     def draw_screen_image(
         self,
@@ -692,6 +850,23 @@ class GridArrowRenderer(SceneRenderer):
             )
             return
         self._draw(geometry3d.line_vertices(start, tip, color=color))
+
+    def draw_polyline(self, points, color=ARROW_COLOR, thickness: float = 0.0, closed: bool = False) -> None:
+        """Draw connected segments through ``points`` (rows of ``(x, y, z)``).
+
+        ``color`` is one ``(r, g, b)`` or one per point. This plain renderer
+        draws thin one-pixel lines and ignores ``thickness``; ``app.aa`` draws
+        the anti-aliased, thick version of the same call.
+        """
+        starts, ends = curve3d.segments(np.asarray(points, dtype=np.float32)[:, :3], closed)
+        if not len(starts):
+            return
+        colors = np.asarray(color, dtype=np.float32)
+        batch = np.empty((len(starts), 2, 6), dtype=np.float32)
+        batch[:, 0, :3] = starts
+        batch[:, 1, :3] = ends
+        batch[:, :, 3:] = (colors[: len(starts), None, :3] if colors.ndim == 2 else colors[:3])
+        self._draw(batch.reshape(-1, 6))
 
     def draw_circle(
         self,

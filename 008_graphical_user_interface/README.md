@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/1c09fab8-4a13-413b-8f6a-7a4671799638" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -24,6 +22,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              07_gradient_gauge a gradient gauge whose marker moves with the Up / Down keys
              08_map_viewer     pinch / wheel zoom and pan of a large map inside a rounded frame
              09_solids         lit solid shapes, a model from an .obj file, shaders, ray marching
+             10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
 guide.html   the step-by-step guide
 ```
 
@@ -53,6 +52,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/07_gradient_gauge/main.py
 .venv/bin/python examples/08_map_viewer/main.py           # add --image your_map.jpg for your own picture
 .venv/bin/python examples/09_solids/main.py               # add --raymarch for exact shapes and soft shadows
+.venv/bin/python examples/10_curves/main.py               # add --points 200000 for a longer polyline
 .venv/bin/python graphics/main.py
 ```
 
@@ -74,10 +74,15 @@ continuously.
 
 ```python
 import app3d                                   # graphics/
+from vec2 import Vec2                          # optional: points with arithmetic ...
+from vec3 import Vec3                          # ... usable wherever a tuple is
 app = app3d.App("my tool", size=(640, 400))
 ui = app.aa
 
 def draw_frame():
+    center = Vec2(*app.size()) / 2                                                        # the middle of the window
+    ui.draw_screen_line(center, center + Vec2(80, 40), (1, 1, 1), 2)                      # screen: Vec2
+    ui.draw_arrow(Vec3(0, 0, 0), Vec3(1, 0, 0).cross(Vec3(0, 1, 0)) * 2, (.2, .85, .95))  # world: Vec3
     over = ui.in_screen_rect(app.cursor(), (60, 90), (260, 150), 28)
     ui.draw_screen_rect((60, 90), (260, 150), (1, .85, .1) if over else (.58, .25, .9), 28)
     ui.draw_screen_circle((500, 165), 75, (.58, .25, .9))
@@ -94,6 +99,16 @@ app.run(draw_frame)
 from widgets2d import Slider                   # graphics/
 volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimum, maximum
 # in draw_frame:  level = volume.draw(app)     -> a float; drag the handle or click the line
+```
+
+```python
+from curve3d import Nurbs                      # graphics/
+# in draw_frame:
+#   ui.draw_polyline(points, (.2, .85, .95))                     # N rows of (x, y, z), one call for any N
+#   ui.draw_nurbs([(0, 0, 0), (1, 2, 1), (3, 2, 2), (4, 0, 0)], (1, .35, .7), thickness=0.05)   # control points
+#   ui.draw_nurbs(curve, (1, .35, .7), pick=True)                # curve = Nurbs([...]): click a point, drag its 3D gizmo
+#   ui.draw_point(curve.point(0.5), 0.1, (1, .85, .1))           # point(t): the position on the curve, t from 0 to 1
+#   ui.draw_screen_acrylic_rect((20, 20), (320, 120), (.1, .1, .14, .45), radius=16)            # frosted glass panel
 ```
 
 ```python

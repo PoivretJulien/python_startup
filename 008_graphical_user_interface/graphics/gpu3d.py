@@ -259,6 +259,7 @@ class DrawCall:
     # everything before them can be read. `order` sorts them, far ones first.
     backdrop: bool = False
     order: float = 0.0
+    overlay: bool = False  # a screen-space panel that reads the picture (acrylic)
 
 
 _BLIT = """
@@ -426,9 +427,10 @@ class GPU:
         self._depth: wgpu.GPUTexture | None = None
         self._depth_view = None
         # The picture behind see-through solids; made only when one is drawn.
-        self._backdrop: wgpu.GPUTexture | None = None
-        self._backdrop_view = None
-        self._backdrop_group: wgpu.GPUBindGroup | None = None
+        self._backdrops: list[wgpu.GPUTexture] = []
+        self._backdrop_views: list = []
+        self._backdrop_groups: list[wgpu.GPUBindGroup] = []
+        self._backdrop_group: wgpu.GPUBindGroup | None = None  # the one being read
         self._blit_pipeline: wgpu.GPURenderPipeline | None = None
 
         self.clear_color: Sequence[float] = (0.0, 0.0, 0.0, 1.0)
@@ -593,7 +595,9 @@ class GPU:
                 if call.texture_group is not None:
                     render_pass.set_bind_group(1, call.texture_group)
                 if call.backdrop:
-                    render_pass.set_bind_group(2, self._backdrop_group)
+                    # Solids keep their scene in group 1; a panel has nothing
+                    # else to bind, so the picture behind is its group 1.
+                    render_pass.set_bind_group(1 if call.overlay else 2, self._backdrop_group)
                 if call.buffer is not None:
                     render_pass.set_vertex_buffer(0, call.buffer)
                 else:
@@ -614,31 +618,41 @@ class GPU:
                 },
             )
 
-        see_through = [item for item in numbered if item[1].backdrop]
-        if not see_through:
-            # The usual frame: one pass, straight to the window.
-            render_pass = begin(target.create_view(), True, True)
-            draw(render_pass, numbered)
-            render_pass.end()
+        # A draw that reads "the picture so far" (a see-through solid, an
+        # acrylic panel) cannot be in the pass that paints that picture, so the
+        # frame is cut into steps; each step starts from a copy of the one
+        # before. Most frames have no such draw: one step, straight to the window.
+        #   step A  everything opaque, up to the last see-through solid
+        #   step B  the see-through solids (far ones first), then what follows
+        #   step C  from the first acrylic panel on, in drawing order
+        panels = [index for index, call in numbered if call.backdrop and call.overlay]
+        first_panel = panels[0] if panels else len(numbered)
+        glass = [item for item in numbered[:first_panel] if item[1].backdrop]
+        steps = []
+        if glass:
+            last = glass[-1][0]
+            steps.append([item for item in numbered[:last] if not item[1].backdrop])
+            steps.append(sorted(glass, key=lambda item: -item[1].order) + numbered[last + 1 : first_panel])
         else:
-            # 1. Everything drawn before the last see-through solid goes to a
-            #    texture: "the picture behind".
-            # 2. That picture is copied to the window, then the see-through
-            #    solids are drawn reading it (far ones first), then whatever
-            #    came after them (the interface) on top.
-            last = see_through[-1][0]
-            self._backdrop_target(width, height)
-            render_pass = begin(self._backdrop_view, True, False)
-            draw(render_pass, [item for item in numbered[:last] if not item[1].backdrop])
-            render_pass.end()
+            steps.append(numbered[:first_panel])
+        if panels:
+            steps.append(numbered[first_panel:])
 
-            render_pass = begin(target.create_view(), False, True)
-            render_pass.set_pipeline(self._blit())
-            render_pass.set_bind_group(0, self._uniform_group, [0])
-            render_pass.set_bind_group(1, self._backdrop_group)
-            render_pass.draw(3, 1)
-            draw(render_pass, sorted(see_through, key=lambda item: -item[1].order))
-            draw(render_pass, numbered[last + 1 :])
+        if len(steps) > 1:
+            self._backdrop_targets(width, height)
+        for number, items in enumerate(steps):
+            final = number == len(steps) - 1
+            view = target.create_view() if final else self._backdrop_views[number % 2]
+            render_pass = begin(view, number == 0, final)
+            if number:
+                # Start from the previous step's picture, and let this step's
+                # draws read it.
+                self._backdrop_group = self._backdrop_groups[(number - 1) % 2]
+                render_pass.set_pipeline(self._blit())
+                render_pass.set_bind_group(0, self._uniform_group, [0])
+                render_pass.set_bind_group(1, self._backdrop_group)
+                render_pass.draw(3, 1)
+            draw(render_pass, items)
             render_pass.end()
 
         self.queue.submit([encoder.finish()])
@@ -696,23 +710,28 @@ class GPU:
             )
         self.queue.write_buffer(self._uniform_arena, 0, block)
 
-    def _backdrop_target(self, width: int, height: int) -> None:
-        if self._backdrop is None or self._backdrop.size[:2] != (width, height):
-            if self._backdrop is not None:
-                self._backdrop.destroy()
-            self._backdrop = self.device.create_texture(
+    def _backdrop_targets(self, width: int, height: int) -> None:
+        """Two off-screen pictures the size of the window, used in turn."""
+        if self._backdrops and self._backdrops[0].size[:2] == (width, height):
+            return
+        for texture in self._backdrops:
+            texture.destroy()
+        self._backdrops = [
+            self.device.create_texture(
                 size=(width, height, 1),
                 format=self.format,
                 usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.TEXTURE_BINDING,
             )
-            self._backdrop_view = self._backdrop.create_view()
-            self._backdrop_group = self.device.create_bind_group(
+            for _ in range(2)
+        ]
+        self._backdrop_views = [texture.create_view() for texture in self._backdrops]
+        self._backdrop_groups = [
+            self.device.create_bind_group(
                 layout=self.texture_layout,
-                entries=[
-                    {"binding": 0, "resource": self._backdrop_view},
-                    {"binding": 1, "resource": self.sampler},
-                ],
+                entries=[{"binding": 0, "resource": view}, {"binding": 1, "resource": self.sampler}],
             )
+            for view in self._backdrop_views
+        ]
 
     def _blit(self) -> wgpu.GPURenderPipeline:
         """Copies the backdrop to the window: one triangle that covers the screen."""
@@ -752,9 +771,10 @@ class GPU:
                 buffer.destroy()
         if self._depth is not None:
             self._depth.destroy()
-        if self._backdrop is not None:
-            self._backdrop.destroy()
-        self._vertex_arena = self._uniform_arena = self._depth = self._backdrop = None
+        for texture in self._backdrops:
+            texture.destroy()
+        self._backdrops = []
+        self._vertex_arena = self._uniform_arena = self._depth = None
         try:
             self.context.unconfigure()
         except Exception:  # pragma: no cover - best effort at shutdown
