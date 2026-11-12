@@ -182,6 +182,42 @@ fn vs_main(v: VIn) -> VOut {
 """
 )
 
+# A flat-coloured rectangle in the 3D scene (draw_rect). Each corner carries
+# its place in the rectangle (0..1 on both sides), which tells every pixel how
+# far it is from the border: that is what smooths the edges.
+WORLD_FILL = (
+    COMMON
+    + """
+struct VOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) place: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@location(0) position: vec3<f32>, @location(1) place: vec2<f32>) -> VOut {
+    var out: VOut;
+    out.position = to_wgpu_depth(u.mvp * vec4<f32>(position, 1.0));
+    out.place = place;
+    return out;
+}
+
+@fragment
+fn fs_main(i: VOut) -> @location(0) vec4<f32> {
+    // Pixels to the nearest border: the distance in "place" units divided by
+    // how much "place" changes from one pixel to the next.
+    let to_border = min(i.place, vec2<f32>(1.0) - i.place) / max(fwidth(i.place), vec2<f32>(1e-6));
+    let coverage = clamp(min(to_border.x, to_border.y), 0.0, 1.0);
+    // u.feather is the switch: 1 = fade the last pixel, 0 = hard edges.
+    let alpha = u.tint.a * mix(1.0, coverage, u.feather);
+    if (alpha <= 0.003) {
+        discard;
+    }
+    return vec4<f32>(u.tint.rgb, alpha);
+}
+"""
+)
+WORLD_FILL_LAYOUT = (5, ((0, 3, 0), (1, 2, 3)))
+
 # Polylines: the same stroke, one *instance* per segment. The six corners are
 # generated from the vertex number, so a segment is 10 floats instead of 72 and
 # a curve of any length is one draw call.
@@ -879,6 +915,7 @@ ALL_SHADERS = {
     "strokes": STROKES,
     "screen_strokes": SCREEN_STROKES,
     "polyline_strokes": POLYLINE_STROKES,
+    "world_fill": WORLD_FILL,
     "points_plain": POINTS_PLAIN,
     "points_plain_rgba": POINTS_PLAIN_RGBA,
     "points_aa": POINTS_AA,

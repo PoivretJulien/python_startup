@@ -125,6 +125,8 @@
     h1 { font-size: 30px; }
     .grid2 { grid-template-columns: 1fr; }
   }
+  table.api td:first-child { min-width: 17rem; }
+  h4 { margin: 1.6em 0 .4em; font-size: 1rem; }
 </style>
 </head>
 <body>
@@ -153,6 +155,7 @@
     <li><a href="#together">Window + network</a></li>
     <li><a href="#video">Video between two windows</a></li>
     <li><a href="#cheat">Cheat sheet</a></li>
+    <li><a href="#reference">API reference</a></li>
     <li><a href="#trouble">When it does not work</a></li>
   </ol>
 </nav>
@@ -1223,6 +1226,7 @@ def draw_frame():
   <tr><td><code>draw_line(start, tip, color, thickness=0)</code></td><td>A segment</td><td><code>thickness</code> is in world units; 0 is a thin line of constant width.</td></tr>
   <tr><td><code>draw_arrow(start, tip, color)</code></td><td>A vector</td><td>The head is at <code>tip</code>.</td></tr>
   <tr><td><code>draw_circle(center, radius, color, axis=(0,0,1))</code></td><td>A circle outline</td><td><code>axis</code> is the direction the circle faces.</td></tr>
+  <tr><td><code>draw_rect(origin, u, v, color)</code></td><td>A filled rectangle</td><td>One corner and its two sides; the colour may be see-through. See below.</td></tr>
   <tr><td><code>draw_polyline(points, color, thickness=0)</code></td><td>A line through many points</td><td>One call whatever the length. See <a href="#curves">Curves</a>.</td></tr>
   <tr><td><code>draw_nurbs(control_points, color, thickness=0)</code></td><td>A smooth curve</td><td>See <a href="#curves">Curves</a>.</td></tr>
   <tr><td><code>draw_point(center, size, color)</code></td><td>One particle</td><td><code>size</code> is its radius in world units.</td></tr>
@@ -1232,6 +1236,25 @@ def draw_frame():
   <tr><td><code>draw_sphere</code>, <code>draw_box</code>, <code>draw_mesh</code> …</td><td>Solid, lit shapes and models</td><td>See <a href="#solids">Solids, light and shaders</a>.</td></tr>
 </table></div>
 <p>World-space colours are <code>(r, g, b)</code>; only the <code>…_rgba</code> particle methods take a fourth number.</p>
+
+<h3>A flat rectangle</h3>
+<p>A rectangle in space is given by one corner and the two sides that leave from it. Each side is a vector: its direction is where the side goes, its length how long it is.</p>
+<pre><code class="py">ui.draw_rect((0, 0, 0), (2, 0, 0), (0, 3, 0), (0.2, 0.6, 1.0))             # flat on the floor: 2 along x, 3 along y
+ui.draw_rect((0, 0, 0), (2, 0, 0), (0, 0, 1), (1.0, 0.2, 0.4, 0.45))       # standing: 2 wide, 1 tall, see-through
+
+from vec3 import Vec3
+corner, side, up = Vec3(1, 1, 0), Vec3(1, 1, 0).normalized() * 2, Vec3(0, 0, 1.5)
+ui.draw_rect(corner, side, up, GREEN)                                       # turned 45°: the sides say it all</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>origin</code></td><td>One corner, <code>(x, y, z)</code>.</td></tr>
+  <tr><td><code>u</code>, <code>v</code></td><td>The two sides from that corner, as vectors. The other corners are <code>origin + u</code>, <code>origin + u + v</code> and <code>origin + v</code>.</td></tr>
+  <tr><td><code>color</code></td><td><code>(r, g, b)</code> or <code>(r, g, b, a)</code>. Below 1, <code>a</code> lets the scene show through.</td></tr>
+  <tr><td><code>antialias</code></td><td><code>True</code> (default): the four edges are smoothed over one pixel. <code>False</code>: hard, stair-stepped edges, and for an opaque colour the cheapest drawing there is.</td></tr>
+</table></div>
+<pre><code class="py">ui.draw_rect(origin, u, v, BLUE)                       # smooth edges
+ui.draw_rect(origin, u, v, BLUE, antialias=False)      # hard edges</code></pre>
+<p>The colour is flat — the light of the solid shapes does not act on it — and both faces are visible. If the two sides are not perpendicular you get a parallelogram. Draw see-through rectangles after the things that must show through them. For a rectangle that reacts to the light, use a thin <code>draw_box</code> (<a href="#solids">Solids</a>).</p>
 
 <h3>Many particles, one call</h3>
 <p>Calling <code>draw_point</code> a million times would be slow: Python would be doing the looping. Give <code>draw_points</code> the whole array instead, and the loop happens on the graphics card.</p>
@@ -2011,6 +2034,7 @@ app.ruler_on = True                                       # the same switch, fro
 <h3>World space — (x, y, z), z up</h3>
 <pre><code class="py">ui.draw_grid()
 ui.draw_line(start, tip, color, thickness=0)              ui.draw_arrow(start, tip, color)
+ui.draw_rect(origin, u, v, color, antialias=True)                      # a flat rectangle: corner, two side vectors, (r, g, b, a)
 ui.draw_polyline(points, color, thickness=0, closed=False)             # one call for any number of points
 ui.draw_nurbs(curve_or_control_points, color, thickness=0, degree=3, weights=None, samples=64, closed=False)
 curve = Nurbs(control_points, degree=3, weights=None, closed=False)    curve.points(samples)    Nurbs.circle(center, radius)
@@ -2048,9 +2072,284 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 <pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler   --raymarch   --no-transparency   --no-shadows</pre>
 </section>
 
+<!-- ================================================================ reference -->
+<section id="reference">
+<h2><span class="n">20</span>API reference</h2>
+<p class="goal">Every class, method and function you can call, with every argument.</p>
+
+<p>The chapters before this one explain; this one lists. Each table gives the exact call, what comes back, and what it does. <code>ui</code> is <code>app.aa</code> (or <code>app.plain</code>: the same methods, without anti-aliasing). Arguments after a <code>*</code> must be given by name.</p>
+
+<h3>Conventions</h3><div class="tablewrap"><table class="api">
+  <tr><th>Thing</th><th>Form</th><th>Meaning</th></tr>
+  <tr><td>Screen point</td><td><code>(x, y)</code></td><td>Window pixels, origin at the top-left corner, y grows downward. The units of <code>app.cursor()</code>.</td></tr>
+  <tr><td>World point</td><td><code>(x, y, z)</code></td><td>World units, z is up, the floor is the xy plane.</td></tr>
+  <tr><td>Any point or vector</td><td>tuple, list, <code>Vec2</code> / <code>Vec3</code>, NumPy array</td><td>All are accepted wherever a point is expected.</td></tr>
+  <tr><td>Colour</td><td><code>(r, g, b)</code> or <code>(r, g, b, a)</code></td><td>Each value from 0 to 1. <code>a</code> is the opacity: 1 solid, 0 invisible. Where only <code>(r, g, b)</code> is listed, a fourth value is ignored.</td></tr>
+  <tr><td>Angle</td><td>degrees</td><td>For <code>rotation=(rx, ry, rz)</code>: around x, then y, then z.</td></tr>
+  <tr><td>Many points</td><td>array of shape <code>(N, 2)</code> or <code>(N, 3)</code></td><td>One row per point; a list of tuples works too.</td></tr>
+  <tr><td>Picture source</td><td>file path, Pillow image, NumPy array, or <code>Texture</code></td><td>Arrays are <code>(height, width, 3 or 4)</code>, 0–255.</td></tr>
+</table></div><h3>The application: <code>app3d.App</code></h3>
+<p><code>import app3d</code> — the window, the graphics card, both renderers and the loop.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>App(title, size, position, *, background, parser, argv)</code></td><td>an <code>App</code></td><td>Opens the window. <code>size=(width, height)</code> in pixels; <code>position=(x, y)</code> on the desktop or <code>None</code>; <code>background=(r, g, b)</code>; <code>parser</code> an <code>argparse</code> parser carrying your own options; <code>argv</code> a list of options instead of the command line.</td></tr>
+  <tr><td class="wrap"><code>run(draw_frame)</code></td><td>loop statistics</td><td>Calls <code>draw_frame()</code> once per visible change until the window closes, then releases everything. Esc, the close button and Ctrl+C end it.</td></tr>
+  <tr><td class="wrap"><code>request_redraw()</code></td><td>—</td><td>Asks for one frame. Safe from any thread: how a network message or a timer makes the picture change.</td></tr>
+  <tr><td class="wrap"><code>quit()</code></td><td>—</td><td>Leaves <code>run()</code> at the next turn. Safe from any thread.</td></tr>
+  <tr><td class="wrap"><code>close()</code></td><td>—</td><td>Releases the window and the graphics card. <code>run()</code> already does it.</td></tr>
+  <tr><td class="wrap"><code>size()</code></td><td><code>(width, height)</code></td><td>The window size, in the pixels of <code>cursor()</code>. Call it every frame: the window can be resized.</td></tr>
+  <tr><td class="wrap"><code>cursor()</code></td><td><code>(x, y)</code></td><td>The mouse position, in window pixels.</td></tr>
+  <tr><td class="wrap"><code>mouse_down(button)</code></td><td>bool</td><td><code>True</code> while the button is held. Default: the left one; <code>glfw.MOUSE_BUTTON_RIGHT</code> for the right.</td></tr>
+  <tr><td class="wrap"><code>keys_down()</code></td><td>list of names</td><td>The keys held now, in the order they were pressed: <code>["LEFT SHIFT", "A"]</code>.</td></tr>
+  <tr><td class="wrap"><code>key_down(name)</code></td><td>bool</td><td><code>True</code> while that key is held.</td></tr>
+  <tr><td class="wrap"><code>keys_pressed(repeat)</code></td><td>tuple of names</td><td>The keys pressed since the previous frame. <code>repeat=True</code> also reports the automatic repeats of a held key.</td></tr>
+  <tr><td class="wrap"><code>key_pressed(name, repeat)</code></td><td>bool</td><td><code>True</code> in the one frame that follows a press of that key.</td></tr>
+  <tr><td class="wrap"><code>typed()</code></td><td>str</td><td>The text typed since the previous frame, with the keyboard layout, Shift and accents applied.</td></tr>
+  <tr><td class="wrap"><code>pan()</code></td><td><code>(dx, dy)</code></td><td>The pan gesture since the previous frame, in pixels (two fingers on a trackpad, Shift+wheel).</td></tr>
+  <tr><td class="wrap"><code>zoom()</code></td><td>float</td><td>The zoom gesture since the previous frame, as a factor to multiply a scale by (pinch, wheel). 1.0 = none.</td></tr>
+  <tr><td class="wrap"><code>handle_camera()</code></td><td>—</td><td>Lets the user move the 3D camera: left-drag orbits, right- or middle-drag and the pan gesture pan, wheel and pinch zoom.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>app.aa</code></td><td>The anti-aliased renderer. Usually named <code>ui</code>.</td></tr>
+  <tr><td><code>app.plain</code></td><td>The same drawing methods with hard edges: faster on very large scenes.</td></tr>
+  <tr><td><code>app.camera</code></td><td>The <code>OrbitCamera</code> shared by both renderers.</td></tr>
+  <tr><td><code>app.args</code></td><td>The parsed command line, your own options included.</td></tr>
+  <tr><td><code>app.window</code></td><td>The GLFW window, for the few things the API does not wrap.</td></tr>
+  <tr><td><code>app.gestures</code></td><td>A sentence describing which gestures this system provides.</td></tr>
+  <tr><td><code>app.ruler_on</code></td><td><code>True</code> shows the measuring overlay (<code>--ruler</code>, F1).</td></tr>
+  <tr><td><code>app.raymarch</code></td><td><code>True</code> ray-marches the solid shapes (<code>--raymarch</code>, F2).</td></tr>
+  <tr><td><code>app.transparency</code></td><td><code>False</code> draws see-through solids and acrylic panels opaque (<code>--no-transparency</code>, F3).</td></tr>
+  <tr><td><code>app.shadows</code></td><td><code>False</code> removes the shadow map (<code>--no-shadows</code>, F4).</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Option of every program</th><th>Key</th><th>Effect</th></tr>
+  <tr><td><code>--poll</code></td><td>—</td><td>Redraw continuously instead of only when something changes.</td></tr>
+  <tr><td><code>--refresh HZ</code></td><td>—</td><td>Also redraw at this rate (0 = only on events).</td></tr>
+  <tr><td><code>--wait SECONDS</code></td><td>—</td><td>Longest sleep between two checks (0 = until an event).</td></tr>
+  <tr><td><code>--seconds N</code></td><td>—</td><td>Close by itself after N seconds.</td></tr>
+  <tr><td><code>--backend NAME</code></td><td>—</td><td><code>auto</code>, <code>metal</code>, <code>vulkan</code>, <code>dx12</code> or <code>gl</code>.</td></tr>
+  <tr><td><code>--no-vsync</code></td><td>—</td><td>Do not wait for the screen between frames.</td></tr>
+  <tr><td><code>--ruler</code></td><td>F1</td><td>The measuring overlay.</td></tr>
+  <tr><td><code>--raymarch</code></td><td>F2</td><td>Ray-march the solid shapes.</td></tr>
+  <tr><td><code>--no-transparency</code></td><td>F3</td><td>See-through solids and acrylic panels drawn opaque.</td></tr>
+  <tr><td><code>--no-shadows</code></td><td>F4</td><td>No shadow map.</td></tr>
+  <tr><td>—</td><td>Esc</td><td>Close the window.</td></tr>
+</table></div><h3>Screen space: shapes</h3>
+<p>Drawn in window pixels, on top of the 3D scene, in the order of the calls. All return nothing unless stated.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>draw_screen_rect(anchor, size, color, radius)</code></td><td>—</td><td>A filled rectangle. <code>anchor</code> is its top-left corner, <code>size=(width, height)</code>, <code>radius</code> rounds the four corners (0 = sharp).</td></tr>
+  <tr><td class="wrap"><code>draw_screen_rect_outline(anchor, size, color, radius, thickness)</code></td><td>—</td><td>Only the border of that rectangle, <code>thickness</code> pixels wide, drawn inward.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_inverted_rect(anchor, size, color, radius)</code></td><td>—</td><td>The opposite: colours everything <em>outside</em> the rectangle and leaves the inside clear. A frame around content.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_gradient_rect(anchor, size, stops, colors, direction, radius)</code></td><td>—</td><td>A rectangle filled with several colours. <code>stops</code> are positions from 0 to 1, <code>colors</code> one colour per stop, <code>direction</code> the way the gradient runs: <code>(1, 0)</code> to the right, <code>(0, -1)</code> upward.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_acrylic_rect(anchor, size, tint, radius, blur)</code></td><td>—</td><td>A panel of frosted glass that blurs what was drawn before it. <code>tint=(r, g, b, a)</code>: the glass colour and how much it covers the blur; <code>blur</code> in pixels.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_circle(center, radius, color)</code></td><td>—</td><td>A filled disc.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_circle_outline(center, radius, color, thickness)</code></td><td>—</td><td>A ring: only the border of the circle.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_gradient_circle(center, radius, stops, colors, direction)</code></td><td>—</td><td>A disc filled with a gradient, as the gradient rectangle.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_triangle(anchor, base, height, direction, color, *, antialias)</code></td><td>—</td><td>An isosceles triangle. <code>anchor</code> is the middle of its base, <code>base</code> the width of that base, <code>height</code> the distance to the tip, <code>direction</code> where the tip points.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_line(start, end, color, thickness)</code></td><td>—</td><td>A straight line with round ends.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_dashed_line(start, end, color, thickness, dash, spacing)</code></td><td>—</td><td>A dashed line: <code>dash</code> is the length of each dash, <code>spacing</code> the gap between two, in pixels.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_polyline(points, color, thickness, closed)</code></td><td>—</td><td>A line through a list of points, as one draw call. <code>closed</code> joins the last point to the first.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_nurbs(curve, color, thickness, *, degree, weights, knots, samples, closed)</code></td><td>—</td><td>A smooth curve. <code>curve</code> is a <code>Nurbs</code> or a list of control points <code>(x, y)</code>; the named arguments describe the curve in the second case.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_image(anchor, size, source, *, tint)</code></td><td>—</td><td>A picture stretched to <code>size</code>. <code>tint</code> multiplies its colours; its alpha makes it see-through.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_text(x, y, text, size_px, color, *, tracking, width_px)</code></td><td>width in pixels</td><td>Text whose baseline starts at <code>(x, y)</code>. <code>size_px</code> is the height of a capital letter, <code>tracking</code> the extra space between letters, <code>width_px</code> the thickness of the strokes.</td></tr>
+  <tr><td class="wrap"><code>measure_screen_text(text, size_px, tracking)</code></td><td>width in pixels</td><td>The width that text would take, without drawing it: for centring and right-aligning.</td></tr>
+</table></div><h3>Screen space: is the mouse on it?</h3>
+<p>Each test takes the arguments of the matching draw method, after the point to test. They also exist as plain functions in <code>screen2d</code>.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>in_screen_rect(cursor, anchor, size, radius)</code></td><td>bool</td><td>Inside the rectangle, rounded corners respected. Also the test for outlines, gradients, acrylic panels, pictures and the hole of an inverted rectangle.</td></tr>
+  <tr><td class="wrap"><code>in_screen_circle(cursor, center, radius)</code></td><td>bool</td><td>Inside the circle.</td></tr>
+  <tr><td class="wrap"><code>in_screen_line(cursor, start, end, thickness)</code></td><td>bool</td><td>On the line. Pass a larger <code>thickness</code> than the drawn one for an easier target.</td></tr>
+  <tr><td class="wrap"><code>in_screen_triangle(cursor, anchor, base, height, direction)</code></td><td>bool</td><td>Inside the triangle.</td></tr>
+</table></div><p><code>import screen2d</code> — the same tests under shorter names, distances, and layout helpers:</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>in_rect(cursor, anchor, size, radius)</code></td><td>bool</td><td>As <code>in_screen_rect</code>.</td></tr>
+  <tr><td class="wrap"><code>in_circle(cursor, center, radius)</code></td><td>bool</td><td>As <code>in_screen_circle</code>.</td></tr>
+  <tr><td class="wrap"><code>in_line(cursor, start, end, thickness)</code></td><td>bool</td><td>As <code>in_screen_line</code>.</td></tr>
+  <tr><td class="wrap"><code>in_triangle(cursor, anchor, base, height, direction)</code></td><td>bool</td><td>As <code>in_screen_triangle</code>.</td></tr>
+  <tr><td class="wrap"><code>rect_distance(cursor, anchor, size, radius)</code></td><td>pixels</td><td>Distance to the edge of the rectangle: negative inside, 0 on the edge, positive outside.</td></tr>
+  <tr><td class="wrap"><code>circle_distance(cursor, center, radius)</code></td><td>pixels</td><td>The same for a circle.</td></tr>
+  <tr><td class="wrap"><code>line_distance(cursor, start, end)</code></td><td>pixels</td><td>Distance to the nearest point of the segment.</td></tr>
+  <tr><td class="wrap"><code>triangle_points(anchor, base, height, direction)</code></td><td>three <code>(x, y)</code></td><td>The corners of the triangle <code>draw_screen_triangle</code> draws: the two ends of the base, then the tip.</td></tr>
+  <tr><td class="wrap"><code>gradient_color(stops, colors, t)</code></td><td><code>(r, g, b, a)</code></td><td>The colour of a gradient at position <code>t</code> (0 to 1), computed as the graphics card does.</td></tr>
+  <tr><td class="wrap"><code>fit(content, anchor, size)</code></td><td><code>(anchor, size)</code></td><td>The largest rectangle with the proportions of <code>content=(width, height)</code> that fits, centred, in the given box. For showing a picture without stretching it.</td></tr>
+  <tr><td class="wrap"><code>rgba(color)</code></td><td><code>(r, g, b, a)</code></td><td>A colour with its alpha, 1.0 when not given.</td></tr>
+</table></div><h3>World space: lines, particles, pictures, text</h3>
+<p>Drawn in the 3D scene, hidden by what is nearer. Colours are <code>(r, g, b)</code> unless stated.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>draw_grid()</code></td><td>—</td><td>The floor grid, centred under the camera; its squares resize with the zoom.</td></tr>
+  <tr><td class="wrap"><code>draw_line(start, tip, color, thickness)</code></td><td>—</td><td>A segment. <code>thickness</code> in world units; 0 = a thin line of constant width on screen.</td></tr>
+  <tr><td class="wrap"><code>draw_arrow(start, tip, color)</code></td><td>—</td><td>A vector: a segment with a head at <code>tip</code>.</td></tr>
+  <tr><td class="wrap"><code>draw_circle(center, radius, color, axis, segments)</code></td><td>—</td><td>A circle outline. <code>axis</code> is the direction it faces: <code>(0, 0, 1)</code> lies flat.</td></tr>
+  <tr><td class="wrap"><code>draw_rect(origin, u, v, color, *, antialias)</code></td><td>—</td><td>A filled flat rectangle: one corner and the two side vectors leaving it. <code>color</code> may be <code>(r, g, b, a)</code>.</td></tr>
+  <tr><td class="wrap"><code>draw_polyline(points, color, thickness, closed)</code></td><td>—</td><td>A line through many points, as one draw call. <code>color</code> is one colour or one per point.</td></tr>
+  <tr><td class="wrap"><code>draw_nurbs(curve, color, thickness, *, degree, weights, knots, samples, closed, pick)</code></td><td>—</td><td>A smooth curve from a <code>Nurbs</code> or a list of control points <code>(x, y, z)</code>. <code>pick=True</code> (with a <code>Nurbs</code>) makes its control points movable with the mouse and a gizmo.</td></tr>
+  <tr><td class="wrap"><code>draw_point(center, size, color)</code></td><td>—</td><td>One particle: a disc facing the camera. <code>size</code> is its radius in world units.</td></tr>
+  <tr><td class="wrap"><code>draw_points(points, size, color)</code></td><td>—</td><td>Many particles in one draw call. <code>size</code> and <code>color</code> are one value for all, or one per particle.</td></tr>
+  <tr><td class="wrap"><code>draw_points_sorted(points, size, color, *, order)</code></td><td>—</td><td>The same, painted from far to near so the nearest covers the others. <code>order</code>: your own drawing order.</td></tr>
+  <tr><td class="wrap"><code>draw_point_rgba(center, size, color, *, depth_write)</code></td><td>—</td><td>One particle with its own transparency: <code>color=(r, g, b, a)</code>.</td></tr>
+  <tr><td class="wrap"><code>draw_points_rgba(points, size, color, *, depth_write)</code></td><td>—</td><td>Many see-through particles. <code>depth_write=False</code> stops them hiding each other.</td></tr>
+  <tr><td class="wrap"><code>draw_points_rgba_sorted(points, size, color, *, order, depth_write)</code></td><td>—</td><td>See-through particles painted from far to near: the correct look when they overlap.</td></tr>
+  <tr><td class="wrap"><code>draw_image(anchor, source, right, up, width, height, *, tint, depth_write)</code></td><td>—</td><td>A picture in the scene. <code>anchor</code> is its bottom-left corner, <code>right</code> and <code>up</code> the directions of its bottom and left edges, <code>width</code> in world units; <code>height</code> follows the picture's proportions when not given.</td></tr>
+  <tr><td class="wrap"><code>draw_text(anchor, text, size, color, *, right, up, tracking, width_px)</code></td><td>width in world units</td><td>Text in the scene. <code>anchor</code> is the left end of the baseline, <code>size</code> the height of a capital letter, <code>right</code> and <code>up</code> the plane it is written in.</td></tr>
+  <tr><td class="wrap"><code>measure_text(text, size, tracking)</code></td><td>width in world units</td><td>The width that text would take.</td></tr>
+  <tr><td class="wrap"><code>world_to_screen(point)</code></td><td><code>(x, y)</code> or <code>None</code></td><td>Where a 3D point appears in the window, in pixels; <code>None</code> behind the camera. To attach a label or a hit test to something in the scene.</td></tr>
+</table></div><h3>World space: solid shapes</h3>
+<p>Lit by one light, casting and receiving shadows. <code>color</code> is <code>(r, g, b)</code>, or <code>(r, g, b, a)</code> for a see-through solid. Every method ends with the same four named arguments, described once below.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>draw_sphere(center, radius, color, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A ball.</td></tr>
+  <tr><td class="wrap"><code>draw_box(center, size, color, rotation, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A box of <code>size=(x, y, z)</code> around <code>center</code>, turned by <code>rotation</code> in degrees.</td></tr>
+  <tr><td class="wrap"><code>draw_cylinder(start, end, radius, color, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A cylinder between the centres of its two flat ends.</td></tr>
+  <tr><td class="wrap"><code>draw_cone(base, tip, radius, color, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A cone: a disc of <code>radius</code> at <code>base</code>, narrowing to <code>tip</code>.</td></tr>
+  <tr><td class="wrap"><code>draw_capsule(start, end, radius, color, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A cylinder with round ends.</td></tr>
+  <tr><td class="wrap"><code>draw_torus(center, radius, tube, color, axis, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A ring of <code>radius</code>, made of a tube of radius <code>tube</code>. <code>axis</code> is the direction of the hole.</td></tr>
+  <tr><td class="wrap"><code>draw_mesh(mesh, color, position, scale, rotation, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A <code>Mesh</code>. Its origin goes to <code>position</code>; <code>scale</code> is one number or <code>(x, y, z)</code>; <code>rotation</code> in degrees.</td></tr>
+  <tr><td class="wrap"><code>set_light(direction, color, ambient)</code></td><td>—</td><td>The one light. <code>direction</code> points toward it; <code>ambient</code> (0 to 1) is how bright the unlit side stays.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Named argument</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>shader</code></td><td><code>&quot;lit&quot;</code></td><td>The look: <code>"lit"</code>, <code>"toon"</code>, <code>"rim"</code>, <code>"flat"</code>, <code>"normals"</code>, <code>"wireframe"</code>, <code>"glow"</code>, or a <code>Shader</code> of your own.</td></tr>
+  <tr><td><code>specular</code></td><td>0.35</td><td>Strength of the shiny highlight, 0 (matt) to 1.</td></tr>
+  <tr><td><code>shininess</code></td><td>32</td><td>How tight the highlight is: higher = smaller and sharper.</td></tr>
+  <tr><td><code>refraction</code></td><td>1.0</td><td>For see-through solids: how much the view is bent. 1.0 none, 1.33 water, 1.5 glass.</td></tr>
+</table></div><h4>Models: <code>solid3d.Mesh</code></h4>
+<p><code>from solid3d import Mesh</code></p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Mesh.load(path, *, smooth)</code></td><td>a <code>Mesh</code></td><td>Reads a Wavefront <code>.obj</code> file: points, normals, faces. <code>smooth</code> chooses round or faceted normals when the file has none.</td></tr>
+  <tr><td class="wrap"><code>Mesh(positions, normals, *, smooth)</code></td><td>a <code>Mesh</code></td><td>A mesh from your own array: three <code>(x, y, z)</code> rows per triangle; <code>normals</code> are computed when not given.</td></tr>
+  <tr><td class="wrap"><code>fitted(size)</code></td><td>a new <code>Mesh</code></td><td>A copy centred on the origin whose longest side measures <code>size</code>.</td></tr>
+  <tr><td class="wrap"><code>destroy()</code></td><td>—</td><td>Releases the copy held by the graphics card.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>mesh.triangle_count</code></td><td>Number of triangles.</td></tr>
+  <tr><td><code>mesh.minimum</code>, <code>mesh.maximum</code></td><td>Two opposite corners of the box around the shape.</td></tr>
+  <tr><td><code>mesh.center</code>, <code>mesh.size</code></td><td>The middle and the three dimensions of that box.</td></tr>
+  <tr><td><code>mesh.vertices</code></td><td>The array sent to the graphics card: six numbers per corner (position, normal).</td></tr>
+</table></div><h4>Looks: <code>solid_shaders3d.Shader</code></h4>
+<p><code>from solid_shaders3d import Shader</code></p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Shader(source, name)</code></td><td>a <code>Shader</code></td><td><code>source</code> is WGSL that defines <code>fn shade(s: Surface) -&gt; vec3&lt;f32&gt;</code>: the colour of one point of a surface. <code>name</code> is only a label.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Available inside <code>shade</code></th><th>Meaning</th></tr>
+  <tr><td><code>s.position</code>, <code>s.normal</code>, <code>s.view</code></td><td>The point, the direction its surface faces, the direction to the camera.</td></tr>
+  <tr><td><code>s.color</code></td><td>The colour given to the draw call.</td></tr>
+  <tr><td><code>s.light</code>, <code>s.light_color</code>, <code>s.ambient</code></td><td>What <code>set_light</code> chose.</td></tr>
+  <tr><td><code>s.shadow</code>, <code>s.occlusion</code></td><td>1 = lit / open; lower in a shadow / a crease.</td></tr>
+  <tr><td><code>s.specular</code>, <code>s.shininess</code></td><td>The two arguments of the draw call.</td></tr>
+  <tr><td><code>s.time</code></td><td>Seconds since the start.</td></tr>
+  <tr><td><code>s.edge</code></td><td>Pixels to the nearest edge of the triangle being drawn.</td></tr>
+  <tr><td><code>lit(s)</code></td><td>The whole default look, as a colour.</td></tr>
+  <tr><td><code>diffuse(s)</code></td><td>Light falling on the point, 0 to 1, shadow included.</td></tr>
+  <tr><td><code>highlight(s)</code></td><td>The shiny spot, 0 to 1.</td></tr>
+  <tr><td><code>wire(s, width)</code></td><td>1 on the triangles' edges, 0 inside, for lines <code>width</code> pixels wide.</td></tr>
+  <tr><td><code>discard;</code></td><td>A statement that leaves a hole at this point.</td></tr>
+</table></div><h3>Curves: <code>curve3d</code></h3>
+<p><code>from curve3d import Nurbs</code> — control points are <code>(x, y)</code> for the screen or <code>(x, y, z)</code> for the scene.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Nurbs(control_points, degree, weights, knots, closed)</code></td><td>a <code>Nurbs</code></td><td><code>degree</code>: 1 straight segments, 2 arcs, 3 smooth (default). <code>weights</code>: one per control point, larger pulls the curve closer. <code>knots</code>: the knot vector, clamped when not given. <code>closed</code>: a smooth loop.</td></tr>
+  <tr><td class="wrap"><code>points(samples)</code></td><td>array <code>(samples, 2 or 3)</code></td><td>That many points along the curve, ready for <code>draw_polyline</code>.</td></tr>
+  <tr><td class="wrap"><code>point(t)</code></td><td><code>(x, y)</code> or <code>(x, y, z)</code></td><td>The point at parameter <code>t</code>: 0 the start, 1 the end. Outside, the nearest end; on a closed curve it wraps around.</td></tr>
+  <tr><td class="wrap"><code>Nurbs.circle(center, radius)</code></td><td>a <code>Nurbs</code></td><td>An exact circle in the xy plane.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>curve.control_points</code></td><td>The list of points. Change an item and the curve follows.</td></tr>
+  <tr><td><code>curve.weights</code>, <code>curve.degree</code>, <code>curve.knots</code>, <code>curve.closed</code></td><td>The rest of the description, all editable.</td></tr>
+  <tr><td><code>curve.active</code></td><td>With <code>pick=True</code>: the index of the control point showing the gizmo, or <code>None</code>.</td></tr>
+  <tr><td><code>curve.busy</code></td><td>With <code>pick=True</code>: the mouse is on or dragging a handle — do not move the camera.</td></tr>
+  <tr><td><code>curve.changed</code></td><td>With <code>pick=True</code>: a control point moved during the last frame.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>nurbs_points(control_points, degree, weights, knots, samples, closed)</code></td><td>array <code>(samples, dim)</code></td><td><code>Nurbs(...).points(samples)</code> without making the object.</td></tr>
+  <tr><td class="wrap"><code>nurbs_point(control_points, t, degree, weights, knots, closed)</code></td><td>one point</td><td><code>Nurbs(...).point(t)</code> without making the object.</td></tr>
+  <tr><td class="wrap"><code>length(points, closed)</code></td><td>float</td><td>The total length of a polyline.</td></tr>
+  <tr><td class="wrap"><code>segments(points, closed)</code></td><td><code>(starts, ends)</code></td><td>The start and the end of every segment of a polyline, as two arrays.</td></tr>
+</table></div><h3>Controls: <code>widgets2d</code></h3>
+<p><code>from widgets2d import Slider, Ruler</code> — objects made once, with one method to call every frame.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Slider(start, end, minimum, maximum, value, *, line_color, handle_color, hover_color, fill_color, thickness, radius, step)</code></td><td>a <code>Slider</code></td><td>A track from <code>start</code> to <code>end</code> (two screen points: any direction). <code>value</code> is the starting value; <code>fill_color</code> colours the part before the handle; <code>thickness</code> is the track's width and <code>radius</code> the handle's size; <code>step</code> snaps the value (0 = any).</td></tr>
+  <tr><td class="wrap"><code>draw(app)</code></td><td>float</td><td>Reads the mouse, moves the handle, draws the slider and returns its value.</td></tr>
+  <tr><td class="wrap"><code>handle()</code></td><td><code>(x, y)</code></td><td>The centre of the handle.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>slider.value</code></td><td>The value; setting it moves the handle.</td></tr>
+  <tr><td><code>slider.dragging</code></td><td><code>True</code> while the user holds the handle.</td></tr>
+  <tr><td><code>slider.hovered</code></td><td><code>True</code> while the cursor is on the handle.</td></tr>
+  <tr><td><code>slider.changed</code></td><td><code>True</code> when the last <code>draw</code> changed the value.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Ruler(color, text_color, panel_color, text_size)</code></td><td>a <code>Ruler</code></td><td>The measuring overlay as an object. The colours of the lines, of the label's text and of its background; the size of the text.</td></tr>
+  <tr><td class="wrap"><code>draw(app)</code></td><td>pixels</td><td>Draws the overlay — call it last — and returns the measured distance (0.0 when the button is up).</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>ruler.measuring</code></td><td><code>True</code> while the mouse button is held.</td></tr>
+  <tr><td><code>ruler.start</code>, <code>ruler.end</code></td><td>Where the click happened, and the cursor.</td></tr>
+  <tr><td><code>ruler.distance</code></td><td>The distance between them.</td></tr>
+</table></div><h3>The camera: <code>app.camera</code></h3><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>handle(window)</code></td><td>bool</td><td>Applies the mouse to the camera for this frame: left-drag orbits, right- or middle-drag pans. Returns whether it moved. <code>app.handle_camera()</code> calls it and adds the gestures.</td></tr>
+  <tr><td class="wrap"><code>orbit(dx, dy)</code></td><td>—</td><td>Turns around the point looked at, by a mouse movement in pixels.</td></tr>
+  <tr><td class="wrap"><code>pan(dx, dy)</code></td><td>—</td><td>Slides the point looked at, by a mouse movement in pixels.</td></tr>
+  <tr><td class="wrap"><code>zoom_by(factor)</code></td><td>—</td><td>Comes closer (factor above 1) or moves away.</td></tr>
+  <tr><td class="wrap"><code>reset()</code></td><td>—</td><td>Back to the starting view.</td></tr>
+  <tr><td class="wrap"><code>eye()</code></td><td>array <code>(3,)</code></td><td>Where the camera is.</td></tr>
+  <tr><td class="wrap"><code>forward()</code></td><td>array <code>(3,)</code></td><td>The direction it looks in.</td></tr>
+  <tr><td class="wrap"><code>basis()</code></td><td><code>(right, up, forward)</code></td><td>Its three axes, as vectors of length 1.</td></tr>
+  <tr><td class="wrap"><code>floor_point(px, py, width, height, plane_z)</code></td><td>array <code>(3,)</code> or <code>None</code></td><td>The point of the floor (or of the height <code>plane_z</code>) under a screen pixel. <code>width, height</code> = <code>app.size()</code>.</td></tr>
+  <tr><td class="wrap"><code>screen_ray(px, py, width, height)</code></td><td><code>(origin, direction)</code></td><td>The line of sight through a screen pixel.</td></tr>
+  <tr><td class="wrap"><code>pixels_per_world_unit(point, height_px)</code></td><td>float</td><td>How many pixels one world unit covers at that point: to keep something the same size on screen.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute, readable and writable</th><th>Meaning</th></tr>
+  <tr><td><code>camera.target</code></td><td>The point looked at, an array <code>(x, y, z)</code>.</td></tr>
+  <tr><td><code>camera.distance</code></td><td>How far the camera is from it.</td></tr>
+  <tr><td><code>camera.yaw</code>, <code>camera.pitch</code></td><td>The two angles of the orbit, in radians.</td></tr>
+  <tr><td><code>camera.fov</code></td><td>The vertical field of view, in degrees.</td></tr>
+</table></div><h3>Pictures: <code>texture3d.Texture</code></h3>
+<p><code>from texture3d import Texture</code> — only needed for a picture that changes (video, a plot). A file name passed to a draw method is loaded and remembered for you.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Texture(source, gpu, *, mipmaps)</code></td><td>a <code>Texture</code></td><td>Sends a picture to the graphics card. <code>mipmaps=False</code> for a picture that will be replaced often.</td></tr>
+  <tr><td class="wrap"><code>update(source)</code></td><td>—</td><td>Replaces the picture, reusing the memory when the size is unchanged.</td></tr>
+  <tr><td class="wrap"><code>destroy()</code></td><td>—</td><td>Releases it.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>texture.width</code>, <code>texture.height</code></td><td>Its size in pixels.</td></tr>
+  <tr><td><code>texture.aspect</code></td><td>Width divided by height.</td></tr>
+</table></div><h3>Vectors: <code>Vec2</code> and <code>Vec3</code></h3>
+<p><code>from vec2 import Vec2</code>, <code>from vec3 import Vec3</code> — optional. A vector can be passed wherever a tuple can, unpacked (<code>x, y = v</code>) and indexed (<code>v[0]</code>).</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td><code>Vec2(x, y)</code>, <code>Vec3(x, y, z)</code></td><td>a vector</td><td>Fields <code>.x</code>, <code>.y</code> (and <code>.z</code>).</td></tr>
+  <tr><td><code>a + b</code>, <code>a - b</code></td><td>a vector</td><td>Added, subtracted.</td></tr>
+  <tr><td><code>a * k</code>, <code>a / k</code></td><td>a vector</td><td>Scaled by a number.</td></tr>
+  <tr><td><code>a.dot(b)</code></td><td>float</td><td>The dot product: 0 when the two are perpendicular.</td></tr>
+  <tr><td><code>a.cross(b)</code></td><td><code>Vec3</code></td><td><code>Vec3</code> only: the vector perpendicular to both.</td></tr>
+  <tr><td><code>a.determinant(b)</code></td><td>float</td><td><code>Vec2</code> only: positive when <code>b</code> is counter-clockwise from <code>a</code>.</td></tr>
+  <tr><td><code>a.length()</code></td><td>float</td><td>Its length.</td></tr>
+  <tr><td><code>a.normalized()</code></td><td>a vector</td><td>The same direction with length 1.</td></tr>
+  <tr><td><code>a.to_tuple()</code></td><td>tuple</td><td>A plain tuple.</td></tr>
+</table></div><h3>Network: strings — <code>udp_link.bridge.LinkThread</code></h3>
+<p><code>from udp_link.bridge import LinkThread</code> (the <code>network/</code> folder on the path).</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>LinkThread(role, config, *, on_text, latest_only)</code></td><td>a <code>LinkThread</code></td><td><code>role</code> is <code>"server"</code> or <code>"client"</code>; <code>config</code> the path of <code>link.toml</code>; <code>on_text(text)</code> is called for each string received; <code>latest_only=True</code> keeps only the newest unsent string (positions), <code>False</code> sends them all (commands).</td></tr>
+  <tr><td class="wrap"><code>start()</code></td><td>the same object</td><td>Starts the link in the background and returns at once.</td></tr>
+  <tr><td class="wrap"><code>send(text)</code></td><td>—</td><td>Queues a string. Never blocks; safe from any thread.</td></tr>
+  <tr><td class="wrap"><code>close(timeout)</code></td><td>—</td><td>Stops the link and waits for it to end.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>link.connected</code></td><td><code>True</code> while the other side answers.</td></tr>
+  <tr><td><code>link.error</code></td><td>The reason the link stopped, or <code>None</code>.</td></tr>
+</table></div><h3>Network: video — <code>video_link.bridge.VideoThread</code></h3>
+<p><code>from video_link.bridge import VideoThread</code> (needs OpenCV).</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>VideoThread(role, config, *, on_frame, source, width, height, fps, quality)</code></td><td>a <code>VideoThread</code></td><td>The server films and sends; the client receives. <code>on_frame(picture)</code> is called for each new picture; <code>source</code> is <code>"test"</code> (a moving pattern) or a camera number such as <code>"0"</code>; <code>width</code>, <code>height</code>, <code>fps</code> and the JPEG <code>quality</code> (1–100) describe what the server sends.</td></tr>
+  <tr><td class="wrap"><code>start()</code></td><td>the same object</td><td>Starts in the background and returns at once.</td></tr>
+  <tr><td class="wrap"><code>close(timeout)</code></td><td>—</td><td>Stops, releases the camera and waits for the end.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>video.latest</code></td><td>The newest picture, an array <code>(height, width, 3)</code>, or <code>None</code>.</td></tr>
+  <tr><td><code>video.frames</code></td><td>How many pictures were sent or received.</td></tr>
+  <tr><td><code>video.latency</code></td><td>Client: seconds between capture and reception of the last picture.</td></tr>
+  <tr><td><code>video.viewers</code></td><td>Server: how many clients are watching.</td></tr>
+  <tr><td><code>video.connected</code>, <code>video.error</code></td><td>As for the string link.</td></tr>
+</table></div></section>
+
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">20</span>When it does not work</h2>
+<h2><span class="n">21</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>

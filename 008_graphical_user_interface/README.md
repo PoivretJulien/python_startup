@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/e804e5e2-dafe-4382-a549-dfd3cb614d46" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -25,7 +23,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              08_map_viewer     pinch / wheel zoom and pan of a large map inside a rounded frame
              09_solids         lit solid shapes, a model from an .obj file, shaders, ray marching
              10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
-guide.html   the step-by-step guide
+guide.html   the step-by-step guide, ending with the full API reference (chapter 20)
 ```
 
 ## Install
@@ -106,6 +104,7 @@ volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimu
 ```python
 from curve3d import Nurbs                      # graphics/
 # in draw_frame:
+#   ui.draw_rect((0, 0, 0), (2, 0, 0), (0, 0, 1), (1, .2, .4, .5))   # 3D rectangle: corner, side u, side v, rgba
 #   ui.draw_polyline(points, (.2, .85, .95))                     # N rows of (x, y, z), one call for any N
 #   ui.draw_nurbs([(0, 0, 0), (1, 2, 1), (3, 2, 2), (4, 0, 0)], (1, .35, .7), thickness=0.05)   # control points
 #   ui.draw_nurbs(curve, (1, .35, .7), pick=True)                # curve = Nurbs([...]): click a point, drag its 3D gizmo

@@ -594,6 +594,52 @@ class SceneRenderer(solid_renderer3d.SolidMethods):
         if row[0, 8] > 0.0:
             self._submit_points(self.screen_line_pipeline, self._screen_uniforms(1.0), row)
 
+    # -- flat shapes in the 3D scene -----------------------------------------
+    def draw_rect(self, origin, u, v, color=ARROW_COLOR, *, antialias: bool = True) -> None:
+        """Draw a filled rectangle in the 3D scene.
+
+        ``origin`` is one corner, ``(x, y, z)``. ``u`` and ``v`` are the two
+        sides that leave from it, as vectors: their direction is the direction
+        of the side and their length its length. The four corners are
+        ``origin``, ``origin + u``, ``origin + u + v`` and ``origin + v``::
+
+            ui.draw_rect((0, 0, 0), (2, 0, 0), (0, 0, 1), (1, 0.5, 0.1, 0.6))   # 2 wide, 1 tall, standing
+
+        ``color`` is ``(r, g, b)`` or ``(r, g, b, a)``; with an alpha below 1
+        the scene shows through. The colour is flat — the light of the solid
+        shapes does not act on it — and both faces are visible. Sides that are
+        not perpendicular give a parallelogram. It hides and is hidden by the
+        rest of the scene according to distance; draw see-through rectangles
+        after the things that must show through them.
+
+        ``antialias`` smooths the four edges over one pixel (the default).
+        ``antialias=False`` gives hard, stair-stepped edges and, for an opaque
+        colour, the cheapest possible drawing: no blending at all.
+        """
+        o = np.asarray(origin, dtype=np.float32)[:3]
+        a = np.asarray(u, dtype=np.float32)[:3]
+        b = np.asarray(v, dtype=np.float32)[:3]
+        r, g, bl, alpha = screen2d.rgba(color)
+        if alpha <= 0.0:
+            return
+        vertices = np.empty((6, 5), dtype=np.float32)  # two triangles: position + place in the rectangle
+        vertices[:, :3] = (o, o + a, o + a + b, o, o + a + b, o + b)
+        vertices[:, 3:] = ((0, 0), (1, 0), (1, 1), (0, 0), (1, 1), (0, 1))
+        opaque = alpha >= 1.0
+        blend = bool(antialias) or not opaque  # smooth edges are partly transparent pixels
+        pipelines = self.__dict__.setdefault("_fill_pipelines", {})
+        if (blend, opaque) not in pipelines:
+            # See-through rectangles do not write depth, so what is behind
+            # them is still drawn when it comes later.
+            pipelines[blend, opaque] = self.gpu.pipeline(
+                shaders3d.WORLD_FILL,
+                gpu3d.vertex_layout(*shaders3d.WORLD_FILL_LAYOUT),
+                blend=blend,
+                depth_write=opaque,
+            )
+        uniforms = self._camera_uniforms(tint=(r, g, bl, alpha), feather=1.0 if antialias else 0.0)
+        self._submit(pipelines[blend, opaque], uniforms, vertices)
+
     # -- curves -------------------------------------------------------------
     def draw_screen_polyline(
         self,
