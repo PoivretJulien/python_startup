@@ -21,6 +21,7 @@ client side (host pc):
     ./.venv/bin/python -m apps.pc_client --config link.toml
 server side via ssh or serioal 
     python3 -m app.sensor_server --config link.toml --simulate
+    run the shell script .sh
 
 restart the arduino board and the client/server should sync
 
