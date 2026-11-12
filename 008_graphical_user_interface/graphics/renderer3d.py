@@ -20,6 +20,7 @@ import gpu3d
 import numpy as np
 import screen2d
 import shaders3d
+import solid_renderer3d
 import texture3d
 from settings3d import ARROW_COLOR, POINT_MAX_PX, POINT_MIN_PX
 
@@ -29,7 +30,7 @@ from settings3d import ARROW_COLOR, POINT_MAX_PX, POINT_MIN_PX
 MAX_POINT_RADIUS_PX = 0.5 * POINT_MAX_PX
 
 
-class SceneRenderer:
+class SceneRenderer(solid_renderer3d.SolidMethods):
     """What both renderers share: the GPU, the camera and the uniform packing."""
 
     def __init__(self, gpu: gpu3d.GPU, camera) -> None:
@@ -589,6 +590,7 @@ class SceneRenderer:
     in_screen_triangle = staticmethod(screen2d.in_triangle)
 
     def close(self) -> None:
+        self._close_solids()
         for texture in self._gradients.values():
             texture.destroy()
         self._gradients.clear()

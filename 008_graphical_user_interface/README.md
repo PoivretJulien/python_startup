@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/feb61822-60b6-4a82-b9ce-6e44b168b2e1" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -23,6 +21,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              06_slider         sliders that set a colour and a corner radius
              07_gradient_gauge a gradient gauge whose marker moves with the Up / Down keys
              08_map_viewer     pinch / wheel zoom and pan of a large map inside a rounded frame
+             09_solids         lit solid shapes, a model from an .obj file, shaders, ray marching
 guide.html   the step-by-step guide
 ```
 
@@ -51,12 +50,19 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/06_slider/main.py
 .venv/bin/python examples/07_gradient_gauge/main.py
 .venv/bin/python examples/08_map_viewer/main.py           # add --image your_map.jpg for your own picture
+.venv/bin/python examples/09_solids/main.py               # add --raymarch for exact shapes and soft shadows
 .venv/bin/python graphics/main.py
 ```
 
 Add `--ruler` to any of them for a measuring overlay (cursor position, and the
 distance, `anchor` and `size` of a click-drag), to help place interface
 elements; F1 switches it on and off.
+
+Add `--raymarch` to ray-march the solid shapes (F2 switches it on and off).
+See-through solids (a colour with an alpha, optional `refraction=1.5`) need one
+more drawing pass; `--no-transparency` or F3 draws them opaque instead.
+Solids cast shadows on each other (a shadow map for triangles, exact soft
+shadows for ray-marched shapes); `--no-shadows` or F4 removes the shadow map.
 
 On Windows the interpreter is `.venv\Scripts\python`. Every program is reactive
 by default (no event, no frame, no CPU) and accepts `--poll` to redraw
@@ -86,6 +92,16 @@ app.run(draw_frame)
 from widgets2d import Slider                   # graphics/
 volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimum, maximum
 # in draw_frame:  level = volume.draw(app)     -> a float; drag the handle or click the line
+```
+
+```python
+from solid3d import Mesh                       # graphics/
+ship = Mesh.load("ship.obj").fitted(2.0)       # once: centred, longest side = 2
+# in draw_frame:
+#   ui.set_light((0.4, -0.5, 0.8))                               # toward the light, z is up
+#   ui.draw_sphere((0, 0, 1), 1.0, (1, .55, .1))                 # also box, cylinder, cone, capsule, torus
+#   ui.draw_mesh(ship, (.8, .8, .9), position=(3, 0, 1), shader="toon")   # or your own Shader(wgsl)
+#   ui.draw_sphere((0, -3, 1), 1.0, (1, 1, 1, 0.06), refraction=1.5)      # last: a glass ball (alpha = opacity)
 ```
 
 ```python

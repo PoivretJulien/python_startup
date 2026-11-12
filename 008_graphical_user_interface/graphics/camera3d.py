@@ -105,7 +105,7 @@ class OrbitCamera:
         self.changed = True
 
     def handle(self, window) -> bool:
-        """Apply one frame of left-drag orbit, middle-drag pan and wheel zoom."""
+        """Apply one frame of left-drag orbit, middle/right-drag pan and wheel zoom."""
         self.changed = False
 
         cursor = glfw.get_cursor_pos(window)
@@ -118,7 +118,11 @@ class OrbitCamera:
         if glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS:
             self.orbit(dx, dy)
 
-        if glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_MIDDLE) == glfw.PRESS:
+        # Middle-drag or right-drag pans (a trackpad has no middle button).
+        if (
+            glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_MIDDLE) == glfw.PRESS
+            or glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_RIGHT) == glfw.PRESS
+        ):
             self.pan(dx, dy)
 
         if self._scroll:

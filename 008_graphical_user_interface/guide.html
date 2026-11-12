@@ -146,6 +146,7 @@
     <li><a href="#ruler">The ruler</a></li>
     <li><a href="#text">Text</a></li>
     <li><a href="#world">Drawing in 3D</a></li>
+    <li><a href="#solids">Solids, light and shaders</a></li>
     <li><a href="#camera">The camera</a></li>
     <li><a href="#loop">The loop</a></li>
     <li><a href="#network">Sending strings</a></li>
@@ -205,9 +206,9 @@
 <div class="tablewrap"><table>
   <tr><th>Folder</th><th>What it is</th><th>Start with</th></tr>
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
-  <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures and text in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
+  <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures, text and lit solid shapes in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Eight small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Nine small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer, solid shapes.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -1202,6 +1203,7 @@ def draw_frame():
   <tr><td><code>draw_points(points, size, color)</code></td><td>Many particles at once</td><td>See below.</td></tr>
   <tr><td><code>draw_image(anchor, source, right, up, width)</code></td><td>A picture</td><td>See below.</td></tr>
   <tr><td><code>draw_text(anchor, text, size, color)</code></td><td>Text in the scene</td><td>See <a href="#text">Text</a>.</td></tr>
+  <tr><td><code>draw_sphere</code>, <code>draw_box</code>, <code>draw_mesh</code> …</td><td>Solid, lit shapes and models</td><td>See <a href="#solids">Solids, light and shaders</a>.</td></tr>
 </table></div>
 <p>World-space colours are <code>(r, g, b)</code>; only the <code>…_rgba</code> particle methods take a fourth number.</p>
 
@@ -1244,22 +1246,204 @@ a.x, a[0]        # both work: a Vec3 can be used anywhere a tuple can</code></pr
 <p><code>Vec2</code> is the same with two numbers (and <code>determinant</code> instead of <code>cross</code>). It is handy for screen-space positions: <code>ui.draw_screen_circle(Vec2(320, 200), 40, PURPLE)</code>.</p>
 </section>
 
+<!-- ================================================================ solids -->
+<section id="solids">
+<h2><span class="n">13</span>Solids, light and shaders</h2>
+<p class="goal">Shapes with a volume, a model from a file, one light, and the look of a surface.</p>
+
+<p>The lines and particles of the previous chapter have one flat colour. A <em>solid</em> is a closed surface, and its colour at each point depends on how it faces the light: that is what makes a ball look round. Example 9 shows everything in this chapter:</p>
+<pre class="shell">.venv/bin/python examples/09_solids/main.py
+.venv/bin/python examples/09_solids/main.py --raymarch</pre>
+
+<h3>Six shapes, one call each</h3>
+<pre><code class="py">def draw_frame():
+    app.camera.handle(app.window)
+    ui.draw_box((0, 0, -0.05), (10, 10, 0.1), GREY)                 # a wide thin box: the floor
+
+    ui.draw_sphere((-3, 0, 0.8), 0.8, ORANGE)                       # centre, radius
+    ui.draw_box((-3, 2.6, 0.6), (1.2, 1.2, 1.2), BLUE, rotation=(0, 0, 30))
+    ui.draw_cylinder((3, 2.6, 0), (3, 2.6, 1.6), 0.5, GREEN)        # from, to, radius
+    ui.draw_cone((3, 0, 0), (3, 0, 1.7), 0.7, RED)                  # base, tip, radius
+    ui.draw_capsule((-3.3, -2.6, 0.4), (-2.3, -2.6, 1.3), 0.35, YELLOW)
+    ui.draw_torus((3, -2.6, 0.9), 0.65, 0.22, PURPLE, axis=(0.3, 1, 0))</code></pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Method</th><th>Shape</th><th>Placed by</th></tr>
+  <tr><td><code>draw_sphere(center, radius, color)</code></td><td>A ball</td><td>Its centre.</td></tr>
+  <tr><td><code>draw_box(center, size, color, rotation=(0, 0, 0))</code></td><td>A box</td><td>Its centre; <code>size</code> is <code>(x, y, z)</code>; <code>rotation</code> is degrees around x, y and z.</td></tr>
+  <tr><td><code>draw_cylinder(start, end, radius, color)</code></td><td>A cylinder</td><td>The centres of its two flat ends: aim it anywhere without angles.</td></tr>
+  <tr><td><code>draw_cone(base, tip, radius, color)</code></td><td>A cone</td><td>The centre of its base, and its point.</td></tr>
+  <tr><td><code>draw_capsule(start, end, radius, color)</code></td><td>A cylinder with round ends</td><td>The two ends of its inner segment.</td></tr>
+  <tr><td><code>draw_torus(center, radius, tube, color, axis=(0, 0, 1))</code></td><td>A ring</td><td>Its centre; <code>axis</code> is the direction of the hole.</td></tr>
+</table></div>
+<p>Colours are <code>(r, g, b)</code>; a fourth number makes the solid see-through (below). Like everything in world space, they hide and are hidden by lines, particles and pictures according to distance, in any drawing order.</p>
+
+<h3>A model from a file</h3>
+<p>Modelling programs (Blender and nearly all others) export the Wavefront <code>.obj</code> format. Load the file <strong>once</strong>, outside <code>draw_frame</code>; draw it every frame like a shape:</p>
+<pre><code class="py">from solid3d import Mesh                      # in graphics/
+
+ship = Mesh.load("ship.obj").fitted(2.0)      # centred, longest side = 2 units
+
+def draw_frame():
+    ui.draw_mesh(ship, SILVER, position=(0, 0, 1), scale=1.0, rotation=(0, 0, 45))</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Member</th><th>Meaning</th></tr>
+  <tr><td><code>Mesh.load(path, smooth=True)</code></td><td>Reads the points, normals and faces of the file. Faces with more than three corners are cut into triangles. Without normals in the file they are computed: <code>smooth=True</code> for a round look, <code>False</code> for visible facets.</td></tr>
+  <tr><td><code>mesh.fitted(size=1.0)</code></td><td>A copy centred on the origin whose longest side is <code>size</code>. Files come in any unit and position; this makes them all behave the same.</td></tr>
+  <tr><td><code>mesh.triangle_count</code>, <code>mesh.size</code>, <code>mesh.center</code>, <code>mesh.minimum</code>, <code>mesh.maximum</code></td><td>Facts about the shape.</td></tr>
+  <tr><td><code>Mesh(positions, normals=None)</code></td><td>A mesh from your own array: three <code>(x, y, z)</code> rows per triangle.</td></tr>
+  <tr><td><code>ui.draw_mesh(mesh, color, position, scale, rotation)</code></td><td><code>scale</code> is one number or <code>(x, y, z)</code>; <code>rotation</code> is degrees around x, y and z.</td></tr>
+</table></div>
+<div class="box warn"><div class="t">What is read from the file</div>
+<p>The geometry only: <code>v</code>, <code>vn</code> and <code>f</code> lines. Materials (<code>.mtl</code>), textures and groups are ignored, so the whole model takes the one colour you give to <code>draw_mesh</code>. Many files are modelled with y as the up direction; here z is up, so stand them with <code>rotation=(90, 0, 0)</code>.</p></div>
+
+<h3>The light</h3>
+<p>One light shines on every solid, from infinitely far away, like the sun. You give the direction that points <em>toward</em> it:</p>
+<pre><code class="py">ui.set_light((0.35, -0.45, 0.82))                                  # the default
+ui.set_light((0, 0, 1))                                            # straight overhead
+ui.set_light((1, 0, 0.3), color=(1.0, 0.8, 0.6), ambient=0.15)     # low, warm, strong contrast</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>direction</code></td><td>From the scene toward the light. Its length does not matter.</td></tr>
+  <tr><td><code>color</code></td><td>The colour of the light, <code>(r, g, b)</code>.</td></tr>
+  <tr><td><code>ambient</code></td><td>From 0 to 1: how bright the side facing away from the light stays. 0 is the black of space, 1 removes all shading.</td></tr>
+</table></div>
+<p>Call it once, or every frame with a changing direction to move the light. Every solid method also takes <code>specular</code> (0 to 1, the strength of the shiny spot; 0 for a matt surface) and <code>shininess</code> (higher = a smaller, sharper spot).</p>
+
+<h3>Ray marching: <code>--raymarch</code></h3>
+<p>By default a sphere is a few thousand small triangles. Add <code>--raymarch</code> to the command of any program and the six shapes are drawn another way: each pixel walks along its line of sight until it touches the exact mathematical surface.</p>
+<div class="tablewrap"><table>
+  <tr><th></th><th>Default</th><th>With <code>--raymarch</code></th></tr>
+  <tr><td>The six shapes</td><td>Triangles</td><td>Exact surfaces: perfectly round at any zoom</td></tr>
+  <tr><td>Shadows of the six shapes</td><td>From the shadow map (below)</td><td>Computed exactly, with soft edges that widen with distance</td></tr>
+  <tr><td>Creases, contact with the floor</td><td>Same brightness as elsewhere</td><td>Slightly darker</td></tr>
+  <tr><td>Meshes (<code>.obj</code>)</td><td>Triangles, shadows from the shadow map</td><td>The same: a mesh is always triangles</td></tr>
+  <tr><td>Cost</td><td>Low</td><td>Higher, and it grows with the number of shapes and of pixels they cover</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+  <tr><th>How</th><th>Effect</th></tr>
+  <tr><td><code>--raymarch</code> on the command line</td><td>The program starts ray-marched.</td></tr>
+  <tr><td>The <kbd>F2</kbd> key</td><td>Switches it on or off at any time, to compare.</td></tr>
+  <tr><td><code>app.raymarch = True</code></td><td>The same switch, from your code.</td></tr>
+</table></div>
+<p>Your drawing code does not change: the same <code>draw_sphere</code> call is drawn one way or the other. Up to 64 shapes per frame are ray-marched; any beyond that are drawn as triangles.</p>
+
+<h3>Shadows</h3>
+<p>Solids cast shadows on each other without any code. Two techniques work together, and you do not choose between them:</p>
+<div class="tablewrap"><table>
+  <tr><th>Who casts</th><th>How</th><th>Look</th></tr>
+  <tr><td>Triangles: meshes always, the six shapes when not ray-marched</td><td>A <em>shadow map</em>: before the frame, the scene is drawn once as the light sees it, keeping only the distances. A point farther from the light than the distance stored for it is in shadow.</td><td>The same slightly soft edge everywhere</td></tr>
+  <tr><td>The six shapes with <code>--raymarch</code></td><td>Each lit pixel walks toward the light and checks, with the shapes' formulas, whether something is in the way.</td><td>Sharp near the object, softer farther away</td></tr>
+</table></div>
+<p>Every solid <em>receives</em> both kinds. See-through solids cast none. Lines, particles, pictures and text neither cast nor receive.</p>
+<div class="tablewrap"><table>
+  <tr><th>How</th><th>Effect</th></tr>
+  <tr><td><code>--no-shadows</code> on the command line</td><td>No shadow map: triangles cast no shadow, and the extra drawing of the scene is skipped. Ray-marched shapes keep theirs.</td></tr>
+  <tr><td>The <kbd>F4</kbd> key</td><td>Switches it at any time.</td></tr>
+  <tr><td><code>app.shadows = False</code></td><td>The same switch, from your code.</td></tr>
+</table></div>
+<p>The shadow map is fitted each frame around the solids that cast, so its sharpness depends on the size of your scene: a very large floor spreads the same number of pixels over more ground and the shadow edges become blockier. Keep the floor about as large as what stands on it.</p>
+
+<h3>See-through solids: transparency and refraction</h3>
+<p>A colour with a fourth number is see-through: the number is the <em>opacity</em>, from 0 (invisible) to 1 (solid). Add <code>refraction</code> and the solid also bends what is seen through it, as a lens does:</p>
+<pre><code class="py">CLEAR_GLASS = (1.0, 1.0, 1.0, 0.06)        # r, g, b, opacity
+BLUE_GLASS = (0.35, 0.65, 1.0, 0.25)
+
+def draw_frame():
+    # … the opaque things first …
+    ui.draw_sphere((0, -3, 0.9), 0.9, CLEAR_GLASS, refraction=1.5)       # a glass ball
+    ui.draw_box((0, 3, 1), (2.6, 0.12, 2.0), BLUE_GLASS)                 # a pane of tinted glass</code></pre>
+<div class="tablewrap"><table>
+  <tr><th><code>refraction</code></th><th>Material</th></tr>
+  <tr><td><code>1.0</code> (default)</td><td>No bending: plain transparency.</td></tr>
+  <tr><td><code>1.33</code></td><td>Water</td></tr>
+  <tr><td><code>1.5</code></td><td>Glass</td></tr>
+  <tr><td><code>2.4</code></td><td>Diamond</td></tr>
+</table></div>
+<p>It works on the six shapes and on meshes, with any shader, with and without <code>--raymarch</code>. The colour tints what is seen through, like stained glass.</p>
+
+<div class="box key"><div class="t">What it costs, and how to switch it off</div>
+<p>To show what is behind a solid, the picture without it must exist first. A frame that contains a see-through solid is therefore drawn in two steps: everything else into a hidden picture, then the see-through solids reading that picture. A frame without one is drawn exactly as before, at no cost.</p></div>
+<div class="tablewrap"><table>
+  <tr><th>How</th><th>Effect</th></tr>
+  <tr><td><code>--no-transparency</code> on the command line</td><td>See-through solids are drawn opaque (still without a shadow); the second step never happens.</td></tr>
+  <tr><td>The <kbd>F3</kbd> key</td><td>Switches it at any time.</td></tr>
+  <tr><td><code>app.transparency = False</code></td><td>The same switch, from your code.</td></tr>
+</table></div>
+<div class="box warn"><div class="t">Three limits to know</div>
+<p><strong>Draw them last</strong>, after the opaque parts of the 3D scene (the screen interface can still come after). A see-through solid shows the opaque scene behind it, but <strong>not another see-through solid</strong>: of two panes of glass in a row, only the nearer one is visible. And they <strong>cast no shadow</strong>, even when the switch draws them opaque, so switching transparency off never adds work. The refraction is the fast kind used by games — it bends the picture already on screen — so what is outside the window cannot appear in a lens.</p></div>
+
+<h3>Shaders: the look of a surface</h3>
+<p>A <em>shader</em> is the small program, run by the graphics card for every pixel of a solid, that decides its colour. Every solid method takes a <code>shader</code>. Seven are ready:</p>
+<div class="tablewrap"><table>
+  <tr><th>Name</th><th>Look</th></tr>
+  <tr><td><code>"lit"</code></td><td>The default: light, shade and a shiny spot.</td></tr>
+  <tr><td><code>"toon"</code></td><td>Cartoon: the light in flat steps, a hard highlight.</td></tr>
+  <tr><td><code>"rim"</code></td><td>The default plus a glowing outline.</td></tr>
+  <tr><td><code>"flat"</code></td><td>The plain colour, no light at all.</td></tr>
+  <tr><td><code>"normals"</code></td><td>The direction of the surface as a colour: the way to check a model.</td></tr>
+  <tr><td><code>"wireframe"</code></td><td>Only the edges of the triangles, in the solid's colour; the far side shows through.</td></tr>
+  <tr><td><code>"glow"</code></td><td>Lit from inside, like a neon tube: white-hot in the middle, the colour toward the rim. Ignores the light and the shadows.</td></tr>
+</table></div>
+<div class="box"><div class="t">About these two</div>
+<p><strong>Wireframe</strong> shows triangles, so a solid that uses it is drawn as triangles even with <code>--raymarch</code>, and round shapes are cut into fewer slices to keep the lines readable. A model with thousands of small triangles looks filled from far away: zoom in to see its lines. Its shadow stays the shadow of the full shape. <strong>Glow</strong> makes the solid itself bright; it does not light its neighbours and has no halo around it. It pulses slowly when frames are drawn (<code>--poll</code>).</p></div>
+<pre><code class="py">ui.draw_sphere((0, 0, 1), 1.0, ORANGE, shader="toon")</code></pre>
+
+<p>To write your own, define one function named <code>shade</code>, in WGSL, the language of the graphics card. It receives a <code>Surface</code> — everything known about the point being coloured — and returns a colour:</p>
+<pre><code class="py">from solid_shaders3d import Shader             # in graphics/
+
+STRIPES = Shader("""
+fn shade(s: Surface) -&gt; vec3&lt;f32&gt; {
+    let band = step(0.5, fract(s.position.z * 5.0));     // 0 or 1, alternating with the height
+    return lit(s) * mix(0.35, 1.0, band);                 // the default look, darker in one band of two
+}
+""")
+
+def draw_frame():
+    ui.draw_mesh(ship, SILVER, shader=STRIPES)</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>In <code>s</code></th><th>Meaning</th></tr>
+  <tr><td><code>s.position</code></td><td>The point, in world coordinates.</td></tr>
+  <tr><td><code>s.normal</code></td><td>The direction the surface faces there (length 1).</td></tr>
+  <tr><td><code>s.view</code></td><td>The direction from the point to the camera.</td></tr>
+  <tr><td><code>s.color</code></td><td>The colour given to the draw call.</td></tr>
+  <tr><td><code>s.light</code>, <code>s.light_color</code>, <code>s.ambient</code></td><td>What <code>set_light</code> chose.</td></tr>
+  <tr><td><code>s.shadow</code>, <code>s.occlusion</code></td><td>1 = fully lit / open; lower in a shadow / a crease (creases only with <code>--raymarch</code>).</td></tr>
+  <tr><td><code>s.specular</code>, <code>s.shininess</code></td><td>The two arguments of the draw call.</td></tr>
+  <tr><td><code>s.time</code></td><td>Seconds since the start, for animation.</td></tr>
+  <tr><td><code>s.edge</code></td><td>Pixels to the nearest edge of the triangle being drawn.</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+  <tr><th>Helper</th><th>Returns</th></tr>
+  <tr><td><code>lit(s)</code></td><td>The whole default look, as a colour. Start from it and modify.</td></tr>
+  <tr><td><code>diffuse(s)</code></td><td>How much light falls on the point, 0 to 1, shadow included.</td></tr>
+  <tr><td><code>highlight(s)</code></td><td>The shiny spot, 0 to 1.</td></tr>
+  <tr><td><code>wire(s, width)</code></td><td>1 on the edges of the triangles, 0 inside, for lines <code>width</code> pixels wide. <code>mix(lit(s), vec3&lt;f32&gt;(0.0), wire(s, 1.0))</code> draws black lines over the normal look.</td></tr>
+  <tr><td><code>discard;</code></td><td>Not a function: a statement that leaves a hole at this point. The wireframe shader uses it everywhere except on the edges.</td></tr>
+</table></div>
+<div class="box key"><div class="t">Make a shader once</div>
+<p>Create the <code>Shader</code> outside <code>draw_frame</code>, like a mesh or a slider: it is compiled the first time it is used and reused afterwards. A mistake in the WGSL stops the program at that first use, with the line and the reason. The same shader works with and without <code>--raymarch</code>.</p></div>
+<div class="box warn"><div class="t">Animation needs frames</div>
+<p>A shader that uses <code>s.time</code> only moves when frames are drawn, and the loop draws none while nothing happens. Run the program with <code>--poll</code>, or see <a href="#loop">The loop</a>.</p></div>
+</section>
+
 <!-- ================================================================ 10 -->
 <section id="camera">
-<h2><span class="n">13</span>The camera</h2>
+<h2><span class="n">14</span>The camera</h2>
 <p class="goal">One line to make the 3D scene explorable.</p>
 
 <pre><code class="py">def draw_frame():
-    app.camera.handle(app.window)     # first line of the frame
+    app.handle_camera()               # first line of the frame
     ui.draw_grid()
     …</code></pre>
 
 <div class="tablewrap"><table>
   <tr><th>Gesture</th><th>Effect</th></tr>
   <tr><td>Left-drag</td><td>Orbit around the point being looked at</td></tr>
-  <tr><td>Middle-drag</td><td>Pan</td></tr>
-  <tr><td>Wheel</td><td>Zoom</td></tr>
+  <tr><td>Right-drag or middle-drag; two fingers on a trackpad</td><td>Pan: slide the view sideways and up or down</td></tr>
+  <tr><td>Wheel, or pinch</td><td>Zoom</td></tr>
 </table></div>
+<p><code>app.handle_camera()</code> is <code>app.camera.handle(app.window)</code> — the two drags — plus the pan and zoom gestures of <a href="#gestures">Pan and zoom</a>. Use the shorter form when your program reads <code>app.pan()</code> and <code>app.zoom()</code> itself.</p>
 
 <div class="tablewrap"><table>
   <tr><th>Method</th><th>What for</th></tr>
@@ -1280,7 +1464,7 @@ if hit is not None:
 
 <!-- ================================================================ 11 -->
 <section id="loop">
-<h2><span class="n">14</span>The loop</h2>
+<h2><span class="n">15</span>The loop</h2>
 <p class="goal">Why an idle window costs nothing, and when to change that.</p>
 
 <figure>
@@ -1323,6 +1507,9 @@ if hit is not None:
   <tr><td><code>--wait 0.5</code></td><td>The longest the loop sleeps in one go, in seconds. <code>0</code> sleeps until an event.</td></tr>
   <tr><td><code>--seconds 5</code></td><td>Quit after 5 seconds. Handy for measuring.</td></tr>
   <tr><td><code>--ruler</code></td><td>Show the measuring overlay: cursor position, and distance while the mouse button is held. <kbd>F1</kbd> switches it on and off. See <a href="#ruler">The ruler</a>.</td></tr>
+  <tr><td><code>--raymarch</code></td><td>Ray-march the solid shapes: exact curves and soft shadows. <kbd>F2</kbd> switches it on and off. See <a href="#solids">Solids, light and shaders</a>.</td></tr>
+  <tr><td><code>--no-transparency</code></td><td>Draw see-through solids opaque, which skips their extra drawing step. <kbd>F3</kbd> switches it on and off.</td></tr>
+  <tr><td><code>--no-shadows</code></td><td>No shadow map: meshes and triangle solids cast no shadow, one drawing pass less. <kbd>F4</kbd> switches it on and off.</td></tr>
   <tr><td><code>--backend vulkan</code></td><td>Force a graphics backend: <code>metal</code>, <code>vulkan</code>, <code>dx12</code>, <code>gl</code>.</td></tr>
 </table></div>
 <pre class="shell">.venv/bin/python examples/01_hover_shapes/main.py --poll</pre>
@@ -1345,7 +1532,7 @@ print(app.args.count)</code></pre>
 
 <!-- ================================================================ 12 -->
 <section id="network">
-<h2><span class="n">15</span>Sending strings</h2>
+<h2><span class="n">16</span>Sending strings</h2>
 <p class="goal">Two programs, one of them says something, the other hears it.</p>
 
 <p>The <code>udp_link</code> library sends <strong>Python strings</strong> between two programs — on the same computer or on two computers of the same network. One side is the <em>server</em>, the other the <em>client</em>; once connected, both can send and receive.</p>
@@ -1461,7 +1648,7 @@ python3 -m apps.time_client --config link.toml</pre>
 
 <!-- ================================================================ 13 -->
 <section id="together">
-<h2><span class="n">16</span>Window + network</h2>
+<h2><span class="n">17</span>Window + network</h2>
 <p class="goal">The second example, read slowly.</p>
 
 <pre class="shell">.venv/bin/python examples/02_udp_drag/main.py</pre>
@@ -1531,7 +1718,7 @@ def draw_frame():
 
 <!-- ================================================================ 14 -->
 <section id="video">
-<h2><span class="n">17</span>Video between two windows</h2>
+<h2><span class="n">18</span>Video between two windows</h2>
 <p class="goal">The third example: a camera on side A, its picture on side B.</p>
 
 <pre class="shell">.venv/bin/python examples/03_udp_video/main.py</pre>
@@ -1630,7 +1817,7 @@ def draw_frame():
 app.run(draw_frame)
 video.close()</code></pre>
 
-<div class="box key"><div class="t">The same pattern as section 16</div>
+<div class="box key"><div class="t">The same pattern as section 17</div>
 <p><code>on_frame</code> only calls <code>app.request_redraw()</code>; the picture waits in <code>video.latest</code> and all the drawing stays in <code>draw_frame</code>. The window is still reactive: it draws once per picture and sleeps in between. Side A is this same code with <code>"server"</code> — its preview is drawn the same way.</p></div>
 
 <div class="box"><div class="t">Why the texture is created inside draw_frame</div>
@@ -1660,7 +1847,7 @@ def draw_frame():
 
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">18</span>Cheat sheet</h2>
+<h2><span class="n">19</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -1710,8 +1897,19 @@ ui.draw_point(center, size, color)                        ui.draw_points(points,
 ui.draw_points_sorted(…)   ui.draw_points_rgba(…)         ui.draw_points_rgba_sorted(…)
 ui.draw_text(anchor, text, size, color, right=…, up=…)    ui.measure_text(text, size)</code></pre>
 
+<h3>Solids — world space, one light</h3>
+<pre><code class="py">ui.draw_sphere(center, radius, color)                     ui.draw_box(center, size, color, rotation=(0, 0, 0))
+ui.draw_cylinder(start, end, radius, color)               ui.draw_cone(base, tip, radius, color)
+ui.draw_capsule(start, end, radius, color)                ui.draw_torus(center, radius, tube, color, axis=(0, 0, 1))
+mesh = Mesh.load("file.obj", smooth=True).fitted(size)    ui.draw_mesh(mesh, color, position, scale=1, rotation=(0, 0, 0))
+        … every one also takes: shader="lit" | "toon" | "rim" | "flat" | "normals" | "wireframe" | "glow" | Shader(wgsl), specular=0.35, shininess=32
+ui.set_light(direction, color=(1, 1, 1), ambient=0.3)     app.raymarch = True        # or --raymarch, or F2
+        … see-through: a colour (r, g, b, opacity) and refraction=1.5       app.transparency = False   # or --no-transparency, or F3
+        … shadows are automatic                                             app.shadows = False        # or --no-shadows, or F4
+Shader("fn shade(s: Surface) -&gt; vec3&lt;f32&gt; { return lit(s); }")   # s.position .normal .view .color .light .shadow .time</code></pre>
+
 <h3>Camera</h3>
-<pre><code class="py">app.camera.handle(app.window)      app.camera.reset()      app.camera.floor_point(x, y, w, h)</code></pre>
+<pre><code class="py">app.handle_camera()                app.camera.handle(app.window)      app.camera.reset()      app.camera.floor_point(x, y, w, h)</code></pre>
 
 <h3>Network</h3>
 <pre><code class="py">link = LinkThread("server" | "client", "network/link.toml", on_text=f, latest_only=True).start()
@@ -1722,18 +1920,21 @@ video.latest         video.frames      video.latency       video.viewers      vi
 texture = Texture(picture, mipmaps=False)                  texture.update(picture)</code></pre>
 
 <h3>Command line</h3>
-<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler</pre>
+<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler   --raymarch   --no-transparency   --no-shadows</pre>
 </section>
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">19</span>When it does not work</h2>
+<h2><span class="n">20</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
   <tr><td class="wrap"><code>ModuleNotFoundError: No module named 'wgpu'</code></td><td>You used another Python. Start the command with <code>.venv/bin/python</code>, or run the installer again.</td></tr>
   <tr><td class="wrap"><code>No module named 'app3d'</code> / <code>'udp_link'</code></td><td>The two <code>sys.path.insert</code> lines at the top of your file are missing, or <code>parents[2]</code> does not point at the project root (count the folders between your file and the root).</td></tr>
   <tr><td>The window is empty</td><td>Something must be drawn <em>inside</em> <code>draw_frame</code>, every time. A shape drawn once outside it is gone at the next frame.</td></tr>
+  <tr><td>A solid is black, or a model looks inside out</td><td>The light is behind it: try <code>ui.set_light((0, 0, 1))</code>, or raise <code>ambient</code>. Draw it with <code>shader="normals"</code>: a healthy model shows smooth colours, a broken file shows noise.</td></tr>
+  <tr><td>A model is invisible, tiny or huge</td><td>Its file uses other units or is far from the origin: use <code>Mesh.load(path).fitted(2.0)</code>.</td></tr>
+  <tr><td><code>--raymarch</code> is slow</td><td>Fewer or smaller shapes, a smaller window, or leave it off: the default mode draws the same scene with triangles.</td></tr>
   <tr><td>A shape is in the wrong place</td><td>Run the program with <code>--ruler</code> and read the real positions (see <a href="#ruler">The ruler</a>). Screen <code>y</code> grows downward. And a rectangle is placed by its top-left corner, a circle by its centre, a triangle by the middle of its base.</td></tr>
   <tr><td>Pinch does nothing (Linux)</td><td>Linux desktops do not pass the pinch to the window. Hold <kbd>Ctrl</kbd> and scroll with two fingers, or use the wheel.</td></tr>
   <tr><td class="wrap"><code>a gradient needs one colour per stop</code></td><td>The <code>stops</code> and <code>colors</code> lists do not have the same length. Count them: one colour for each position.</td></tr>

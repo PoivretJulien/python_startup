@@ -88,6 +88,8 @@ def check_project() -> None:
         ("app3d", "graphics: window + loop in one object"),
         ("widgets2d", "graphics: ready-made controls (slider)"),
         ("gestures3d", "graphics: pan / zoom gestures on every system"),
+        ("solid3d", "graphics: solid shapes and .obj models"),
+        ("solid_shaders3d", "graphics: shaders for the solids"),
         ("udp_link", "network: strings over UDP"),
         ("udp_link.bridge", "network: the link in a background thread"),
         ("video_link", "network: video over UDP"),

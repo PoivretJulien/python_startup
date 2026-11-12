@@ -152,6 +152,10 @@ def pick_adapter(
 # dynamic offset, so a frame with hundreds of draws is still one upload.
 UNIFORM_FLOATS = 40
 UNIFORM_BYTES = UNIFORM_FLOATS * 4
+# The slot every draw owns in the per-frame buffer. Most shaders read the first
+# UNIFORM_BYTES of it; the solids (solid_shaders3d) use all of it.
+UNIFORM_SLOT_FLOATS = 64
+UNIFORM_SLOT_BYTES = UNIFORM_SLOT_FLOATS * 4
 
 
 def pack_uniforms(
@@ -235,6 +239,9 @@ class PipelineSpec:
     depth_write: bool = True
     depth_compare: str = "less-equal"
     textured: bool = False
+    scene: bool = False  # group 1 = the solids' scene buffer (see solid_renderer3d)
+    cull_mode: str = "none"
+    backdrop: bool = False  # group 2 = the picture behind (see-through solids)
 
 
 @dataclasses.dataclass(slots=True)
@@ -248,7 +255,35 @@ class DrawCall:
     vertices: np.ndarray | None = None  # transient data, uploaded at end_frame
     buffer: wgpu.GPUBuffer | None = None  # or a persistent buffer (the grid)
     texture_group: wgpu.GPUBindGroup | None = None
+    # See-through solids: drawn in a second pass, where the picture made by
+    # everything before them can be read. `order` sorts them, far ones first.
+    backdrop: bool = False
+    order: float = 0.0
 
+
+_BLIT = """
+@group(1) @binding(0) var picture: texture_2d<f32>;
+@group(1) @binding(1) var picture_sampler: sampler;
+
+struct VOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) index: u32) -> VOut {
+    let corner = vec2<f32>(f32((index << 1u) & 2u), f32(index & 2u));
+    var out: VOut;
+    out.position = vec4<f32>(corner * 2.0 - 1.0, 0.0, 1.0);
+    out.uv = vec2<f32>(corner.x, 1.0 - corner.y);
+    return out;
+}
+
+@fragment
+fn fs_main(i: VOut) -> @location(0) vec4<f32> {
+    return textureSampleLevel(picture, picture_sampler, i.uv, 0.0);
+}
+"""
 
 _current: GPU | None = None
 
@@ -313,7 +348,7 @@ class GPU:
                     "buffer": {
                         "type": "uniform",
                         "has_dynamic_offset": True,
-                        "min_binding_size": UNIFORM_BYTES,
+                        "min_binding_size": UNIFORM_SLOT_BYTES,
                     },
                 }
             ]
@@ -332,10 +367,45 @@ class GPU:
                 },
             ]
         )
+        # Solids: group 1 = one uniform buffer describing every solid of the
+        # frame, read by the fragment shader for shadows (ray-marched mode).
+        self.scene_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "buffer": {"type": "uniform"},
+                },
+                # The shadow map: the scene's depths seen from the light.
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": "depth", "view_dimension": "2d"},
+                },
+                {
+                    "binding": 2,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "sampler": {"type": "comparison"},
+                },
+            ]
+        )
+        self.shadow_sampler = self.device.create_sampler(
+            address_mode_u="clamp-to-edge",
+            address_mode_v="clamp-to-edge",
+            mag_filter="linear",
+            min_filter="linear",
+            compare="less-equal",
+        )
         self._layouts = {
             False: self.device.create_pipeline_layout(bind_group_layouts=[self.uniform_layout]),
             True: self.device.create_pipeline_layout(
                 bind_group_layouts=[self.uniform_layout, self.texture_layout]
+            ),
+            "scene": self.device.create_pipeline_layout(
+                bind_group_layouts=[self.uniform_layout, self.scene_layout]
+            ),
+            "backdrop": self.device.create_pipeline_layout(
+                bind_group_layouts=[self.uniform_layout, self.scene_layout, self.texture_layout]
             ),
         }
         self.sampler = self.device.create_sampler(
@@ -355,10 +425,23 @@ class GPU:
         self._uniform_group: wgpu.GPUBindGroup | None = None
         self._depth: wgpu.GPUTexture | None = None
         self._depth_view = None
+        # The picture behind see-through solids; made only when one is drawn.
+        self._backdrop: wgpu.GPUTexture | None = None
+        self._backdrop_view = None
+        self._backdrop_group: wgpu.GPUBindGroup | None = None
+        self._blit_pipeline: wgpu.GPURenderPipeline | None = None
 
         self.clear_color: Sequence[float] = (0.0, 0.0, 0.0, 1.0)
         self._calls: list[DrawCall] = []
         self._frame_open = False
+        # A number that changes with every frame, and functions called just
+        # before a frame is encoded: how a renderer uploads per-frame data that
+        # is only complete once every draw call of the frame has been made.
+        self.frame_serial = 0
+        self.before_end_frame: list[Callable[[], None]] = []
+        # Functions given the frame's command encoder before the main pass:
+        # how a renderer adds a pass of its own (the shadow map).
+        self.before_main_pass: list[Callable[[wgpu.GPUCommandEncoder], None]] = []
         self.frames_presented = 0
         self.frames_skipped = 0
         _current = self
@@ -410,6 +493,9 @@ class GPU:
         depth_write: bool = True,
         depth_compare: str = "less-equal",
         textured: bool = False,
+        scene: bool = False,
+        cull_mode: str = "none",
+        backdrop: bool = False,
     ) -> wgpu.GPURenderPipeline:
         """A cached render pipeline: the WebGPU form of "program + GL state"."""
         frozen = (
@@ -418,7 +504,8 @@ class GPU:
             tuple(tuple(sorted(a.items())) for a in layout["attributes"]),
         )
         spec = PipelineSpec(
-            shader, frozen, topology, blend, depth_write, depth_compare, textured
+            shader, frozen, topology, blend, depth_write, depth_compare, textured, scene, cull_mode,
+            backdrop,
         )
         cached = self._pipelines.get(spec)
         if cached is not None:
@@ -429,9 +516,9 @@ class GPU:
         if blend:
             target["blend"] = BLEND_ALPHA
         pipeline = self.device.create_render_pipeline(
-            layout=self._layouts[textured],
+            layout=self._layouts["backdrop" if backdrop else "scene" if scene else textured],
             vertex={"module": module, "entry_point": "vs_main", "buffers": [layout]},
-            primitive={"topology": topology, "cull_mode": "none"},
+            primitive={"topology": topology, "cull_mode": cull_mode},
             depth_stencil={
                 "format": self.DEPTH_FORMAT,
                 "depth_write_enabled": depth_write,
@@ -459,6 +546,7 @@ class GPU:
         """Start recording; replaces ``glClear`` (the pass clears on load)."""
         self._calls.clear()
         self._frame_open = True
+        self.frame_serial += 1
 
     def submit(self, call: DrawCall) -> None:
         """Queue one draw in API order. Outside a frame it is dropped."""
@@ -483,43 +571,75 @@ class GPU:
             self.frames_skipped += 1
             return False
 
+        for flush in self.before_end_frame:
+            flush()
         vertex_offsets = self._upload_vertices(calls)
         self._upload_uniforms(calls)
 
         encoder = self.device.create_command_encoder()
+        for extra_pass in self.before_main_pass:
+            extra_pass(encoder)
         clear = (*self.clear_color[:3], self.clear_color[3] if len(self.clear_color) > 3 else 1.0)
-        render_pass = encoder.begin_render_pass(
-            color_attachments=[
-                {
-                    "view": target.create_view(),
-                    "clear_value": clear,
-                    "load_op": "clear",
-                    "store_op": "store",
-                }
-            ],
-            depth_stencil_attachment={
-                "view": self._depth_target(width, height),
-                "depth_clear_value": 1.0,
-                "depth_load_op": "clear",
-                "depth_store_op": "discard",
-            },
-        )
+        depth_view = self._depth_target(width, height)
+        numbered = list(enumerate(calls))
 
-        current_pipeline = None
-        for index, call in enumerate(calls):
-            if call.pipeline is not current_pipeline:
-                render_pass.set_pipeline(call.pipeline)
-                current_pipeline = call.pipeline
-            render_pass.set_bind_group(0, self._uniform_group, [index * self.uniform_stride])
-            if call.texture_group is not None:
-                render_pass.set_bind_group(1, call.texture_group)
-            if call.buffer is not None:
-                render_pass.set_vertex_buffer(0, call.buffer)
-            else:
-                offset, size = vertex_offsets[index]
-                render_pass.set_vertex_buffer(0, self._vertex_arena, offset, size)
-            render_pass.draw(call.vertex_count, call.instance_count)
-        render_pass.end()
+        def draw(render_pass, items) -> None:
+            current_pipeline = None
+            for index, call in items:
+                if call.pipeline is not current_pipeline:
+                    render_pass.set_pipeline(call.pipeline)
+                    current_pipeline = call.pipeline
+                render_pass.set_bind_group(0, self._uniform_group, [index * self.uniform_stride])
+                if call.texture_group is not None:
+                    render_pass.set_bind_group(1, call.texture_group)
+                if call.backdrop:
+                    render_pass.set_bind_group(2, self._backdrop_group)
+                if call.buffer is not None:
+                    render_pass.set_vertex_buffer(0, call.buffer)
+                else:
+                    offset, size = vertex_offsets[index]
+                    render_pass.set_vertex_buffer(0, self._vertex_arena, offset, size)
+                render_pass.draw(call.vertex_count, call.instance_count)
+
+        def begin(view, first: bool, last: bool):
+            return encoder.begin_render_pass(
+                color_attachments=[
+                    {"view": view, "clear_value": clear, "load_op": "clear", "store_op": "store"}
+                ],
+                depth_stencil_attachment={
+                    "view": depth_view,
+                    "depth_clear_value": 1.0,
+                    "depth_load_op": "clear" if first else "load",
+                    "depth_store_op": "discard" if last else "store",
+                },
+            )
+
+        see_through = [item for item in numbered if item[1].backdrop]
+        if not see_through:
+            # The usual frame: one pass, straight to the window.
+            render_pass = begin(target.create_view(), True, True)
+            draw(render_pass, numbered)
+            render_pass.end()
+        else:
+            # 1. Everything drawn before the last see-through solid goes to a
+            #    texture: "the picture behind".
+            # 2. That picture is copied to the window, then the see-through
+            #    solids are drawn reading it (far ones first), then whatever
+            #    came after them (the interface) on top.
+            last = see_through[-1][0]
+            self._backdrop_target(width, height)
+            render_pass = begin(self._backdrop_view, True, False)
+            draw(render_pass, [item for item in numbered[:last] if not item[1].backdrop])
+            render_pass.end()
+
+            render_pass = begin(target.create_view(), False, True)
+            render_pass.set_pipeline(self._blit())
+            render_pass.set_bind_group(0, self._uniform_group, [0])
+            render_pass.set_bind_group(1, self._backdrop_group)
+            render_pass.draw(3, 1)
+            draw(render_pass, sorted(see_through, key=lambda item: -item[1].order))
+            draw(render_pass, numbered[last + 1 :])
+            render_pass.end()
 
         self.queue.submit([encoder.finish()])
         self.context.present()
@@ -553,7 +673,7 @@ class GPU:
         stride_floats = self.uniform_stride // 4
         block = np.zeros((max(len(calls), 1), stride_floats), dtype=np.float32)
         for index, call in enumerate(calls):
-            block[index, :UNIFORM_FLOATS] = call.uniforms
+            block[index, : call.uniforms.size] = call.uniforms
         if self._uniform_arena is None or self._uniform_arena.size < block.nbytes:
             if self._uniform_arena is not None:
                 self._uniform_arena.destroy()
@@ -569,12 +689,48 @@ class GPU:
                         "resource": {
                             "buffer": self._uniform_arena,
                             "offset": 0,
-                            "size": UNIFORM_BYTES,
+                            "size": UNIFORM_SLOT_BYTES,
                         },
                     }
                 ],
             )
         self.queue.write_buffer(self._uniform_arena, 0, block)
+
+    def _backdrop_target(self, width: int, height: int) -> None:
+        if self._backdrop is None or self._backdrop.size[:2] != (width, height):
+            if self._backdrop is not None:
+                self._backdrop.destroy()
+            self._backdrop = self.device.create_texture(
+                size=(width, height, 1),
+                format=self.format,
+                usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.TEXTURE_BINDING,
+            )
+            self._backdrop_view = self._backdrop.create_view()
+            self._backdrop_group = self.device.create_bind_group(
+                layout=self.texture_layout,
+                entries=[
+                    {"binding": 0, "resource": self._backdrop_view},
+                    {"binding": 1, "resource": self.sampler},
+                ],
+            )
+
+    def _blit(self) -> wgpu.GPURenderPipeline:
+        """Copies the backdrop to the window: one triangle that covers the screen."""
+        if self._blit_pipeline is None:
+            module = self.shader(_BLIT)
+            self._blit_pipeline = self.device.create_render_pipeline(
+                layout=self._layouts[True],
+                vertex={"module": module, "entry_point": "vs_main", "buffers": []},
+                primitive={"topology": "triangle-list", "cull_mode": "none"},
+                depth_stencil={
+                    "format": self.DEPTH_FORMAT,
+                    "depth_write_enabled": False,
+                    "depth_compare": "always",
+                },
+                multisample={"count": 1},
+                fragment={"module": module, "entry_point": "fs_main", "targets": [{"format": self.format}]},
+            )
+        return self._blit_pipeline
 
     def _depth_target(self, width: int, height: int):
         if self._depth is None or self._depth.size[:2] != (width, height):
@@ -596,7 +752,9 @@ class GPU:
                 buffer.destroy()
         if self._depth is not None:
             self._depth.destroy()
-        self._vertex_arena = self._uniform_arena = self._depth = None
+        if self._backdrop is not None:
+            self._backdrop.destroy()
+        self._vertex_arena = self._uniform_arena = self._depth = self._backdrop = None
         try:
             self.context.unconfigure()
         except Exception:  # pragma: no cover - best effort at shutdown

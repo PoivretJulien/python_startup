@@ -18,7 +18,7 @@ Nothing in the existing modules changes: ``App`` only calls them, in the order
 ``main.py`` does. What you get:
 
 * ``app.aa`` / ``app.plain`` — the two renderers (same drawing API),
-* ``app.camera`` — the shared ``OrbitCamera`` (call ``app.camera.handle(app.window)``
+* ``app.camera`` — the shared ``OrbitCamera`` (call ``app.handle_camera()``
   inside ``draw_frame`` if the tool wants orbit / pan / zoom),
 * ``app.cursor()`` / ``app.mouse_down()`` — the input a screen-space tool needs,
 * ``app.keys_down()`` / ``app.key_down(name)`` / ``app.key_pressed(name)`` /
@@ -130,6 +130,24 @@ def add_loop_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         help="show the measuring overlay: cursor position, and distance while the "
         "mouse button is held (F1 switches it on and off)",
     )
+    group.add_argument(
+        "--raymarch",
+        action="store_true",
+        help="ray-march the solid shapes: exact curves, soft shadows "
+        "(F2 switches it on and off)",
+    )
+    group.add_argument(
+        "--no-transparency",
+        action="store_true",
+        help="draw see-through solids opaque: no second drawing pass "
+        "(F3 switches it on and off)",
+    )
+    group.add_argument(
+        "--no-shadows",
+        action="store_true",
+        help="no shadow map: meshes and triangle solids cast no shadow, "
+        "one drawing pass less (F4 switches it on and off)",
+    )
     return parser
 
 
@@ -185,6 +203,55 @@ class App:
         # `--ruler` starts with it on; F1 switches it at any time.
         self.ruler_on = bool(getattr(self.args, "ruler", False))
         self._ruler = None
+        # Solid shapes: triangles, or ray-marched with `--raymarch` / F2.
+        self.raymarch = bool(getattr(self.args, "raymarch", False))
+        # See-through solids (a colour with an alpha): `--no-transparency` / F3.
+        self.transparency = not getattr(self.args, "no_transparency", False)
+        # Shadows cast by triangles (meshes, solids when not ray-marched): `--no-shadows` / F4.
+        self.shadows = not getattr(self.args, "no_shadows", False)
+
+    @property
+    def raymarch(self) -> bool:
+        """True while the solid shapes are ray-marched (``--raymarch``, F2)."""
+        return self.aa.raymarch
+
+    @raymarch.setter
+    def raymarch(self, on: bool) -> None:
+        self.aa.raymarch = self.plain.raymarch = bool(on)
+        self.reactive.mark()
+
+    @property
+    def transparency(self) -> bool:
+        """False = see-through solids are drawn opaque (``--no-transparency``, F3)."""
+        return self.aa.transparency
+
+    @transparency.setter
+    def transparency(self, on: bool) -> None:
+        self.aa.transparency = self.plain.transparency = bool(on)
+        self.reactive.mark()
+
+    @property
+    def shadows(self) -> bool:
+        """False = no shadow map: triangles cast no shadow (``--no-shadows``, F4)."""
+        return self.aa.shadows
+
+    @shadows.setter
+    def shadows(self, on: bool) -> None:
+        self.aa.shadows = self.plain.shadows = bool(on)
+        self.reactive.mark()
+
+    def handle_camera(self) -> None:
+        """Let the user move the 3D camera. Call it first in ``draw_frame``.
+
+        Left-drag orbits; right-drag or middle-drag pans; so does the pan
+        gesture (two fingers on a trackpad); the wheel or a pinch zooms.
+        """
+        self.camera.handle(self.window)
+        dx, dy = self._pan
+        if dx or dy:
+            self.camera.pan(dx, dy)
+        if self._zoom != 1.0:
+            self.camera.zoom_by(self._zoom)
 
     def _open(self, title, size, position):
         from window3d import create_window
@@ -202,6 +269,12 @@ class App:
                 glfw.set_window_should_close(window, True)
             if key == glfw.KEY_F1:
                 self.ruler_on = not self.ruler_on
+            if key == glfw.KEY_F2:
+                self.raymarch = not self.raymarch
+            if key == glfw.KEY_F3:
+                self.transparency = not self.transparency
+            if key == glfw.KEY_F4:
+                self.shadows = not self.shadows
             name = key_name(key, scancode)
             self._held[key] = name
             self._pending_pressed.append((name, False))
