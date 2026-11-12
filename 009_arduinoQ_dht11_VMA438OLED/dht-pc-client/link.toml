@@ -1,0 +1,6 @@
+# DHT link config -- identical on the UNO Q and on the PC. Keep it private (chmod 600).
+[link]
+server_ip = "192.168.3.10"   # LAN IP of the UNO Q (sensor_server)
+bind_ip   = "0.0.0.0"        # the board listens on all its interfaces
+port      = 50555
+secret    = "n7297_IngrZ_PzJlIK6vNtdsdsdsd4EPmc5YsdsU-ds_FY"
