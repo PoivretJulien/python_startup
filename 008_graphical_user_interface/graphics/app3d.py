@@ -148,6 +148,11 @@ def add_loop_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         help="no shadow map: meshes and triangle solids cast no shadow, "
         "one drawing pass less (F4 switches it on and off)",
     )
+    group.add_argument(
+        "--no-glass-shadows",
+        action="store_true",
+        help="see-through solids cast no shadow (F5 switches it on and off)",
+    )
     return parser
 
 
@@ -209,6 +214,8 @@ class App:
         self.transparency = not getattr(self.args, "no_transparency", False)
         # Shadows cast by triangles (meshes, solids when not ray-marched): `--no-shadows` / F4.
         self.shadows = not getattr(self.args, "no_shadows", False)
+        # Tinted shadows of see-through solids: `--no-glass-shadows` / F5.
+        self.glass_shadows = not getattr(self.args, "no_glass_shadows", False)
 
     @property
     def raymarch(self) -> bool:
@@ -238,6 +245,16 @@ class App:
     @shadows.setter
     def shadows(self, on: bool) -> None:
         self.aa.shadows = self.plain.shadows = bool(on)
+        self.reactive.mark()
+
+    @property
+    def glass_shadows(self) -> bool:
+        """True = see-through solids cast a light, tinted shadow (``--no-glass-shadows``, F5)."""
+        return self.aa.glass_shadows
+
+    @glass_shadows.setter
+    def glass_shadows(self, on: bool) -> None:
+        self.aa.glass_shadows = self.plain.glass_shadows = bool(on)
         self.reactive.mark()
 
     def handle_camera(self) -> None:
@@ -275,6 +292,8 @@ class App:
                 self.transparency = not self.transparency
             if key == glfw.KEY_F4:
                 self.shadows = not self.shadows
+            if key == glfw.KEY_F5:
+                self.glass_shadows = not self.glass_shadows
             name = key_name(key, scancode)
             self._held[key] = name
             self._pending_pressed.append((name, False))

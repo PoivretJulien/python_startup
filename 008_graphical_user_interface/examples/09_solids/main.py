@@ -22,6 +22,10 @@ The light:
 
     arrow keys                Left / Right turn it around, Up / Down raise and lower it
     hold L and move the mouse the same, by hand
+    A                         switch between the sun (a far light) and an area
+                              light: a glowing ball in the scene
+    Z / X                     sharper / softer shadows (the sun's softness, or
+                              the size of the area light)
 
 Other keys:
 
@@ -29,6 +33,8 @@ Other keys:
     F3            switch the see-through solids on and off (off = opaque)
     F4            switch the shadows of triangles (the knot, and every shape
                   when not ray-marched) on and off
+    F5            switch the shadows of the see-through solids on and off:
+                  light, and tinted with the colour of the glass
     Space         next shader on the knot (lit, toon, rim, normals, flat,
                   wireframe, glow, stripes)
 
@@ -112,11 +118,14 @@ def main() -> None:
 
     light_angle = 300.0  # degrees around the scene
     light_height = 45.0  # degrees above the floor
+    softness = 0.15  # of the sun's shadows: the width of their edge per unit of distance
+    lamp_on = False  # False: a far light (the sun). True: an area light in the scene
+    lamp_radius = 0.5  # the size of the area light: larger = softer shadows
     shader_index = 0
     last_cursor = app.cursor()
 
     def draw_frame() -> None:
-        nonlocal light_angle, light_height, shader_index, last_cursor
+        nonlocal light_angle, light_height, shader_index, last_cursor, softness, lamp_on, lamp_radius
         cursor = app.cursor()
         moved = (cursor[0] - last_cursor[0], cursor[1] - last_cursor[1])
         last_cursor = cursor
@@ -131,6 +140,14 @@ def main() -> None:
                 light_height += 5.0
             elif key == "DOWN":
                 light_height -= 5.0
+            elif key == "A":
+                lamp_on = not lamp_on
+            elif key in ("X", "Z"):  # softer / sharper shadows
+                step = 1.25 if key == "X" else 1 / 1.25
+                if lamp_on:
+                    lamp_radius = min(max(lamp_radius * step, 0.05), 1.0)
+                else:
+                    softness = min(max(softness * step, 0.01), 1.0)
         if app.key_down("L"):
             light_angle += 0.5 * moved[0]
             light_height -= 0.3 * moved[1]
@@ -147,7 +164,13 @@ def main() -> None:
             math.cos(above) * math.sin(around),
             math.sin(above),
         )
-        ui.set_light(toward_light, ambient=0.3)
+        if lamp_on:
+            # An area light: a glowing ball 4.5 units from the centre. It is in
+            # the scene, so each shape is lit from its own side.
+            lamp = tuple(4.5 * v for v in toward_light)
+            ui.set_area_light(lamp, lamp_radius, ambient=0.3)
+        else:
+            ui.set_light(toward_light, ambient=0.3, softness=softness)
 
         # --- the scene ----------------------------------------------------
         ui.draw_box((0, 0, -0.05), (10, 10, 0.1), FLOOR, specular=0.0)  # the floor
@@ -163,9 +186,10 @@ def main() -> None:
         ui.draw_mesh(knot, SILVER, position=(0, 0, 1.2), shader=shader, shininess=60)
 
         # Where the light is: a dot 6 units away in its direction, and a ray.
-        sun = tuple(6.0 * v for v in toward_light)
-        ui.draw_line(sun, (0, 0, 0), SUN)
-        ui.draw_point(sun, 0.18, SUN)
+        if not lamp_on:  # the area light draws itself
+            sun = tuple(6.0 * v for v in toward_light)
+            ui.draw_line(sun, (0, 0, 0), SUN)
+            ui.draw_point(sun, 0.18, SUN)
 
         # See-through solids, after everything they must show: a glass ball
         # (it bends the view like a lens) and a flat pane of blue glass.
@@ -179,12 +203,20 @@ def main() -> None:
         ui.draw_screen_text(16, 46, f"knot shader: {name}", 14, LABEL)
         glass = "on" if app.transparency else "off (opaque)"
         shadows = "on" if app.shadows else "off"
-        ui.draw_screen_text(16, 66, f"see-through solids: {glass}   shadow map: {shadows}", 14, LABEL)
+        tinted = "on" if app.glass_shadows else "off"
         ui.draw_screen_text(
-            16, 90, "F2 ray marching   F3 see-through   F4 shadows   arrows or L+mouse: light   Space: shader",
+            16, 66, f"see-through solids: {glass}   shadow map: {shadows}   glass shadows: {tinted}", 14, LABEL
+        )
+        light = f"area light, radius {lamp_radius:.2f}" if lamp_on else f"sun, softness {softness:.2f}"
+        ui.draw_screen_text(16, 86, f"light: {light}", 14, LABEL)
+        ui.draw_screen_text(
+            16, 110, "F2 ray marching   F3 see-through   F4 shadows   F5 glass shadows   Space: shader", 12, MUTED
+        )
+        ui.draw_screen_text(
+            16, 128, "light: arrows or L+mouse to move it   A: sun / area light   Z / X: sharper / softer shadows",
             12, MUTED,
         )
-        ui.draw_screen_text(16, 108, "left-drag: orbit   right-drag / two fingers: pan   wheel / pinch: zoom", 12, MUTED)
+        ui.draw_screen_text(16, 146, "left-drag: orbit   right-drag / two fingers: pan   wheel / pinch: zoom", 12, MUTED)
 
     app.run(draw_frame)
 

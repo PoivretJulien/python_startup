@@ -388,6 +388,18 @@ class GPU:
                     "visibility": wgpu.ShaderStage.FRAGMENT,
                     "sampler": {"type": "comparison"},
                 },
+                # The same view from the light, for see-through solids only:
+                # how far the nearest one is, and the colour it lets pass.
+                {
+                    "binding": 3,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": "depth", "view_dimension": "2d"},
+                },
+                {
+                    "binding": 4,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": "float", "view_dimension": "2d"},
+                },
             ]
         )
         self.shadow_sampler = self.device.create_sampler(

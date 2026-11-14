@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/307476b9-ec33-458a-98b1-e9f5c184a3ee" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -67,6 +65,8 @@ See-through solids (a colour with an alpha, optional `refraction=1.5`) need one
 more drawing pass; `--no-transparency` or F3 draws them opaque instead.
 Solids cast shadows on each other (a shadow map for triangles, exact soft
 shadows for ray-marched shapes); `--no-shadows` or F4 removes the shadow map.
+See-through solids cast a light shadow tinted by their colour;
+`--no-glass-shadows` or F5 removes it.
 
 On Windows the interpreter is `.venv\Scripts\python`. Every program is reactive
 by default (no event, no frame, no CPU) and accepts `--poll` to redraw
@@ -118,7 +118,8 @@ from curve3d import Nurbs                      # graphics/
 from solid3d import Mesh                       # graphics/
 ship = Mesh.load("ship.obj").fitted(2.0)       # once: centred, longest side = 2
 # in draw_frame:
-#   ui.set_light((0.4, -0.5, 0.8))                               # toward the light, z is up
+#   ui.set_light((0.4, -0.5, 0.8), softness=0.15)                # toward the light, z is up; softer shadows = larger
+#   ui.set_area_light((2, -3, 3), radius=0.5)                    # or a lamp in the scene: its size softens shadows
 #   ui.draw_sphere((0, 0, 1), 1.0, (1, .55, .1))                 # also box, cylinder, cone, capsule, torus
 #   ui.draw_mesh(ship, (.8, .8, .9), position=(3, 0, 1), shader="toon")   # or your own Shader(wgsl)
 #   ui.draw_sphere((0, -3, 1), 1.0, (1, 1, 1, 0.06), refraction=1.5)      # last: a glass ball (alpha = opacity)

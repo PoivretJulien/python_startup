@@ -36,7 +36,7 @@ import numpy as np
 import solid3d
 import solid_shaders3d
 import wgpu
-from solid_shaders3d import MAX_SOLIDS, SCENE_FLOATS, SCENE_HEADER, SHADOW_MAP_SIZE
+from solid_shaders3d import MAX_SOLIDS, SCENE_FLOATS, SCENE_HEADER, SCENE_TINTS, SHADOW_MAP_SIZE
 
 _UP = np.eye(3)
 SEGMENTS = 48  # slices around a round shape
@@ -58,6 +58,10 @@ class SolidMethods:
     raymarch = False
     #: False = draw see-through solids opaque: no second pass, no extra cost.
     transparency = True
+    #: True = see-through solids cast a light, tinted shadow (ray-marched mode).
+    glass_shadows = True
+    #: How dark creases and contacts get when ray-marched: 0 none, 1 strong.
+    contact_shadow = 0.5
     #: False = no shadow map: meshes (and every solid drawn as triangles) cast
     #: no shadow, and its drawing pass is skipped.
     shadows = True
@@ -77,6 +81,12 @@ class SolidMethods:
                 "shadow_map": None,
                 "shadow_view": None,
                 "casters": [],  # (vertex buffer, vertex count, model matrix)
+                "glass_casters": [],  # the same, plus the colour of the light let through
+                "glass_depth": None,
+                "glass_depth_view": None,
+                "glass_tint": None,
+                "glass_tint_view": None,
+                "glass_pipeline": None,
                 "caster_buffer": None,
                 "caster_group": None,
                 "caster_layout": None,
@@ -91,7 +101,13 @@ class SolidMethods:
                 "serial": -1,
                 "shapes": {},  # name -> (GPU buffer, vertex count)
                 "start": time.perf_counter(),
-                "light": (np.array((0.35, -0.45, 0.82)) / np.linalg.norm((0.35, -0.45, 0.82)), (1.0, 1.0, 1.0), 0.3),
+                "light": {
+                    "toward": np.array((0.35, -0.45, 0.82)) / np.linalg.norm((0.35, -0.45, 0.82)),
+                    "color": (1.0, 1.0, 1.0),
+                    "ambient": 0.3,
+                    "softness": 0.15,
+                    "lamp": None,  # an area light: (position, radius)
+                },
             }
             self._shadow_target(state, 1)  # a 1-pixel stand-in until a shadow is needed
             gpu.before_end_frame.append(self._flush_solids)
@@ -106,6 +122,7 @@ class SolidMethods:
             state["count"] = state["glass"] = 0
             state["sizes"].clear()
             state["casters"].clear()
+            state["glass_casters"].clear()
             state["cast_low"] = np.full(3, np.inf)
             state["cast_high"] = np.full(3, -np.inf)
             state["low"][:] = np.inf
@@ -121,7 +138,19 @@ class SolidMethods:
         count = state["count"]
         detail = float(np.median(state["sizes"])) if state["sizes"] else 1.0
         reach = float(np.linalg.norm(state["high"] - state["low"])) if count else 1.0
-        scene[0:4] = (count, detail, max(reach, detail), 0.0)
+        if not (count or state["glass"]):
+            reach = 1.0
+        else:
+            reach = float(np.linalg.norm(state["high"] - state["low"]))
+        glass = state["glass"] if self.glass_shadows else 0
+        scene[0:4] = (count, detail, max(reach, detail), glass)
+        light = state["light"]
+        scene[24:32] = 0.0
+        if light["lamp"] is not None:
+            scene[24:27] = light["lamp"][0]
+            scene[27] = light["lamp"][1]
+        scene[28] = light["softness"]
+        scene[29] = min(max(float(self.contact_shadow), 0.0), 1.0)
         self._aim_shadow_map(state)
         self.gpu.queue.write_buffer(state["buffer"], 0, scene)
 
@@ -142,6 +171,15 @@ class SolidMethods:
             usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.TEXTURE_BINDING,
         )
         state["shadow_view"] = state["shadow_map"].create_view()
+        for name, pixel_format in (("glass_depth", "depth32float"), ("glass_tint", "rgba8unorm")):
+            if state[name] is not None:
+                state[name].destroy()
+            state[name] = gpu.device.create_texture(
+                size=(size, size, 1),
+                format=pixel_format,
+                usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.TEXTURE_BINDING,
+            )
+            state[name + "_view"] = state[name].create_view()
         buffer = state["buffer"]
         state["group"] = gpu.device.create_bind_group(
             layout=gpu.scene_layout,
@@ -149,6 +187,8 @@ class SolidMethods:
                 {"binding": 0, "resource": {"buffer": buffer, "offset": 0, "size": buffer.size}},
                 {"binding": 1, "resource": state["shadow_view"]},
                 {"binding": 2, "resource": gpu.shadow_sampler},
+                {"binding": 3, "resource": state["glass_depth_view"]},
+                {"binding": 4, "resource": state["glass_tint_view"]},
             ],
         )
 
@@ -157,11 +197,19 @@ class SolidMethods:
         scene = state["scene"]
         scene[4:24] = 0.0
         state["light_matrix"] = None
-        if not state["casters"]:
+        if not (state["casters"] or state["glass_casters"]):
             return
         center = 0.5 * (state["cast_low"] + state["cast_high"])
         radius = max(0.5 * float(np.linalg.norm(state["cast_high"] - state["cast_low"])), 1e-6)
-        toward_light = state["light"][0]
+        light = state["light"]
+        toward_light = light["toward"]
+        if light["lamp"] is not None:
+            # The shadow map sees the casters from the lamp's direction (as if
+            # it were far away: exact for what is in line with it).
+            to_lamp = light["lamp"][0] - center
+            distance = float(np.linalg.norm(to_lamp))
+            if distance > 1e-6:
+                toward_light = to_lamp / distance
         # Look from the light at the casters; the view is a box (the light is
         # infinitely far, its rays are parallel) just large enough for them.
         up = (0.0, 0.0, 1.0) if abs(toward_light[2]) < 0.99 else (1.0, 0.0, 0.0)
@@ -170,7 +218,8 @@ class SolidMethods:
         matrix = box @ view
         state["light_matrix"] = matrix
         texel = 2.0 * radius / SHADOW_MAP_SIZE  # world size of one pixel of the map
-        scene[4:8] = (1.0, 2.5 * texel, 1.5 / SHADOW_MAP_SIZE, 1.0 / SHADOW_MAP_SIZE)
+        scene[4:8] = (1.0 if state["casters"] else 0.0, 2.5 * texel, 1.5 / SHADOW_MAP_SIZE, 1.0 / SHADOW_MAP_SIZE)
+        scene[30] = 1.0 if state["glass_casters"] else 0.0
         scene[8:24] = matrix.astype(np.float32).T.ravel()
 
     def _shadow_pass(self, encoder) -> None:
@@ -180,59 +229,87 @@ class SolidMethods:
             return
         gpu = self.gpu
         casters = state["casters"]
+        glass = state["glass_casters"]
         stride = gpu.uniform_stride
         if state["shadow_pipeline"] is None:
             state["caster_layout"] = gpu.device.create_bind_group_layout(
                 entries=[
                     {
                         "binding": 0,
-                        "visibility": wgpu.ShaderStage.VERTEX,
-                        "buffer": {"type": "uniform", "has_dynamic_offset": True, "min_binding_size": 64},
+                        "visibility": wgpu.ShaderStage.VERTEX | wgpu.ShaderStage.FRAGMENT,
+                        "buffer": {"type": "uniform", "has_dynamic_offset": True, "min_binding_size": 80},
                     }
                 ]
             )
-            state["shadow_pipeline"] = gpu.device.create_render_pipeline(
-                layout=gpu.device.create_pipeline_layout(bind_group_layouts=[state["caster_layout"]]),
-                vertex={
-                    "module": gpu.shader(solid_shaders3d.SHADOW_PASS),
+            module = gpu.shader(solid_shaders3d.SHADOW_PASS)
+            common = {
+                "layout": gpu.device.create_pipeline_layout(bind_group_layouts=[state["caster_layout"]]),
+                "vertex": {
+                    "module": module,
                     "entry_point": "vs_main",
                     "buffers": [gpu3d.vertex_layout(*solid_shaders3d.SOLID_LAYOUT)],
                 },
-                primitive={"topology": "triangle-list", "cull_mode": "none"},
-                depth_stencil={"format": "depth32float", "depth_write_enabled": True, "depth_compare": "less"},
-                multisample={"count": 1},
+                "primitive": {"topology": "triangle-list", "cull_mode": "none"},
+                "depth_stencil": {"format": "depth32float", "depth_write_enabled": True, "depth_compare": "less"},
+                "multisample": {"count": 1},
+            }
+            state["shadow_pipeline"] = gpu.device.create_render_pipeline(**common)
+            # See-through solids: the nearest one wins, and leaves its colour.
+            state["glass_pipeline"] = gpu.device.create_render_pipeline(
+                **common,
+                fragment={"module": module, "entry_point": "fs_main", "targets": [{"format": "rgba8unorm"}]},
             )
-        if state["caster_buffer"] is None or state["caster_buffer"].size < len(casters) * stride:
+        total = len(casters) + len(glass)
+        if state["caster_buffer"] is None or state["caster_buffer"].size < total * stride:
             if state["caster_buffer"] is not None:
                 state["caster_buffer"].destroy()
             state["caster_buffer"] = gpu.device.create_buffer(
-                size=max(len(casters) * 2, 16) * stride,
+                size=max(total * 2, 16) * stride,
                 usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST,
             )
             state["caster_group"] = gpu.device.create_bind_group(
                 layout=state["caster_layout"],
-                entries=[{"binding": 0, "resource": {"buffer": state["caster_buffer"], "offset": 0, "size": 64}}],
+                entries=[{"binding": 0, "resource": {"buffer": state["caster_buffer"], "offset": 0, "size": 80}}],
             )
-        block = np.zeros((len(casters), stride // 4), dtype=np.float32)
-        for index, (_buffer, _count, model) in enumerate(casters):
-            block[index, :16] = (state["light_matrix"] @ model).astype(np.float32).T.ravel()
+        block = np.zeros((total, stride // 4), dtype=np.float32)
+        for index, caster in enumerate(casters + glass):
+            block[index, :16] = (state["light_matrix"] @ caster[2]).astype(np.float32).T.ravel()
+            if len(caster) > 3:
+                block[index, 16:19] = caster[3]
+                block[index, 19] = 1.0
         gpu.queue.write_buffer(state["caster_buffer"], 0, block)
 
-        shadow_pass = encoder.begin_render_pass(
-            color_attachments=[],
-            depth_stencil_attachment={
-                "view": state["shadow_view"],
-                "depth_clear_value": 1.0,
-                "depth_load_op": "clear",
-                "depth_store_op": "store",
-            },
-        )
-        shadow_pass.set_pipeline(state["shadow_pipeline"])
-        for index, (buffer, count, _model) in enumerate(casters):
-            shadow_pass.set_bind_group(0, state["caster_group"], [index * stride])
-            shadow_pass.set_vertex_buffer(0, buffer)
-            shadow_pass.draw(count, 1)
-        shadow_pass.end()
+        def depth_target(view) -> dict:
+            return {"view": view, "depth_clear_value": 1.0, "depth_load_op": "clear", "depth_store_op": "store"}
+
+        if casters:
+            shadow_pass = encoder.begin_render_pass(
+                color_attachments=[], depth_stencil_attachment=depth_target(state["shadow_view"])
+            )
+            shadow_pass.set_pipeline(state["shadow_pipeline"])
+            for index, caster in enumerate(casters):
+                shadow_pass.set_bind_group(0, state["caster_group"], [index * stride])
+                shadow_pass.set_vertex_buffer(0, caster[0])
+                shadow_pass.draw(caster[1], 1)
+            shadow_pass.end()
+        if glass:
+            glass_pass = encoder.begin_render_pass(
+                color_attachments=[
+                    {
+                        "view": state["glass_tint_view"],
+                        "clear_value": (1.0, 1.0, 1.0, 1.0),
+                        "load_op": "clear",
+                        "store_op": "store",
+                    }
+                ],
+                depth_stencil_attachment=depth_target(state["glass_depth_view"]),
+            )
+            glass_pass.set_pipeline(state["glass_pipeline"])
+            for index, caster in enumerate(glass, start=len(casters)):
+                glass_pass.set_bind_group(0, state["caster_group"], [index * stride])
+                glass_pass.set_vertex_buffer(0, caster[0])
+                glass_pass.draw(caster[1], 1)
+            glass_pass.end()
 
     def _shape_buffer(self, name: str, build) -> tuple:
         shapes = self._solids()["shapes"]
@@ -248,6 +325,7 @@ class SolidMethods:
         return self.gpu.pipeline(
             shader.sources[marched, glass],
             gpu3d.vertex_layout(*solid_shaders3d.SOLID_LAYOUT),
+            blend=marched,  # the outline of a ray-marched shape fades over one pixel
             scene=True,
             backdrop=glass,
             cull_mode="front" if marched else "none",
@@ -260,12 +338,25 @@ class SolidMethods:
         return min(max(float(color[3]), 0.0), 1.0)
 
     def _submit_solid(self, marched, entry, color, model, look, center, thickness, index=0, bounds=(0, 0, 0), reach=0.0) -> None:
-        shader, specular, shininess, refraction = look
+        shader, specular, shininess, refraction = look[:4]
+        casts = len(look) < 5 or look[4]  # a fifth item, False: this solid casts no shadow (the lamp)
         # Triangles cast their shadow through the shadow map (ray-marched
         # shapes have their own; see-through solids cast none).
-        if self.shadows and not marched and not (len(color) > 3 and float(color[3]) < 1.0):
+        see_through = len(color) > 3 and float(color[3]) < 1.0
+        if self.shadows and casts and not marched and (self.glass_shadows or not see_through):
             state = self._solids()
-            state["casters"].append((entry[0], entry[1], np.asarray(model, dtype=np.float64)))
+            caster = (entry[0], entry[1], np.asarray(model, dtype=np.float64))
+            if not see_through:
+                state["casters"].append(caster)
+            elif not self.transparency:
+                # Drawn opaque by the switch: it stops all the light.
+                state["glass_casters"].append((*caster, (0.0, 0.0, 0.0)))
+            else:
+                # The light it lets through: even clear glass stops a little,
+                # coloured glass keeps its colour (as solid_shaders3d.glass_shadow).
+                stopped = 0.15 + 0.85 * min(max(float(color[3]), 0.0), 1.0)
+                passes = tuple((1.0 - stopped) * (1.0 + 0.7 * (float(c) - 1.0)) for c in color[:3])
+                state["glass_casters"].append((*caster, passes))
             middle = np.asarray(center, dtype=np.float64)[:3]
             state["cast_low"] = np.minimum(state["cast_low"], middle - reach)
             state["cast_high"] = np.maximum(state["cast_high"], middle + reach)
@@ -273,6 +364,8 @@ class SolidMethods:
         glass = opacity < 1.0
         uniforms = self._solid_uniforms(color, model, specular, shininess, index, bounds)
         uniforms[27] = opacity
+        if not marched:
+            uniforms[36] = -1.0  # not one of the ray-marched solids of the scene
         uniforms[37] = refraction
         uniforms[38] = thickness
         buffer, count = entry
@@ -290,7 +383,8 @@ class SolidMethods:
 
     def _solid_uniforms(self, color, model, specular, shininess, index=0, bounds=(0, 0, 0)) -> np.ndarray:
         state = self._solids()
-        direction, light_color, ambient = state["light"]
+        light = state["light"]
+        direction, light_color, ambient = light["toward"], light["color"], light["ambient"]
         out = np.zeros(gpu3d.UNIFORM_SLOT_FLOATS, dtype=np.float32)
         out[:40] = self._camera_uniforms(eye=tuple(float(v) for v in self.camera.eye()))
         out[20:23] = direction
@@ -315,13 +409,25 @@ class SolidMethods:
             # A solid declared see-through never casts a shadow, even when the
             # switch draws it opaque: switching transparency off must not add
             # work to the shadow computation of every other pixel.
-            if len(color) > 3 and float(color[3]) < 1.0:
+            casts = len(look) < 5 or look[4]
+            if not casts or (len(color) > 3 and float(color[3]) < 1.0):
                 state["glass"] += 1
                 index = MAX_SOLIDS - state["glass"]
+                # Its tinted shadow: the colour and how much light it stops.
+                # The lamp stops none; a see-through solid drawn opaque
+                # (transparency switched off) stops it all.
+                tint = SCENE_TINTS + 4 * index
+                if not casts:
+                    state["scene"][tint : tint + 4] = 0.0
+                elif not self.transparency:
+                    state["scene"][tint : tint + 4] = (0.0, 0.0, 0.0, 1.0)
+                else:
+                    state["scene"][tint : tint + 4] = (*color[:3], float(color[3]))
             else:
                 index = state["count"]
                 state["count"] += 1
                 state["sizes"].append(max(bounds))
+            if casts:  # everything that can shadow something stretches the reach of shadow rays
                 reach = float(np.linalg.norm(bounds))
                 state["low"] = np.minimum(state["low"], center - reach)
                 state["high"] = np.maximum(state["high"], center + reach)
@@ -344,18 +450,68 @@ class SolidMethods:
             )
 
     # --------------------------------------------------------------- light
-    def set_light(self, direction=(0.35, -0.45, 0.82), color=(1.0, 1.0, 1.0), ambient: float = 0.3) -> None:
-        """Choose the one light that shines on every solid.
+    def set_light(
+        self, direction=(0.35, -0.45, 0.82), color=(1.0, 1.0, 1.0), ambient: float = 0.3, softness: float = 0.15
+    ) -> None:
+        """Choose the light that shines on every solid: a far one, like the sun.
 
-        ``direction`` points *toward* the light, like the sun's position in the
-        sky: ``(0, 0, 1)`` is straight overhead (z is up). ``color`` is the
-        light's colour, ``ambient`` (0..1) how bright the side facing away
-        stays. Call it once, or every frame to move the light.
+        ``direction`` points *toward* the light: ``(0, 0, 1)`` is straight
+        overhead (z is up). ``color`` is the light's colour, ``ambient`` (0..1)
+        how bright the side facing away stays.
+
+        ``softness`` is the softness of the shadows: the edge of a shadow is
+        that many times as wide as the distance to the object casting it.
+        0 gives hard edges everywhere; 0.15 (the default) a sunny-day
+        softness; 0.4 an overcast sky. A shadow is always sharp where it
+        touches its object and softer farther away.
+
+        Call it once, or every frame to move the light.
         """
         d = np.asarray(direction, dtype=np.float64)[:3]
         length = float(np.linalg.norm(d))
         d = d / length if length > 1e-12 else np.array((0.0, 0.0, 1.0))
-        self._solids()["light"] = (d, tuple(float(c) for c in color[:3]), float(ambient))
+        self._solids()["light"] = {
+            "toward": d,
+            "color": tuple(float(c) for c in color[:3]),
+            "ambient": float(ambient),
+            "softness": max(float(softness), 0.0),
+            "lamp": None,
+        }
+
+    def set_area_light(
+        self, position, radius: float = 0.5, color=(1.0, 1.0, 1.0), ambient: float = 0.3, *, show: bool = True
+    ) -> None:
+        """Choose a light that is *in* the scene: a glowing ball at ``position``.
+
+        Unlike the sun of ``set_light``, it lights each object from its own
+        side — things around it are lit outward — and its ``radius`` is what
+        makes shadows soft: a large lamp close to an object gives wide, soft
+        edges, a small or distant one sharp edges. ``color`` and ``ambient``
+        are as in ``set_light``. Brightness does not fade with distance.
+
+        ``show=True`` draws the lamp itself, as a glowing ball of its colour
+        that casts no shadow. Call it every frame, before the solids it lights
+        (with the position changing to move the lamp).
+        """
+        p = np.asarray(position, dtype=np.float64)[:3].copy()
+        state = self._solids()
+        target = np.asarray(self.camera.target, dtype=np.float64)
+        toward = p - target
+        length = float(np.linalg.norm(toward))
+        state["light"] = {
+            "toward": toward / length if length > 1e-9 else np.array((0.0, 0.0, 1.0)),
+            "color": tuple(float(c) for c in color[:3]),
+            "ambient": float(ambient),
+            "softness": 0.15,
+            "lamp": (p, max(float(radius), 1e-3)),
+        }
+        if show:
+            # The lamp itself: a glowing ball that casts no shadow (it would
+            # otherwise hide its own light from everything).
+            r = max(float(radius), 1e-3)
+            parts = (("sphere", _sphere, (0, 0, 0), (r, r, r)),)
+            look = ("glow", 0.0, 1.0, 1.0, False)
+            self._draw_solid(solid3d.SPHERE, (r,), p, _UP, state["light"]["color"], look, parts)
 
     # -------------------------------------------------------------- shapes
     def draw_sphere(self, center, radius: float, color, *, shader=None, specular: float = 0.35, shininess: float = 32.0, refraction: float = 1.0) -> None:
@@ -447,6 +603,9 @@ class SolidMethods:
             self.gpu.before_main_pass.remove(self._shadow_pass)
         state["buffer"].destroy()
         state["shadow_map"].destroy()
+        for name in ("glass_depth", "glass_tint"):
+            if state[name] is not None:
+                state[name].destroy()
         if state["caster_buffer"] is not None:
             state["caster_buffer"].destroy()
         for buffer, _count in state["shapes"].values():

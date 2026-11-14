@@ -1447,8 +1447,39 @@ ui.set_light((1, 0, 0.3), color=(1.0, 0.8, 0.6), ambient=0.15)     # low, warm, 
   <tr><td><code>direction</code></td><td>From the scene toward the light. Its length does not matter.</td></tr>
   <tr><td><code>color</code></td><td>The colour of the light, <code>(r, g, b)</code>.</td></tr>
   <tr><td><code>ambient</code></td><td>From 0 to 1: how bright the side facing away from the light stays. 0 is the black of space, 1 removes all shading.</td></tr>
+  <tr><td><code>softness</code></td><td>How soft the shadows are. 0: hard edges. 0.15 (default): a sunny day. See below.</td></tr>
 </table></div>
-<p>Call it once, or every frame with a changing direction to move the light. Every solid method also takes <code>specular</code> (0 to 1, the strength of the shiny spot; 0 for a matt surface) and <code>shininess</code> (higher = a smaller, sharper spot).</p>
+<h4>Soft shadows</h4>
+<p>A real light is never a single point, so the edge of a real shadow is never a hard line: it is sharp where the shadow touches its object and widens with distance. <code>softness</code> sets how fast:</p>
+<pre><code class="py">ui.set_light(direction, softness=0.03)     # a small, hard sun: crisp shadows
+ui.set_light(direction)                    # 0.15, the default: a sunny day
+ui.set_light(direction, softness=0.4)      # an overcast sky: wide, pale edges</code></pre>
+<p>The number is the width of the edge per unit of distance: with 0.15, a shadow cast from 2 units away has an edge 0.3 wide.</p>
+
+<h4>Contact shadows</h4>
+<p>With <code>--raymarch</code>, the place where two shapes meet — a ball on the floor, the inside of a ring — is shaded a little, because less of the surrounding light reaches it. <code>ui.contact_shadow</code> sets how much:</p>
+<pre><code class="py">ui.contact_shadow = 0.5      # the default: a gentle shade
+ui.contact_shadow = 0.0      # none
+ui.contact_shadow = 1.0      # strong</code></pre>
+<p>It is a setting of the renderer, not of one light: set it once, after creating the <code>App</code>.</p>
+
+<h4>An area light: a lamp in the scene</h4>
+<p><code>set_light</code> is a light infinitely far away: its rays are parallel, all shadows point the same way. <code>set_area_light</code> puts a glowing ball <em>in</em> the scene instead. Each object is lit from the lamp's side, shadows fan out from it, and the lamp's size decides how soft they are.</p>
+<pre><code class="py">def draw_frame():
+    ui.set_area_light((2, -3, 3), radius=0.5)        # position, size: before the solids it lights
+    ui.draw_box((0, 0, -0.05), (10, 10, 0.1), GREY)
+    ui.draw_sphere((0, 0, 0.8), 0.8, ORANGE)</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>position</code></td><td>Where the lamp is, <code>(x, y, z)</code>. Change it every frame to move the lamp.</td></tr>
+  <tr><td><code>radius</code></td><td>Its size. A large lamp close to an object gives wide, soft shadows; a small or distant one, sharp shadows.</td></tr>
+  <tr><td><code>color</code>, <code>ambient</code></td><td>As for <code>set_light</code>.</td></tr>
+  <tr><td><code>show=True</code></td><td>Draws the lamp itself, as a glowing ball that casts no shadow. <code>show=False</code> for an invisible lamp.</td></tr>
+</table></div>
+<div class="box warn"><div class="t">What the area light does not do</div>
+<p>Its brightness does not fade with distance. There is one light at a time: the last <code>set_light</code> or <code>set_area_light</code> call of a frame wins. The shadows of ray-marched shapes follow the lamp exactly; the shadows of meshes, and of every solid without <code>--raymarch</code>, are computed as if the lamp were far away in its direction, so they point the right way but do not fan out, and a very large lamp makes them grainy.</p></div>
+
+<p>Call <code>set_light</code> once, or every frame with a changing direction to move the light. Every solid method also takes <code>specular</code> (0 to 1, the strength of the shiny spot; 0 for a matt surface) and <code>shininess</code> (higher = a smaller, sharper spot).</p>
 
 <h3>Ray marching: <code>--raymarch</code></h3>
 <p>By default a sphere is a few thousand small triangles. Add <code>--raymarch</code> to the command of any program and the six shapes are drawn another way: each pixel walks along its line of sight until it touches the exact mathematical surface.</p>
@@ -1456,9 +1487,10 @@ ui.set_light((1, 0, 0.3), color=(1.0, 0.8, 0.6), ambient=0.15)     # low, warm, 
   <tr><th></th><th>Default</th><th>With <code>--raymarch</code></th></tr>
   <tr><td>The six shapes</td><td>Triangles</td><td>Exact surfaces: perfectly round at any zoom</td></tr>
   <tr><td>Shadows of the six shapes</td><td>From the shadow map (below)</td><td>Computed exactly, with soft edges that widen with distance</td></tr>
-  <tr><td>Creases, contact with the floor</td><td>Same brightness as elsewhere</td><td>Slightly darker</td></tr>
+  <tr><td>Creases, contact with the floor</td><td>Same brightness as elsewhere</td><td>Gently shaded (<code>ui.contact_shadow</code>, 0 to 1)</td></tr>
   <tr><td>Meshes (<code>.obj</code>)</td><td>Triangles, shadows from the shadow map</td><td>The same: a mesh is always triangles</td></tr>
-  <tr><td>Cost</td><td>Low</td><td>Higher, and it grows with the number of shapes and of pixels they cover</td></tr>
+  <tr><td>Outlines of the six shapes</td><td>Stair-stepped</td><td>Smoothed over one pixel</td></tr>
+  <tr><td>Cost</td><td>Low</td><td>A little higher; each pixel only examines the shapes near its own shadow ray, so it grows slowly with the number of shapes</td></tr>
 </table></div>
 <div class="tablewrap"><table>
   <tr><th>How</th><th>Effect</th></tr>
@@ -1475,7 +1507,17 @@ ui.set_light((1, 0, 0.3), color=(1.0, 0.8, 0.6), ambient=0.15)     # low, warm, 
   <tr><td>Triangles: meshes always, the six shapes when not ray-marched</td><td>A <em>shadow map</em>: before the frame, the scene is drawn once as the light sees it, keeping only the distances. A point farther from the light than the distance stored for it is in shadow.</td><td>The same slightly soft edge everywhere</td></tr>
   <tr><td>The six shapes with <code>--raymarch</code></td><td>Each lit pixel walks toward the light and checks, with the shapes' formulas, whether something is in the way.</td><td>Sharp near the object, softer farther away</td></tr>
 </table></div>
-<p>Every solid <em>receives</em> both kinds. See-through solids cast none. Lines, particles, pictures and text neither cast nor receive.</p>
+<p>Every solid <em>receives</em> both kinds. Lines, particles, pictures and text neither cast nor receive.</p>
+
+<h4>The shadow of glass</h4>
+<p>A see-through solid does not block the light, it filters it. Its shadow is lighter than a solid's and takes the colour of the glass, like a stained-glass window on a floor: the more opaque the colour, the darker the shadow. Nothing to write — a solid drawn with a colour <code>(r, g, b, a)</code> casts it.</p>
+<div class="tablewrap"><table>
+  <tr><th>How</th><th>Effect</th></tr>
+  <tr><td><code>--no-glass-shadows</code> on the command line</td><td>See-through solids cast no shadow at all, and nothing is computed for them.</td></tr>
+  <tr><td>The <kbd>F5</kbd> key</td><td>Switches it at any time.</td></tr>
+  <tr><td><code>app.glass_shadows = False</code></td><td>The same switch, from your code.</td></tr>
+</table></div>
+<p>With <code>--raymarch</code> the shadow of each see-through shape is computed exactly, and several in a row filter the light one after the other. For meshes, and for everything without <code>--raymarch</code>, a second shadow map is used: only the see-through solid nearest to the light counts, and the edge is a little grainy. In both cases the light is tinted and dimmed but not bent or focused: the bright spot a real glass ball concentrates on the floor is not drawn. With <code>--no-shadows</code> the shadow maps are off, this one included.</p>
 <div class="tablewrap"><table>
   <tr><th>How</th><th>Effect</th></tr>
   <tr><td><code>--no-shadows</code> on the command line</td><td>No shadow map: triangles cast no shadow, and the extra drawing of the scene is skipped. Ray-marched shapes keep theirs.</td></tr>
@@ -1506,12 +1548,12 @@ def draw_frame():
 <p>To show what is behind a solid, the picture without it must exist first. A frame that contains a see-through solid is therefore drawn in two steps: everything else into a hidden picture, then the see-through solids reading that picture. A frame without one is drawn exactly as before, at no cost.</p></div>
 <div class="tablewrap"><table>
   <tr><th>How</th><th>Effect</th></tr>
-  <tr><td><code>--no-transparency</code> on the command line</td><td>See-through solids are drawn opaque (still without a shadow); the second step never happens.</td></tr>
+  <tr><td><code>--no-transparency</code> on the command line</td><td>See-through solids are drawn opaque; the second step never happens.</td></tr>
   <tr><td>The <kbd>F3</kbd> key</td><td>Switches it at any time.</td></tr>
   <tr><td><code>app.transparency = False</code></td><td>The same switch, from your code.</td></tr>
 </table></div>
 <div class="box warn"><div class="t">Three limits to know</div>
-<p><strong>Draw them last</strong>, after the opaque parts of the 3D scene (the screen interface can still come after). A see-through solid shows the opaque scene behind it, but <strong>not another see-through solid</strong>: of two panes of glass in a row, only the nearer one is visible. And they <strong>cast no shadow</strong>, even when the switch draws them opaque, so switching transparency off never adds work. The refraction is the fast kind used by games — it bends the picture already on screen — so what is outside the window cannot appear in a lens.</p></div>
+<p><strong>Draw them last</strong>, after the opaque parts of the 3D scene (the screen interface can still come after). A see-through solid shows the opaque scene behind it, but <strong>not another see-through solid</strong>: of two panes of glass in a row, only the nearer one is visible. Their shadow is the light, tinted one described under <a href="#solids">Shadows</a> (a full dark one when the switch draws them opaque); <code>--no-glass-shadows</code> removes it. The refraction is the fast kind used by games — it bends the picture already on screen — so what is outside the window cannot appear in a lens.</p></div>
 
 <h3>Shaders: the look of a surface</h3>
 <p>A <em>shader</em> is the small program, run by the graphics card for every pixel of a solid, that decides its colour. Every solid method takes a <code>shader</code>. Seven are ready:</p>
@@ -1650,6 +1692,7 @@ if hit is not None:
   <tr><td><code>--raymarch</code></td><td>Ray-march the solid shapes: exact curves and soft shadows. <kbd>F2</kbd> switches it on and off. See <a href="#solids">Solids, light and shaders</a>.</td></tr>
   <tr><td><code>--no-transparency</code></td><td>Draw see-through solids opaque, which skips their extra drawing step. <kbd>F3</kbd> switches it on and off.</td></tr>
   <tr><td><code>--no-shadows</code></td><td>No shadow map: meshes and triangle solids cast no shadow, one drawing pass less. <kbd>F4</kbd> switches it on and off.</td></tr>
+  <tr><td><code>--no-glass-shadows</code></td><td>See-through solids cast no shadow. <kbd>F5</kbd> switches it on and off.</td></tr>
   <tr><td><code>--backend vulkan</code></td><td>Force a graphics backend: <code>metal</code>, <code>vulkan</code>, <code>dx12</code>, <code>gl</code>.</td></tr>
 </table></div>
 <pre class="shell">.venv/bin/python examples/01_hover_shapes/main.py --poll</pre>
@@ -2052,9 +2095,12 @@ ui.draw_cylinder(start, end, radius, color)               ui.draw_cone(base, tip
 ui.draw_capsule(start, end, radius, color)                ui.draw_torus(center, radius, tube, color, axis=(0, 0, 1))
 mesh = Mesh.load("file.obj", smooth=True).fitted(size)    ui.draw_mesh(mesh, color, position, scale=1, rotation=(0, 0, 0))
         … every one also takes: shader="lit" | "toon" | "rim" | "flat" | "normals" | "wireframe" | "glow" | Shader(wgsl), specular=0.35, shininess=32
-ui.set_light(direction, color=(1, 1, 1), ambient=0.3)     app.raymarch = True        # or --raymarch, or F2
+ui.set_light(direction, color=(1, 1, 1), ambient=0.3, softness=0.15)     app.raymarch = True        # or --raymarch, or F2
+ui.set_area_light(position, radius=0.5, color=(1, 1, 1), ambient=0.3, show=True)        # a lamp in the scene
+ui.contact_shadow = 0.5                                   # ray-marched: shade where shapes meet, 0 (none) to 1
         … see-through: a colour (r, g, b, opacity) and refraction=1.5       app.transparency = False   # or --no-transparency, or F3
         … shadows are automatic                                             app.shadows = False        # or --no-shadows, or F4
+        … see-through solids cast a light, tinted shadow                    app.glass_shadows = False  # or --no-glass-shadows, or F5
 Shader("fn shade(s: Surface) -&gt; vec3&lt;f32&gt; { return lit(s); }")   # s.position .normal .view .color .light .shadow .time</code></pre>
 
 <h3>Camera</h3>
@@ -2069,7 +2115,7 @@ video.latest         video.frames      video.latency       video.viewers      vi
 texture = Texture(picture, mipmaps=False)                  texture.update(picture)</code></pre>
 
 <h3>Command line</h3>
-<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler   --raymarch   --no-transparency   --no-shadows</pre>
+<pre class="shell">--poll   --refresh HZ   --wait SECONDS   --seconds N   --backend metal|vulkan|dx12|gl   --no-vsync   --ruler   --raymarch   --no-transparency   --no-shadows   --no-glass-shadows</pre>
 </section>
 
 <!-- ================================================================ reference -->
@@ -2119,6 +2165,8 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td><code>app.raymarch</code></td><td><code>True</code> ray-marches the solid shapes (<code>--raymarch</code>, F2).</td></tr>
   <tr><td><code>app.transparency</code></td><td><code>False</code> draws see-through solids and acrylic panels opaque (<code>--no-transparency</code>, F3).</td></tr>
   <tr><td><code>app.shadows</code></td><td><code>False</code> removes the shadow map (<code>--no-shadows</code>, F4).</td></tr>
+  <tr><td><code>app.glass_shadows</code></td><td><code>False</code>: see-through solids cast no shadow (<code>--no-glass-shadows</code>, F5).</td></tr>
+  <tr><td><code>ui.contact_shadow</code></td><td>Ray-marched mode: how much the places where shapes meet are shaded, 0 (none) to 1. Default 0.5.</td></tr>
 </table></div><div class="tablewrap"><table class="api">
   <tr><th>Option of every program</th><th>Key</th><th>Effect</th></tr>
   <tr><td><code>--poll</code></td><td>—</td><td>Redraw continuously instead of only when something changes.</td></tr>
@@ -2131,6 +2179,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td><code>--raymarch</code></td><td>F2</td><td>Ray-march the solid shapes.</td></tr>
   <tr><td><code>--no-transparency</code></td><td>F3</td><td>See-through solids and acrylic panels drawn opaque.</td></tr>
   <tr><td><code>--no-shadows</code></td><td>F4</td><td>No shadow map.</td></tr>
+  <tr><td><code>--no-glass-shadows</code></td><td>F5</td><td>See-through solids cast no shadow.</td></tr>
   <tr><td>—</td><td>Esc</td><td>Close the window.</td></tr>
 </table></div><h3>Screen space: shapes</h3>
 <p>Drawn in window pixels, on top of the 3D scene, in the order of the calls. All return nothing unless stated.</p><div class="tablewrap"><table class="api">
@@ -2201,7 +2250,8 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>draw_capsule(start, end, radius, color, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A cylinder with round ends.</td></tr>
   <tr><td class="wrap"><code>draw_torus(center, radius, tube, color, axis, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A ring of <code>radius</code>, made of a tube of radius <code>tube</code>. <code>axis</code> is the direction of the hole.</td></tr>
   <tr><td class="wrap"><code>draw_mesh(mesh, color, position, scale, rotation, *, shader, specular, shininess, refraction)</code></td><td>—</td><td>A <code>Mesh</code>. Its origin goes to <code>position</code>; <code>scale</code> is one number or <code>(x, y, z)</code>; <code>rotation</code> in degrees.</td></tr>
-  <tr><td class="wrap"><code>set_light(direction, color, ambient)</code></td><td>—</td><td>The one light. <code>direction</code> points toward it; <code>ambient</code> (0 to 1) is how bright the unlit side stays.</td></tr>
+  <tr><td class="wrap"><code>set_light(direction, color, ambient, softness)</code></td><td>—</td><td>A far light, like the sun. <code>direction</code> points toward it; <code>ambient</code> (0 to 1) is how bright the unlit side stays; <code>softness</code> is the width of a shadow's edge per unit of distance from what casts it (0 = hard, 0.15 default).</td></tr>
+  <tr><td class="wrap"><code>set_area_light(position, radius, color, ambient, *, show)</code></td><td>—</td><td>A lamp in the scene instead: a glowing ball at <code>position</code>. Its <code>radius</code> decides how soft shadows are; <code>show=False</code> hides the ball. The last light set in a frame is the one used.</td></tr>
 </table></div><div class="tablewrap"><table class="api">
   <tr><th>Named argument</th><th>Default</th><th>Meaning</th></tr>
   <tr><td><code>shader</code></td><td><code>&quot;lit&quot;</code></td><td>The look: <code>"lit"</code>, <code>"toon"</code>, <code>"rim"</code>, <code>"flat"</code>, <code>"normals"</code>, <code>"wireframe"</code>, <code>"glow"</code>, or a <code>Shader</code> of your own.</td></tr>
