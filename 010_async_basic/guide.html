@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python async — the course</title>
+<style>
+  :root {
+    --bg: #101013;
+    --panel: #18181d;
+    --panel-2: #1f1f26;
+    --line: #2c2c36;
+    --text: #e6e3dc;
+    --muted: #9a968c;
+    --accent: #ff8c1a;
+    --accent-soft: rgba(255, 140, 26, 0.13);
+    --accent-line: rgba(255, 140, 26, 0.45);
+    --purple: #9440e6;
+    --yellow: #ffd91a;
+    --cyan: #33d9f2;
+    --green: #59e659;
+    --red: #ff4d4d;
+    --code: #0b0b0e;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); max-width: 1180px; margin: 0 auto; }
+  nav {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 28px 18px 28px 22px; border-right: 1px solid var(--line);
+  }
+  nav .brand { font-weight: 700; letter-spacing: .02em; margin-bottom: 4px; }
+  nav .brand span { color: var(--accent); }
+  nav .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  nav ol { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  nav li { counter-increment: step; }
+  nav li a {
+    display: flex; gap: 10px; padding: 6px 8px; border-radius: 6px;
+    color: var(--text); font-size: 14px; border-left: 2px solid transparent;
+  }
+  nav li a::before { content: counter(step, decimal-leading-zero); color: var(--accent); font: 12px/1.9 var(--mono); }
+  nav li a:hover { background: var(--accent-soft); text-decoration: none; border-left-color: var(--accent); }
+
+  main { padding: 44px 44px 120px; min-width: 0; }
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+  .eyebrow { color: var(--accent); font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  h1 { font-size: 40px; line-height: 1.12; margin: 14px 0 14px; letter-spacing: -.02em; text-wrap: balance; }
+  h1 em { color: var(--accent); font-style: normal; }
+  .lead { font-size: 18px; color: #cfcbc2; max-width: 62ch; margin: 0; }
+
+  section { padding-top: 46px; }
+  h2 {
+    font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em;
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .n { color: var(--accent); font: 600 14px/1 var(--mono); }
+  h3 { font-size: 18px; margin: 30px 0 8px; color: #fff; }
+  p { margin: 10px 0; max-width: 72ch; }
+  ul, ol.steps { max-width: 72ch; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .goal { color: var(--muted); margin-top: 0; }
+
+  code { font: 14px/1.5 var(--mono); background: var(--panel-2); padding: 1px 6px; border-radius: 4px; color: #ffd9ad; }
+  pre {
+    background: var(--code); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 14px 0;
+    font: 13.5px/1.6 var(--mono); color: #dcd8cf; tab-size: 4;
+  }
+  pre code { background: none; padding: 0; color: inherit; font: inherit; }
+  pre.shell { border-left-color: var(--muted); }
+  .c { color: #7d796f; font-style: italic; }
+  .s { color: #b6e07a; }
+  .k { color: var(--accent); }
+  .f { color: #7fd6ff; }
+  .num { color: #d9a6ff; }
+
+  .box {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 10px;
+    padding: 14px 18px; margin: 18px 0; max-width: 76ch;
+  }
+  .box.key { border-color: var(--accent-line); background: var(--accent-soft); }
+  .box.warn { border-color: rgba(255, 217, 26, .4); background: rgba(255, 217, 26, .07); }
+  .box .t { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .box.warn .t { color: var(--yellow); }
+  .box p { margin: 6px 0; }
+
+  .tablewrap { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--accent); font: 600 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; border-bottom-color: var(--accent-line); }
+  td code { white-space: nowrap; }
+  td.wrap code { white-space: normal; }
+
+  figure { margin: 22px 0; }
+  figure svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 72ch; }
+  svg text { font-family: var(--mono); fill: var(--text); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 14px 18px; }
+  .card h4 { margin: 0 0 6px; color: var(--accent); font: 600 13px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+  .card p { margin: 6px 0; font-size: 15px; }
+
+  .demo { border: 1px solid var(--accent-line); border-radius: 10px; background: #0f0f12; margin: 18px 0; overflow: hidden; max-width: 640px; }
+  .demo canvas { display: block; width: 100%; height: auto; cursor: default; touch-action: none; }
+  .demo .bar { display: flex; justify-content: space-between; gap: 12px; padding: 8px 14px; border-top: 1px solid var(--line); font: 12.5px/1.4 var(--mono); color: var(--muted); }
+  .demo .bar b { color: var(--accent); font-weight: 600; }
+
+  footer { margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px; }
+    nav ol { display: grid; grid-template-columns: 1fr 1fr; }
+    main { padding: 28px 16px 80px; }
+    h1 { font-size: 30px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+  kbd { font: 12.5px/1 var(--mono); background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; }
+  p code, li code { overflow-wrap: anywhere; }
+  details.fold { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 0 18px; margin: 18px 0; max-width: 76ch; }
+  details.fold summary { cursor: pointer; padding: 12px 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+  details.fold summary::-webkit-details-marker { display: none; }
+  details.fold summary::before { content: "Check yourself"; font: 600 11px/1.7 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--cyan); white-space: nowrap; }
+  details.sol summary::before { content: "Solution"; color: var(--accent); }
+  details.fold summary::after { content: "show"; margin-left: auto; font: 12px/1.7 var(--mono); color: var(--muted); }
+  details.fold[open] summary::after { content: "hide"; }
+  details.fold summary:hover::after { color: var(--accent); }
+  details.fold .a { border-top: 1px solid var(--line); padding: 6px 0 12px; }
+  details.sol { max-width: none; }
+  details.sol pre { margin: 12px 0; }
+
+  .demo.stepper { max-width: 760px; }
+  .st-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .st-code { margin: 0; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 14px 0; font: 13px/1.8 var(--mono); }
+  .st-code code.ln { display: block; padding: 0 14px 0 12px; border-left: 3px solid transparent; white-space: pre; }
+  .st-code code.ln.on { border-left-color: var(--who); background: var(--who-soft); }
+  .st-side { padding: 12px 16px 14px; min-width: 0; }
+  .st-h { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+  .st-h:first-child { margin-top: 2px; }
+  .st-slot { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-items: center; font: 12.5px/1.4 var(--mono); color: var(--muted); }
+  .chip { font: 600 12.5px/1 var(--mono); padding: 6px 9px; border-radius: 6px; color: #101013; white-space: nowrap; }
+  .chip small { font-weight: 400; font-size: 11.5px; opacity: .8; }
+  .st-out { margin: 0; border: 0; border-radius: 6px; background: var(--code); padding: 8px 10px; min-height: 86px; font: 12.5px/1.5 var(--mono); color: #b9d3d9; }
+  .st-note { border-top: 1px solid var(--line); padding: 12px 16px; min-height: 76px; font-size: 15px; line-height: 1.5; }
+  .demo .bar button { font: 600 12.5px/1 var(--mono); color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; margin-right: 6px; }
+  .demo .bar button.go { background: var(--accent); border-color: var(--accent); color: #101013; }
+  .demo .bar button:disabled { opacity: .35; cursor: default; }
+  .demo .bar button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .demo .bar { align-items: center; }
+  @media (max-width: 880px) {
+    .st-body { grid-template-columns: 1fr; }
+    .st-code { border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  }
+  pre.out { border-left-color: var(--cyan); color: #b9d3d9; }
+  .label { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 18px 0 -8px; }
+  .label.run { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+  <div class="brand"><span>python</span> async</div>
+  <div class="sub">the course, from lambda to a network server</div>
+  <ol>
+    <li><a href="#map">The map</a></li>
+    <li><a href="#lambda">Lambda</a></li>
+    <li><a href="#why">Why async?</a></li>
+    <li><a href="#words">The three words</a></li>
+    <li><a href="#loop">The event loop</a></li>
+    <li><a href="#tasks">Tasks</a></li>
+    <li><a href="#groups">Many at once</a></li>
+    <li><a href="#cancel">Timeouts and cancelling</a></li>
+    <li><a href="#blocking">The blocking trap</a></li>
+    <li><a href="#limits">Limits and locks</a></li>
+    <li><a href="#queue">The queue</a></li>
+    <li><a href="#withfor">async with, async for</a></li>
+    <li><a href="#callbacks">Lambda meets asyncio</a></li>
+    <li><a href="#server">A complete program</a></li>
+    <li><a href="#practice">Practice</a></li>
+    <li><a href="#cheat">Cheat sheet</a></li>
+    <li><a href="#trouble">When it does not work</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Python · lambda · asyncio</div>
+  <h1>Do other things <em>while you wait</em>.</h1>
+  <p class="lead">Most programs spend their time waiting: for the network, for a file, for a user. Async code is the way to use that waiting time for something else, in one thread, without locks everywhere. This course starts with <code>lambda</code>, because Python libraries ask you for small functions all the time, then builds async one word at a time, up to a working network server.</p>
+</header>
+
+<!-- ================================================================ 1 -->
+<section id="map">
+<h2><span class="n">01</span>The map</h2>
+<p class="goal">What is in this folder, and how to use it.</p>
+
+<p>Every section of this page has a matching file in <code>examples/</code>. The code you read here <strong>is</strong> that file, and the output shown under it is what the file really printed. Read a section, run the file, change something, run it again.</p>
+
+<p>Open a terminal, go <strong>into the <code>python_async</code> folder</strong>, and run a file:</p>
+<pre class="shell">cd python_async</pre>
+<pre class="shell">python3 examples/01_lambda.py</pre>
+
+<div class="box key"><div class="t">Rule for the whole course</div>
+<p>Every command is typed from inside <code>python_async</code>. If Python answers <code>can't open file … No such file or directory</code>, you are one folder too high: do the <code>cd</code> above.</p></div>
+
+<div class="tablewrap"><table>
+  <tr><th>File</th><th>What it shows</th><th>Section</th></tr>
+  <tr><td><code>01_lambda.py</code></td><td>A function without a name, and the four places you meet it.</td><td><a href="#lambda">02</a></td></tr>
+  <tr><td><code>02_blocking_vs_async.py</code></td><td>The same three jobs: 3 seconds, then 1 second.</td><td><a href="#why">03</a></td></tr>
+  <tr><td><code>03_coroutine.py</code></td><td><code>async def</code>, <code>await</code>, <code>asyncio.run</code>.</td><td><a href="#words">04</a></td></tr>
+  <tr><td><code>04_tasks.py</code></td><td>Starting work in the background.</td><td><a href="#tasks">06</a></td></tr>
+  <tr><td><code>05_groups.py</code></td><td><code>gather</code>, <code>TaskGroup</code>, <code>as_completed</code>.</td><td><a href="#groups">07</a></td></tr>
+  <tr><td><code>06_timeout_cancel.py</code></td><td>A time limit, and stopping a task by hand.</td><td><a href="#cancel">08</a></td></tr>
+  <tr><td><code>07_blocking_trap.py</code></td><td>The classic mistake, and <code>to_thread</code>.</td><td><a href="#blocking">09</a></td></tr>
+  <tr><td><code>08_limits_and_locks.py</code></td><td><code>Semaphore</code> and <code>Lock</code>.</td><td><a href="#limits">10</a></td></tr>
+  <tr><td><code>09_queue.py</code></td><td>A producer and two workers.</td><td><a href="#queue">11</a></td></tr>
+  <tr><td><code>10_async_with_for.py</code></td><td><code>async with</code>, <code>async for</code>, async generators.</td><td><a href="#withfor">12</a></td></tr>
+  <tr><td><code>11_callbacks.py</code></td><td>Lambda inside asyncio.</td><td><a href="#callbacks">13</a></td></tr>
+  <tr><td><code>12_echo_server.py</code></td><td>A TCP server and three clients.</td><td><a href="#server">14</a></td></tr>
+</table></div>
+
+<p>Three more files wait in <code>solutions/</code>: the answers to the exercises of section <a href="#practice">15</a>. Try before you look.</p>
+
+<div class="box"><div class="t">How to read this page</div>
+<p>Sections 02 to 06 are the foundation: read them in order, they are short. Section 05 has a step-by-step viewer; spend five minutes on it, everything after depends on that picture. From 07 on, each section is one tool, and you can come back to them when you need them. The <span style="color:var(--cyan)">Check yourself</span> lines hide a question and its answer: answer in your head first.</p></div>
+
+<div class="box key"><div class="t">What you need</div>
+<p>Python 3.11 or newer, and nothing else. Everything here uses only <code>asyncio</code>, which ships with Python. Check with <code>python3 --version</code>.</p></div>
+</section>
+
+<!-- ================================================================ 2 -->
+<section id="lambda">
+<h2><span class="n">02</span>Lambda</h2>
+<p class="goal">A small function without a name. You will hand one to almost every library you use.</p>
+
+<p>In Python a function is a <strong>value</strong>, like a number or a string. You can put it in a variable, in a list, and above all you can <strong>give it to another function</strong>. Libraries rely on this: "sort by <em>this</em>", "when the button is clicked, call <em>this</em>", "run <em>this</em> in 2 seconds". Each <em>this</em> is a function you pass in.</p>
+
+<p>When that function is one short expression, writing a full <code>def</code> three lines above is heavy. <code>lambda</code> lets you write it right where it is used.</p>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="Anatomy of a lambda: the keyword, the parameters, a colon, and one expression whose value is returned. Below, the equivalent def.">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#ff8c1a"/>
+    </marker>
+  </defs>
+  <rect x="118" y="52" width="128" height="50" rx="8" fill="#ff8c1a"/>
+  <text x="182" y="85" text-anchor="middle" font-size="24" font-weight="600" style="fill:#101013">lambda</text>
+  <rect x="262" y="52" width="92" height="50" rx="8" fill="#9440e6"/>
+  <text x="308" y="85" text-anchor="middle" font-size="24" font-weight="600">x, y</text>
+  <text x="372" y="85" text-anchor="middle" font-size="24" font-weight="600">:</text>
+  <rect x="392" y="52" width="130" height="50" rx="8" fill="#ffd91a"/>
+  <text x="457" y="85" text-anchor="middle" font-size="24" font-weight="600" style="fill:#101013">x + y</text>
+
+  <text x="182" y="36" text-anchor="middle" font-size="12" style="fill:#ff8c1a">the keyword</text>
+  <text x="308" y="36" text-anchor="middle" font-size="12" style="fill:#c79bf2">parameters</text>
+  <text x="457" y="36" text-anchor="middle" font-size="12" style="fill:#ffd91a">ONE expression</text>
+  <text x="540" y="74" font-size="12" style="fill:#9a968c">its value is returned:</text>
+  <text x="540" y="92" font-size="12" style="fill:#9a968c">no "return" to write</text>
+
+  <path d="M40 132 H720" stroke="#2c2c36" stroke-dasharray="3 4"/>
+  <text x="40" y="160" font-size="12" style="fill:#9a968c">is the same as</text>
+  <text x="182" y="192" font-size="17"><tspan style="fill:#ff8c1a">def</tspan> some_name(<tspan style="fill:#c79bf2">x, y</tspan>):</text>
+  <text x="182" y="218" font-size="17">    <tspan style="fill:#ff8c1a" dx="42">return</tspan> <tspan style="fill:#ffd91a">x + y</tspan></text>
+</svg>
+<figcaption>A lambda is a function. The only differences: it has no name, and its body is a single expression.</figcaption>
+</figure>
+
+<div class="label">examples/01_lambda.py</div>
+<pre><code class="py">"""Lambda: a small function without a name."""
+
+
+def double(x):
+    return x * 2
+
+
+double_too = lambda x: x * 2            # the same function, on one line
+
+print(double(21), double_too(21))
+
+# 1. As a key: "compare the items by this"
+people = [("Ada", 36), ("Linus", 28), ("Grace", 45)]
+print(sorted(people, key=lambda person: person[1]))
+print(max(people, key=lambda person: len(person[0])))
+
+
+# 2. As a callback: "call this when it is time"
+def repeat(times, action):
+    for i in range(times):
+        action(i)
+
+
+repeat(3, lambda i: print("step", i))
+
+
+# 3. To delay a call: "not now, later"
+def greet(name):
+    print("hello", name)
+
+
+later = lambda: greet("Ada")            # nothing is printed on this line
+print("before")
+later()                                 # greet runs here
+
+# 4. The trap: a lambda reads its variables when it is CALLED
+wrong = [lambda: i for i in range(3)]
+right = [lambda i=i: i for i in range(3)]
+print("wrong:", [f() for f in wrong])
+print("right:", [f() for f in right])</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">42 42
+[('Linus', 28), ('Ada', 36), ('Grace', 45)]
+('Linus', 28)
+step 0
+step 1
+step 2
+before
+hello Ada
+wrong: [2, 2, 2]
+right: [0, 1, 2]</pre>
+
+<h3>The four places you meet it</h3>
+<div class="tablewrap"><table>
+  <tr><th>Use</th><th>What the lambda says</th><th>Typical code</th></tr>
+  <tr><td>A <strong>key</strong></td><td>"Compare the items by this value."</td><td class="wrap"><code>sorted(rows, key=lambda r: r.date)</code> · <code>max(…, key=…)</code> · <code>min(…, key=…)</code></td></tr>
+  <tr><td>A <strong>callback</strong></td><td>"When it happens, call this."</td><td class="wrap"><code>button.on_click(lambda: save(doc))</code> · <code>task.add_done_callback(lambda t: …)</code></td></tr>
+  <tr><td>A <strong>delayed call</strong></td><td>"Do not run this now. Keep it for later."</td><td class="wrap"><code>loop.call_later(2, lambda: print("late"))</code></td></tr>
+  <tr><td>A <strong>default maker</strong></td><td>"Call this each time you need a fresh value."</td><td class="wrap"><code>defaultdict(lambda: 0)</code> · <code>field(default_factory=lambda: [])</code></td></tr>
+</table></div>
+
+<h3>The shapes it takes</h3>
+<pre><code class="py">lambda: 42                                   # no parameter
+lambda x: x * 2                              # one
+lambda x, y=1: x + y                         # two, the second with a default value
+lambda *numbers: sum(numbers)                # any number of them
+lambda p: (p.price, p.name)                  # returns a tuple: "by price, then by name"
+lambda x: "even" if x % 2 == 0 else "odd"    # a choice, with the one-line if</code></pre>
+<p>You will also read lambdas inside <code>map</code> and <code>filter</code>, in older code and in many libraries:</p>
+<pre><code class="py">list(map(lambda x: x * 2, [1, 2, 3]))        # [2, 4, 6]   apply to each item
+list(filter(lambda x: x > 1, [1, 2, 3]))     # [2, 3]      keep the items that pass
+
+[x * 2 for x in [1, 2, 3]]                   # the same two, as most people write them today
+[x for x in [1, 2, 3] if x > 1]</code></pre>
+
+<h3>Calling now, or passing for later</h3>
+<p>This is the idea that matters most for the rest of the course. Look at the difference of one word:</p>
+<pre><code class="py">loop.call_later(2, greet("Ada"))            # WRONG: greet runs NOW, its result (None) is passed
+loop.call_later(2, lambda: greet("Ada"))    # RIGHT: a function is passed, it will run in 2 s
+loop.call_later(2, greet, "Ada")            # RIGHT too: many APIs accept the arguments after</code></pre>
+<p>Parentheses mean "run it now". A library that wants to call your code <em>later</em> needs the function itself, not its result. Wrapping the call in <code>lambda:</code> is the short way to say "here is how to do it, when you are ready".</p>
+
+<div class="box warn"><div class="t">The trap everybody meets once</div>
+<p>A lambda does not copy the variables it uses. It looks them up <strong>when it is called</strong>. In a loop, every lambda then sees the <em>last</em> value: that is the <code>wrong: [2, 2, 2]</code> line above.</p>
+<p>The fix is <code>lambda i=i: …</code>. A default value is computed when the lambda is <strong>created</strong>, so each one keeps its own <code>i</code>.</p></div>
+
+<h3>What a lambda cannot do</h3>
+<ul>
+  <li><strong>One expression only.</strong> No <code>if</code> block, no <code>for</code>, no <code>=</code>, no <code>return</code>, no <code>try</code>. (The one-line form <code>a if test else b</code> is an expression, so it is allowed.)</li>
+  <li><strong>No <code>await</code>.</strong> A lambda is never an async function. Section <a href="#callbacks">13</a> shows what to do instead.</li>
+  <li><strong>No name.</strong> In an error message it is called <code>&lt;lambda&gt;</code>, which helps nobody.</li>
+</ul>
+
+<div class="box key"><div class="t">Rule</div>
+<p>If it fits on one line and you use it once, write a lambda. If you need a second line, a comment, or a name to understand it, write a <code>def</code>. Both give exactly the same kind of object.</p></div>
+
+<details class="fold quiz"><summary>What does <code>[f() for f in [lambda: n for n in "ab"]]</code> give?</summary>
+<div class="a"><p><code>['b', 'b']</code>. Both lambdas read <code>n</code> when they are called, and by then the loop has ended on <code>"b"</code>. With <code>lambda n=n: n</code> you get <code>['a', 'b']</code>.</p></div></details>
+<details class="fold quiz"><summary><code>button.on_click(save(doc))</code> saves the document as soon as the window opens, and the button does nothing. Why?</summary>
+<div class="a"><p>The parentheses run <code>save(doc)</code> at once, and its result (<code>None</code>) is what the button receives. Pass a function instead: <code>button.on_click(lambda: save(doc))</code>.</p></div></details>
+</section>
+
+<!-- ================================================================ 3 -->
+<section id="why">
+<h2><span class="n">03</span>Why async?</h2>
+<p class="goal">Because a program that waits is a program that does nothing.</p>
+
+<p>Asking a web server for a page takes, say, one second. During that second your computer computes nothing: it waits for bytes to arrive. Ordinary code <strong>blocks</strong> there, and the whole program stands still. Three requests cost three seconds.</p>
+<p>Async code says instead: "this will take a while, <em>go and do something else, wake me when it is ready</em>." The three waits then happen at the same time.</p>
+
+<figure>
+<svg viewBox="0 0 760 290" role="img" aria-label="Top: three one-second jobs one after the other take three seconds. Bottom: the same three jobs waiting at the same time take one second.">
+  <g stroke="#2c2c36" stroke-dasharray="3 4">
+    <path d="M170 30 V262 M350 30 V262 M530 30 V262 M710 30 V262"/>
+  </g>
+  <g font-size="11" text-anchor="middle">
+    <text x="170" y="280" style="fill:#9a968c">0 s</text><text x="350" y="280" style="fill:#9a968c">1 s</text>
+    <text x="530" y="280" style="fill:#9a968c">2 s</text><text x="710" y="280" style="fill:#9a968c">3 s</text>
+  </g>
+
+  <text x="30" y="38" font-size="13" font-weight="600">BLOCKING</text>
+  <text x="150" y="67" text-anchor="end" font-size="12">download a</text>
+  <rect x="170" y="52" width="180" height="22" rx="5" fill="#9440e6"/>
+  <text x="150" y="95" text-anchor="end" font-size="12">download b</text>
+  <rect x="350" y="80" width="180" height="22" rx="5" fill="#9440e6"/>
+  <text x="150" y="123" text-anchor="end" font-size="12">download c</text>
+  <rect x="530" y="108" width="180" height="22" rx="5" fill="#9440e6"/>
+  <text x="718" y="95" font-size="12" style="fill:#c79bf2" text-anchor="end" dx="-12" dy="-34">3.0 s in total</text>
+
+  <path d="M30 148 H730" stroke="#2c2c36"/>
+
+  <text x="30" y="174" font-size="13" font-weight="600" style="fill:#ff8c1a">ASYNC</text>
+  <text x="150" y="201" text-anchor="end" font-size="12">download a</text>
+  <rect x="170" y="186" width="180" height="22" rx="5" fill="#ff8c1a"/>
+  <text x="150" y="229" text-anchor="end" font-size="12">download b</text>
+  <rect x="170" y="214" width="180" height="22" rx="5" fill="#ff8c1a"/>
+  <text x="150" y="257" text-anchor="end" font-size="12">download c</text>
+  <rect x="170" y="242" width="180" height="22" rx="5" fill="#ff8c1a"/>
+  <text x="366" y="229" font-size="12" style="fill:#ff8c1a">1.0 s in total: the three waits overlap</text>
+</svg>
+<figcaption>Nothing got faster. Each download still takes one second. Only the <em>waiting</em> is shared.</figcaption>
+</figure>
+
+<div class="label">examples/02_blocking_vs_async.py</div>
+<pre><code class="py">"""Three slow jobs: one after the other, then all at once."""
+import asyncio
+import time
+
+
+def download(name):                     # the ordinary version
+    time.sleep(1)                       # stands for a slow network call
+    return name + " done"
+
+
+async def download_async(name):         # the async version
+    await asyncio.sleep(1)              # waits WITHOUT holding the program
+    return name + " done"
+
+
+def blocking():
+    return [download(n) for n in ("a", "b", "c")]
+
+
+async def concurrent():
+    return await asyncio.gather(
+        download_async("a"), download_async("b"), download_async("c"))
+
+
+start = time.perf_counter()
+print(blocking(), f"{time.perf_counter() - start:.1f} s")
+
+start = time.perf_counter()
+print(asyncio.run(concurrent()), f"{time.perf_counter() - start:.1f} s")</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">['a done', 'b done', 'c done'] 3.0 s
+['a done', 'b done', 'c done'] 1.0 s</pre>
+<p>Do not worry about the new words yet. Notice only that the two versions look almost the same, and that one is three times faster.</p>
+
+<h3>When async helps, and when it does not</h3>
+<div class="grid2">
+  <div class="card"><h4>Good for waiting</h4>
+    <p>Network requests, databases, sockets, web servers, chat bots, reading many files, timers, user interfaces.</p>
+    <p>The program is slow because it <strong>waits for something outside</strong>. This is called I/O-bound work. Async can handle thousands of such waits at once.</p></div>
+  <div class="card"><h4>Not for computing</h4>
+    <p>Resizing images, crunching numbers, compressing, parsing a huge file.</p>
+    <p>The program is slow because the <strong>processor is busy</strong>. This is CPU-bound work. Async gives nothing here: there is no waiting to share. Use processes or threads (section <a href="#blocking">09</a>).</p></div>
+</div>
+
+<div class="box key"><div class="t">Remember</div>
+<p>Async is <strong>one thread</strong> doing many things by turns. It is not several things computed at the same instant. Concurrency, not parallelism.</p></div>
+</section>
+
+<!-- ================================================================ 4 -->
+<section id="words">
+<h2><span class="n">04</span>The three words</h2>
+<p class="goal"><code>async def</code>, <code>await</code>, <code>asyncio.run</code>. That is the whole language.</p>
+
+<div class="label">examples/03_coroutine.py</div>
+<pre><code class="py">"""async def, await, asyncio.run: the three words."""
+import asyncio
+
+
+async def add(a, b):
+    await asyncio.sleep(0.5)            # pretend this takes time
+    return a + b
+
+
+async def main():
+    thing = add(1, 2)                   # calling it does NOT run it
+    print(type(thing).__name__)         # it is a coroutine: a paused function
+    result = await thing                # await runs it and gives the result
+    print(result)
+
+    print(await add(10, 20))            # the usual way: call and await at once
+
+
+asyncio.run(main())                     # the door from normal code into async code</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">coroutine
+3
+30</pre>
+
+<ol class="steps">
+  <li><strong><code>async def</code> makes a coroutine function.</strong> It is a function that is allowed to pause in the middle and continue later.</li>
+  <li><strong>Calling it does not run it.</strong> <code>add(1, 2)</code> runs no line of the body. It gives back a <em>coroutine</em>: the function, ready to start, like a recipe not yet cooked. This is the first surprise for everybody.</li>
+  <li><strong><code>await</code> runs it and waits for the result.</strong> While it waits, the rest of the program may run. <code>await</code> is the only place where a coroutine can pause.</li>
+  <li><strong><code>asyncio.run(main())</code> starts everything.</strong> It creates the event loop, runs <code>main</code> until it ends, and cleans up. One call, at the bottom of the program.</li>
+</ol>
+
+<div class="tablewrap"><table>
+  <tr><th>Word</th><th>Where it is allowed</th><th>What it does</th></tr>
+  <tr><td><code>async def f():</code></td><td>Anywhere.</td><td>Declares a function that can pause.</td></tr>
+  <tr><td><code>await x</code></td><td>Only inside an <code>async def</code>.</td><td>"Run <code>x</code>, let others work meanwhile, give me the result."</td></tr>
+  <tr><td><code>asyncio.run(f())</code></td><td>Only in normal code, once.</td><td>The door from the normal world into the async world.</td></tr>
+</table></div>
+
+<div class="box warn"><div class="t">The mistake of day one</div>
+<p>Forgetting <code>await</code>. The line <code>add(1, 2)</code> alone does nothing at all, and Python warns: <code>RuntimeWarning: coroutine 'add' was never awaited</code>. When you see that message, an <code>await</code> is missing.</p></div>
+
+<details class="fold quiz"><summary>In ordinary code, outside any <code>async def</code>, what does <code>print(add(1, 2))</code> show?</summary>
+<div class="a"><p>Not <code>3</code>. It shows <code>&lt;coroutine object add at 0x…&gt;</code>, followed by the "never awaited" warning. The body of <code>add</code> did not run at all. From ordinary code the way in is <code>print(asyncio.run(add(1, 2)))</code>.</p></div></details>
+
+<div class="box"><div class="t">Async spreads upward</div>
+<p>To <code>await</code> something you must be inside an <code>async def</code>. So the function that calls you must <code>await</code> you, and be <code>async</code> too, and so on up to <code>main</code>. This is normal: a program is async from the top, or not at all.</p></div>
+</section>
+
+<!-- ================================================================ 5 -->
+<section id="loop">
+<h2><span class="n">05</span>The event loop</h2>
+<p class="goal">The small engine that decides who runs now. Once you see it, nothing is magic.</p>
+
+<p>The event loop keeps a list of coroutines that are <strong>ready</strong> to continue, and a list of those that are <strong>waiting</strong> for something. It repeats four steps for the whole life of the program:</p>
+
+<figure>
+<svg viewBox="0 0 760 220" role="img" aria-label="The event loop cycle: pick a ready task, run it until its next await, park it while it waits, wake the tasks whose wait is over, and start again.">
+  <g font-size="13">
+    <rect x="30" y="60" width="150" height="66" rx="10" fill="#1f1f26" stroke="#ff8c1a"/>
+    <text x="105" y="88" text-anchor="middle" font-weight="600">pick</text>
+    <text x="105" y="108" text-anchor="middle" font-size="11" style="fill:#9a968c">one task that is ready</text>
+
+    <rect x="214" y="60" width="150" height="66" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="289" y="88" text-anchor="middle" font-weight="600">run</text>
+    <text x="289" y="108" text-anchor="middle" font-size="11" style="fill:#9a968c">until its next await</text>
+
+    <rect x="398" y="60" width="150" height="66" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="473" y="88" text-anchor="middle" font-weight="600">park</text>
+    <text x="473" y="108" text-anchor="middle" font-size="11" style="fill:#9a968c">it waits: set it aside</text>
+
+    <rect x="582" y="60" width="150" height="66" rx="10" fill="#1f1f26" stroke="#2c2c36"/>
+    <text x="657" y="88" text-anchor="middle" font-weight="600">wake</text>
+    <text x="657" y="108" text-anchor="middle" font-size="11" style="fill:#9a968c">those whose wait is over</text>
+  </g>
+  <path d="M180 93 H212" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M364 93 H396" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M548 93 H580" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M657 126 V170 H105 V128" stroke="#ff8c1a" stroke-width="1.6" fill="none" marker-end="url(#arr)"/>
+  <text x="380" y="190" text-anchor="middle" font-size="12" style="fill:#9a968c">again, thousands of times per second</text>
+  <text x="380" y="34" text-anchor="middle" font-size="12" style="fill:#9a968c">if nobody is ready, the loop sleeps until a timer ends or data arrives</text>
+</svg>
+<figcaption>One loop, one thread. Exactly one coroutine runs at any instant.</figcaption>
+</figure>
+
+<p>Three consequences follow, and they explain every behaviour you will see:</p>
+<ol class="steps">
+  <li><strong>Between two <code>await</code>, nobody can interrupt you.</strong> Your code runs alone until it reaches the next <code>await</code>. This is why async code needs far fewer locks than threads.</li>
+  <li><strong>The switch is voluntary.</strong> A coroutine gives the hand back <em>only</em> at an <code>await</code>. It is called cooperative multitasking: everyone must cooperate.</li>
+  <li><strong>One coroutine that never awaits stops everybody.</strong> A long computation or a <code>time.sleep()</code> holds the loop, and all other tasks freeze. See section <a href="#blocking">09</a>.</li>
+</ol>
+
+<h3>Watch it work</h3>
+<p>Here is the loop running a ten-line program, one decision at a time. Press <strong>Step</strong> and follow two things: which line is lit, and how the names move between <em>ready</em>, <em>running</em> and <em>waiting</em>.</p>
+
+<div class="demo stepper" id="stepper">
+  <div class="st-body">
+    <pre class="st-code" id="st-code" aria-label="The program being run"></pre>
+    <div class="st-side" aria-live="polite">
+      <div class="st-h">clock</div><div class="st-slot" id="st-clock"></div>
+      <div class="st-h">running</div><div class="st-slot" id="st-run"></div>
+      <div class="st-h">ready</div><div class="st-slot" id="st-ready"></div>
+      <div class="st-h">waiting</div><div class="st-slot" id="st-wait"></div>
+      <div class="st-h">printed</div><pre class="st-out" id="st-out"></pre>
+    </div>
+  </div>
+  <div class="st-note" id="st-note" aria-live="polite"></div>
+  <div class="bar">
+    <span><button type="button" id="st-back">Back</button><button type="button" class="go" id="st-next">Step</button><button type="button" id="st-reset">Restart</button></span>
+    <span>step <b id="st-n"></b></span>
+  </div>
+</div>
+<p>Two things to notice. The <em>running</em> box never holds more than one name. And between steps 8 and 9 it is empty while one full second passes: that second costs nothing, and in a real program the loop would use it to serve somebody else.</p>
+
+<div class="box key"><div class="t">The mental picture</div>
+<p>A chess master playing twenty boards. They make one move, walk to the next board, make one move, and so on. One player, twenty games in progress. <code>await</code> is "I moved, your turn": the moment the master walks away.</p></div>
+</section>
+
+<!-- ================================================================ 6 -->
+<section id="tasks">
+<h2><span class="n">06</span>Tasks</h2>
+<p class="goal"><code>await</code> waits. A task runs in the background. The difference is the whole point.</p>
+
+<p>Here is the second surprise: two <code>await</code> in a row are <strong>not</strong> concurrent. <code>await</code> means "run this <em>and wait for it</em>", so the second line starts only when the first is finished. To run two things at once you must first <strong>start</strong> them both, and wait afterwards. Starting is <code>asyncio.create_task</code>.</p>
+
+<div class="label">examples/04_tasks.py</div>
+<pre><code class="py">"""await runs one thing and waits. A task runs in the background."""
+import asyncio
+import time
+
+
+async def cook(dish, seconds):
+    print("  start", dish)
+    await asyncio.sleep(seconds)
+    print("  ready", dish)
+    return dish
+
+
+async def one_by_one():
+    await cook("rice", 1.0)             # wait for the rice...
+    await cook("soup", 1.0)             # ...and only then start the soup
+
+
+async def together():
+    rice = asyncio.create_task(cook("rice", 1.0))    # starts in the background
+    soup = asyncio.create_task(cook("soup", 1.0))    # starts in the background
+    print("  two tasks created, none has started yet")
+    await rice                          # now wait for the results
+    await soup
+
+
+async def main():
+    for recipe in (one_by_one, together):
+        start = time.perf_counter()
+        await recipe()
+        print(f"{recipe.__name__}: {time.perf_counter() - start:.1f} s")
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">  start rice
+  ready rice
+  start soup
+  ready soup
+one_by_one: 2.0 s
+  two tasks created, none has started yet
+  start rice
+  start soup
+  ready rice
+  ready soup
+together: 1.0 s</pre>
+
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="One thread shared by main, the rice task and the soup task. Short solid blocks are the moments a coroutine really runs; long faded stretches are waits. The solid blocks never overlap.">
+  <text x="30" y="30" font-size="12" style="fill:#9a968c">together(): who is using the thread?</text>
+  <g font-size="12" text-anchor="end">
+    <text x="110" y="72">main</text><text x="110" y="122">rice</text><text x="110" y="172">soup</text>
+  </g>
+  <!-- waits -->
+  <rect x="190" y="56" width="476" height="24" rx="5" fill="#ffd91a" opacity=".16"/>
+  <rect x="204" y="106" width="462" height="24" rx="5" fill="#ff8c1a" opacity=".2"/>
+  <rect x="238" y="156" width="462" height="24" rx="5" fill="#9440e6" opacity=".28"/>
+  <!-- runs -->
+  <rect x="130" y="56" width="60" height="24" rx="5" fill="#ffd91a"/>
+  <rect x="190" y="106" width="30" height="24" rx="5" fill="#ff8c1a"/>
+  <rect x="220" y="156" width="30" height="24" rx="5" fill="#9440e6"/>
+  <rect x="640" y="106" width="26" height="24" rx="5" fill="#ff8c1a"/>
+  <rect x="666" y="56" width="20" height="24" rx="5" fill="#ffd91a"/>
+  <rect x="686" y="156" width="26" height="24" rx="5" fill="#9440e6"/>
+  <rect x="712" y="56" width="20" height="24" rx="5" fill="#ffd91a"/>
+
+  <text x="130" y="48" font-size="11" style="fill:#ffd91a">create 2 tasks</text>
+  <text x="420" y="73" text-anchor="middle" font-size="11" style="fill:#9a968c">await rice … waiting</text>
+  <text x="430" y="123" text-anchor="middle" font-size="11" style="fill:#9a968c">await asyncio.sleep(1) … waiting</text>
+  <text x="445" y="173" text-anchor="middle" font-size="11" style="fill:#9a968c">await asyncio.sleep(1) … waiting</text>
+
+  <rect x="130" y="212" width="22" height="12" rx="3" fill="#e6e3dc"/>
+  <text x="160" y="223" font-size="11" style="fill:#9a968c">running: one at a time, never two</text>
+  <rect x="420" y="212" width="22" height="12" rx="3" fill="#e6e3dc" opacity=".25"/>
+  <text x="450" y="223" font-size="11" style="fill:#9a968c">waiting: as many as you like</text>
+</svg>
+<figcaption>The solid blocks never overlap: one thread. The faded stretches overlap freely: that is where the time is saved.</figcaption>
+</figure>
+
+<div class="tablewrap"><table>
+  <tr><th>You write</th><th>What happens</th></tr>
+  <tr><td><code>await cook("rice", 1)</code></td><td>Runs it now and stays on this line until it is finished.</td></tr>
+  <tr><td><code>t = asyncio.create_task(cook("rice", 1))</code></td><td>Schedules it and continues <strong>immediately</strong>. It really starts at your next <code>await</code>.</td></tr>
+  <tr><td><code>await t</code></td><td>Waits for the task and gives its return value (or raises its error).</td></tr>
+  <tr><td><code>t.done()</code> · <code>t.result()</code> · <code>t.cancel()</code></td><td>Is it finished? · Its value, once finished. · Ask it to stop.</td></tr>
+</table></div>
+
+<p>Look at the output of <code>together</code>: the line <code>two tasks created, none has started yet</code> comes <strong>before</strong> <code>start rice</code>. <code>create_task</code> only puts the coroutine in the ready list. It gets the thread when <code>main</code> reaches its next <code>await</code>, exactly as in the viewer of section 05.</p>
+
+<details class="fold quiz"><summary><code>a()</code> and <code>b()</code> each wait one second. How long do these two lines take: <code>await a()</code> then <code>await b()</code>?</summary>
+<div class="a"><p>Two seconds. Each <code>await</code> finishes before the next line begins. For one second: <code>await asyncio.gather(a(), b())</code>, or create two tasks first and await them after.</p></div></details>
+
+<div class="box warn"><div class="t">Keep the task in a variable</div>
+<p>The loop does not hold on to your tasks. A task that nothing refers to can be thrown away by Python <em>before it finishes</em>. Always store what <code>create_task</code> returns: in a variable, a list or a set. Better still, use a <code>TaskGroup</code> (next section), which keeps them for you.</p></div>
+</section>
+
+<!-- ================================================================ 7 -->
+<section id="groups">
+<h2><span class="n">07</span>Many at once</h2>
+<p class="goal">Three ways to start a group of coroutines and collect what they return.</p>
+
+<div class="label">examples/05_groups.py</div>
+<pre><code class="py">"""Three ways to run many coroutines and collect the results."""
+import asyncio
+
+
+async def fetch(name, seconds):
+    await asyncio.sleep(seconds)
+    return f"{name} ({seconds} s)"
+
+
+async def main():
+    # gather: results come back in the order you WROTE them
+    results = await asyncio.gather(fetch("slow", 0.3), fetch("fast", 0.1))
+    print("gather      ", results)
+
+    # TaskGroup: the block ends when every task is finished
+    async with asyncio.TaskGroup() as group:
+        slow = group.create_task(fetch("slow", 0.3))
+        fast = group.create_task(fetch("fast", 0.1))
+    print("TaskGroup   ", [slow.result(), fast.result()])
+
+    # as_completed: results come back in the order they FINISH
+    jobs = [fetch("slow", 0.3), fetch("fast", 0.1)]
+    for finished in asyncio.as_completed(jobs):
+        print("as_completed", await finished)
+
+    # one failure: gather can hand the error back as a value
+    async def broken():
+        raise ValueError("no network")
+
+    results = await asyncio.gather(fetch("fine", 0.1), broken(),
+                                   return_exceptions=True)
+    print("with errors ", results)
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">gather       ['slow (0.3 s)', 'fast (0.1 s)']
+TaskGroup    ['slow (0.3 s)', 'fast (0.1 s)']
+as_completed fast (0.1 s)
+as_completed slow (0.3 s)
+with errors  ['fine (0.1 s)', ValueError('no network')]</pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Tool</th><th>Results</th><th>If one fails</th><th>Use it when</th></tr>
+  <tr><td><code>asyncio.gather(a, b, c)</code></td><td>A list, in the order you wrote them.</td><td class="wrap">The error reaches you at once; <strong>the others keep running</strong>. With <code>return_exceptions=True</code> errors come back as values in the list.</td><td>You want all the results, simply.</td></tr>
+  <tr><td><code>async with asyncio.TaskGroup()</code></td><td><code>task.result()</code> on each task, after the block.</td><td class="wrap">The others are <strong>cancelled</strong>, the block waits for them, then raises an <code>ExceptionGroup</code>.</td><td>The jobs belong together: all succeed, or none. The safest default.</td></tr>
+  <tr><td><code>asyncio.as_completed(jobs)</code></td><td>One by one, fastest first.</td><td>The error is raised when you <code>await</code> that one.</td><td>You want to show each result as soon as it exists.</td></tr>
+</table></div>
+
+<h3>A list of any size</h3>
+<p>The star unpacks a list into arguments, and a generator expression builds the list:</p>
+<pre><code class="py">urls = ["a", "b", "c", "d"]
+pages = await asyncio.gather(*(fetch(u, 0.1) for u in urls))
+
+async with asyncio.TaskGroup() as group:                 # the same with a group
+    tasks = [group.create_task(fetch(u, 0.1)) for u in urls]
+pages = [t.result() for t in tasks]</code></pre>
+
+<h3>Catching errors from a TaskGroup</h3>
+<p>Several tasks can fail together, so the group raises a <em>group</em> of errors. <code>except*</code> (with a star) picks the ones of a given type:</p>
+<pre><code class="py">try:
+    async with asyncio.TaskGroup() as group:
+        group.create_task(fetch("ok", 0.1))
+        group.create_task(broken())
+except* ValueError as errors:
+    for error in errors.exceptions:
+        print("failed:", error)</code></pre>
+
+<div class="box key"><div class="t">Which one?</div>
+<p>Start with <code>TaskGroup</code>. It never leaves a forgotten task running behind your back. Reach for <code>gather</code> when you want the results in one line, or want to tolerate failures with <code>return_exceptions=True</code>.</p></div>
+</section>
+
+<!-- ================================================================ 8 -->
+<section id="cancel">
+<h2><span class="n">08</span>Timeouts and cancelling</h2>
+<p class="goal">Anything that waits can wait forever. Always decide how long is too long.</p>
+
+<div class="label">examples/06_timeout_cancel.py</div>
+<pre><code class="py">"""Stopping work: a time limit, and a cancel by hand."""
+import asyncio
+
+
+async def slow_job(name):
+    try:
+        print(name, "started")
+        await asyncio.sleep(10)
+        print(name, "finished")         # never reached below
+    except asyncio.CancelledError:
+        print(name, "was cancelled, cleaning up")
+        raise                           # always let the cancel continue
+
+
+async def main():
+    # 1. a time limit
+    try:
+        async with asyncio.timeout(0.5):
+            await slow_job("job A")
+    except TimeoutError:
+        print("job A took too long")
+
+    # 2. cancel by hand
+    task = asyncio.create_task(slow_job("job B"))
+    await asyncio.sleep(0.2)            # let it start
+    task.cancel()                       # ask it to stop
+    try:
+        await task                      # wait until it really stopped
+    except asyncio.CancelledError:
+        print("job B is gone:", task.cancelled())
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">job A started
+job A was cancelled, cleaning up
+job A took too long
+job B started
+job B was cancelled, cleaning up
+job B is gone: True</pre>
+
+<h3>How a cancel really works</h3>
+<ol class="steps">
+  <li><code>task.cancel()</code> does not kill anything. It leaves a request: "stop at your next <code>await</code>".</li>
+  <li>At that <code>await</code>, the exception <code>asyncio.CancelledError</code> is raised <strong>inside</strong> the coroutine.</li>
+  <li>The coroutine may catch it to clean up (close a file, say goodbye to a server), or simply use <code>try … finally</code>.</li>
+  <li>It then lets the exception continue with <code>raise</code>. The task ends, marked as cancelled.</li>
+</ol>
+<p>A timeout is the same mechanism: <code>asyncio.timeout(0.5)</code> cancels what is inside the block when the time is over, and turns the cancel into a <code>TimeoutError</code> for you to catch outside.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>You write</th><th>Meaning</th></tr>
+  <tr><td class="wrap"><code>async with asyncio.timeout(5):</code></td><td>Everything in the block must finish within 5 seconds, or <code>TimeoutError</code>.</td></tr>
+  <tr><td class="wrap"><code>await asyncio.wait_for(job(), timeout=5)</code></td><td>The same for a single call. The older spelling, still fine.</td></tr>
+  <tr><td><code>task.cancel()</code></td><td>Ask one task to stop.</td></tr>
+  <tr><td><code>task.cancelled()</code></td><td><code>True</code> if it ended because of a cancel.</td></tr>
+  <tr><td class="wrap"><code>await asyncio.shield(job())</code></td><td>Protect <code>job()</code>: a cancel of the caller does not stop it.</td></tr>
+</table></div>
+
+<details class="fold quiz"><summary>A task runs <code>while True: total += 1</code>. You call <code>task.cancel()</code>. When does it stop?</summary>
+<div class="a"><p>Never. A cancel is delivered at an <code>await</code>, and this loop has none. Worse, it never gives the thread back, so the line calling <code>cancel()</code> cannot even run. A long loop in async code needs an <code>await</code> inside (<code>await asyncio.sleep(0)</code> means "let the others run, then continue"), or belongs in a thread or a process.</p></div></details>
+
+<div class="box warn"><div class="t">Do not swallow the cancel</div>
+<p>An <code>except asyncio.CancelledError:</code> that does not end with <code>raise</code> makes the task impossible to stop: timeouts and <code>TaskGroup</code> stop working around it. Clean up, then re-raise. A plain <code>except Exception:</code> is safe, because <code>CancelledError</code> is deliberately not an <code>Exception</code>.</p></div>
+</section>
+
+<!-- ================================================================ 9 -->
+<section id="blocking">
+<h2><span class="n">09</span>The blocking trap</h2>
+<p class="goal">The number one async bug: one ordinary slow call, and the whole program freezes.</p>
+
+<p>Remember section 05: a coroutine gives the hand back <em>only</em> at an <code>await</code>. A function that takes one second without any <code>await</code> inside holds the event loop for one second. No other task runs: no heartbeat, no other client served, no timeout checked.</p>
+
+<div class="label">examples/07_blocking_trap.py</div>
+<pre><code class="py">"""One blocking call freezes everything. to_thread is the way out."""
+import asyncio
+import time
+
+
+async def heartbeat():
+    while True:                         # a sign of life every 0.25 s
+        print("  tick")
+        await asyncio.sleep(0.25)
+
+
+def heavy():                            # ordinary, blocking code
+    time.sleep(1)
+    return "heavy result"
+
+
+async def main():
+    beat = asyncio.create_task(heartbeat())
+    await asyncio.sleep(0)              # let the heartbeat start
+
+    print("WRONG: calling blocking code directly")
+    heavy()                             # the loop is stuck here for 1 s
+    await asyncio.sleep(0.1)
+
+    print("RIGHT: sending it to a thread")
+    print(" ", await asyncio.to_thread(heavy))
+
+    beat.cancel()
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">  tick
+WRONG: calling blocking code directly
+  tick
+RIGHT: sending it to a thread
+  tick
+  tick
+  tick
+  tick
+  heavy result</pre>
+
+<figure>
+<svg viewBox="0 0 760 210" role="img" aria-label="A heartbeat that ticks every quarter second. During a blocking call of one second no tick happens. During the same call sent to a thread, the ticks continue.">
+  <text x="30" y="30" font-size="12" style="fill:#9a968c">the heartbeat task, one tick every 0.25 s</text>
+
+  <text x="110" y="78" text-anchor="end" font-size="12">heavy()</text>
+  <rect x="150" y="62" width="250" height="24" rx="5" fill="#ff4d4d"/>
+  <text x="275" y="79" text-anchor="middle" font-size="11" style="fill:#101013">called directly: the loop is held</text>
+  <rect x="440" y="62" width="250" height="24" rx="5" fill="#59e659"/>
+  <text x="565" y="79" text-anchor="middle" font-size="11" style="fill:#101013">await asyncio.to_thread(heavy)</text>
+
+  <text x="110" y="134" text-anchor="end" font-size="12">ticks</text>
+  <path d="M130 130 H720" stroke="#2c2c36"/>
+  <g fill="#ff8c1a">
+    <circle cx="140" cy="130" r="6"/><circle cx="412" cy="130" r="6"/>
+    <circle cx="474" cy="130" r="6"/><circle cx="536" cy="130" r="6"/>
+    <circle cx="598" cy="130" r="6"/><circle cx="660" cy="130" r="6"/>
+  </g>
+  <g fill="none" stroke="#ff4d4d" stroke-dasharray="2 3">
+    <circle cx="202" cy="130" r="6"/><circle cx="264" cy="130" r="6"/><circle cx="326" cy="130" r="6"/><circle cx="388" cy="130" r="6"/>
+  </g>
+  <text x="275" y="166" text-anchor="middle" font-size="11" style="fill:#ff4d4d">four ticks missing: everything is frozen</text>
+  <text x="565" y="166" text-anchor="middle" font-size="11" style="fill:#59e659">the ticks continue</text>
+  <path d="M420 50 V180" stroke="#2c2c36" stroke-dasharray="3 4"/>
+</svg>
+<figcaption>Count the ticks in the output above. Around the wrong call there is a single tick, and it comes late, once the loop is free again. During the right call there are four.</figcaption>
+</figure>
+
+<h3>What blocks, and what to write instead</h3>
+<div class="tablewrap"><table>
+  <tr><th>Blocking</th><th>In async code</th></tr>
+  <tr><td><code>time.sleep(1)</code></td><td><code>await asyncio.sleep(1)</code></td></tr>
+  <tr><td><code>requests.get(url)</code></td><td class="wrap">An async library (<code>httpx</code>, <code>aiohttp</code>), or <code>await asyncio.to_thread(requests.get, url)</code></td></tr>
+  <tr><td><code>open(path).read()</code> on a big or slow file</td><td><code>await asyncio.to_thread(Path(path).read_text)</code></td></tr>
+  <tr><td><code>input("name? ")</code></td><td><code>await asyncio.to_thread(input, "name? ")</code></td></tr>
+  <tr><td><code>subprocess.run(…)</code></td><td><code>await asyncio.create_subprocess_exec(…)</code></td></tr>
+  <tr><td>A long computation</td><td class="wrap"><code>await loop.run_in_executor(pool, work, data)</code> with <code>pool = concurrent.futures.ProcessPoolExecutor()</code> created once: another process, another processor core</td></tr>
+</table></div>
+
+<p><code>asyncio.to_thread(function, arguments…)</code> runs an ordinary function in a separate thread and lets you <code>await</code> its result. It is the bridge to every library that was not written for async.</p>
+
+<div class="box"><div class="t">Thread or process?</div>
+<p>A thread is enough when the blocking function <strong>waits</strong> (a file, a network library, <code>input</code>). When it <strong>computes</strong> in pure Python, threads take turns on one processor core, so use a process pool to really use a second core.</p></div>
+
+<details class="fold quiz"><summary>Which one freezes the other tasks: <code>await asyncio.sleep(5)</code> or <code>time.sleep(0.5)</code>?</summary>
+<div class="a"><p><code>time.sleep(0.5)</code>, although it is ten times shorter. The first one hands the thread back for five seconds. The second one keeps it for half a second, and nothing else can run.</p></div></details>
+
+<div class="box key"><div class="t">Find them automatically</div>
+<p>Run your program in debug mode: <code>python3 -X dev your_program.py</code>. asyncio then prints a warning each time one step holds the loop for more than 0.1 second, with the name of the guilty line.</p></div>
+</section>
+
+<!-- ================================================================ 10 -->
+<section id="limits">
+<h2><span class="n">10</span>Limits and locks</h2>
+<p class="goal">A thousand tasks at once is easy to write. It is rarely what the other side wants.</p>
+
+<div class="label">examples/08_limits_and_locks.py</div>
+<pre><code class="py">"""Semaphore: at most N at a time. Lock: one at a time."""
+import asyncio
+import time
+
+start = time.perf_counter()
+
+
+def clock():
+    return f"{time.perf_counter() - start:.1f} s"
+
+
+async def download(n, gate):
+    async with gate:                    # wait here if 2 are already inside
+        print(clock(), "start", n)
+        await asyncio.sleep(0.5)
+
+
+async def add_money(account, lock):
+    async with lock:                    # read, wait, write: nobody in between
+        balance = account["balance"]
+        await asyncio.sleep(0.01)
+        account["balance"] = balance + 10
+
+
+async def main():
+    gate = asyncio.Semaphore(2)
+    await asyncio.gather(*(download(n, gate) for n in range(6)))
+    print(clock(), "all downloaded")
+
+    account = {"balance": 0}
+    lock = asyncio.Lock()
+    await asyncio.gather(*(add_money(account, lock) for _ in range(5)))
+    print("balance:", account["balance"])
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">0.0 s start 0
+0.0 s start 1
+0.5 s start 2
+0.5 s start 3
+1.0 s start 4
+1.0 s start 5
+1.5 s all downloaded
+balance: 50</pre>
+
+<figure>
+<svg viewBox="0 0 760 240" role="img" aria-label="Six downloads through a semaphore of two: they run two at a time, in three waves of half a second.">
+  <g stroke="#2c2c36" stroke-dasharray="3 4">
+    <path d="M150 24 V206 M330 24 V206 M510 24 V206 M690 24 V206"/>
+  </g>
+  <g font-size="11" text-anchor="middle">
+    <text x="150" y="226" style="fill:#9a968c">0 s</text><text x="330" y="226" style="fill:#9a968c">0.5 s</text>
+    <text x="510" y="226" style="fill:#9a968c">1.0 s</text><text x="690" y="226" style="fill:#9a968c">1.5 s</text>
+  </g>
+  <g font-size="12" text-anchor="end">
+    <text x="130" y="48">download 0</text><text x="130" y="78">download 1</text><text x="130" y="108">download 2</text>
+    <text x="130" y="138">download 3</text><text x="130" y="168">download 4</text><text x="130" y="198">download 5</text>
+  </g>
+  <rect x="150" y="34" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <rect x="150" y="64" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <rect x="150" y="94" width="180" height="20" rx="5" fill="#9440e6" opacity=".3"/>
+  <rect x="330" y="94" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <rect x="150" y="124" width="180" height="20" rx="5" fill="#9440e6" opacity=".3"/>
+  <rect x="330" y="124" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <rect x="150" y="154" width="360" height="20" rx="5" fill="#9440e6" opacity=".3"/>
+  <rect x="510" y="154" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <rect x="150" y="184" width="360" height="20" rx="5" fill="#9440e6" opacity=".3"/>
+  <rect x="510" y="184" width="180" height="20" rx="5" fill="#ff8c1a"/>
+  <text x="240" y="109" text-anchor="middle" font-size="11" style="fill:#c79bf2">waiting at the gate</text>
+  <text x="330" y="169" text-anchor="middle" font-size="11" style="fill:#c79bf2">waiting at the gate</text>
+  <text x="240" y="49" text-anchor="middle" font-size="11" style="fill:#101013">inside</text>
+</svg>
+<figcaption><code>Semaphore(2)</code>: a room with two seats. The others wait at the door, without using any processor time.</figcaption>
+</figure>
+
+<h3>Do I need a lock at all?</h3>
+<p>Much less often than with threads. Nobody can interrupt you between two <code>await</code>, so this is perfectly safe without any lock:</p>
+<pre><code class="py">account["balance"] = account["balance"] + 10      # no await in the middle: safe</code></pre>
+<p>A lock becomes necessary only when an <code>await</code> sits <strong>between reading a value and writing it back</strong>, as in <code>add_money</code> above. Remove the <code>async with lock:</code> line there and the balance ends at 10 instead of 50: the five tasks all read 0, all wait, all write 10.</p>
+
+<details class="fold quiz"><summary>Ten tasks run <code>counter["n"] += 1</code> on the same dictionary. Do they need a lock?</summary>
+<div class="a"><p>No. There is no <code>await</code> inside that line, so no other task can run in the middle of it. With threads the answer would be yes. This is the main comfort of async code.</p></div></details>
+
+<div class="tablewrap"><table>
+  <tr><th>Tool</th><th>What it guarantees</th><th>Typical use</th></tr>
+  <tr><td><code>asyncio.Semaphore(n)</code></td><td>At most <code>n</code> tasks inside the block.</td><td>Being polite to a server: 10 requests at a time, not 10 000.</td></tr>
+  <tr><td><code>asyncio.Lock()</code></td><td>One task inside the block.</td><td>A read – await – write sequence on shared data.</td></tr>
+  <tr><td><code>asyncio.Event()</code></td><td class="wrap"><code>await event.wait()</code> sleeps until someone calls <code>event.set()</code>.</td><td>"Start when ready", "stop everything now".</td></tr>
+  <tr><td><code>asyncio.Queue()</code></td><td>Items handed from one task to another, in order.</td><td>Next section.</td></tr>
+</table></div>
+</section>
+
+<!-- ================================================================ 11 -->
+<section id="queue">
+<h2><span class="n">11</span>The queue</h2>
+<p class="goal">The cleanest way for tasks to talk to each other: one puts, the other takes.</p>
+
+<figure>
+<svg viewBox="0 0 760 200" role="img" aria-label="A producer puts items into a queue of three places; two workers take items out of it.">
+  <rect x="30" y="66" width="150" height="66" rx="10" fill="#1f1f26" stroke="#ff8c1a"/>
+  <text x="105" y="95" text-anchor="middle" font-size="14" font-weight="600">producer</text>
+  <text x="105" y="114" text-anchor="middle" font-size="11" style="fill:#9a968c">await queue.put(n)</text>
+
+  <rect x="270" y="66" width="220" height="66" rx="10" fill="#101013" stroke="#2c2c36"/>
+  <rect x="284" y="80" width="58" height="38" rx="6" fill="#ffd91a"/>
+  <rect x="351" y="80" width="58" height="38" rx="6" fill="#ffd91a"/>
+  <rect x="418" y="80" width="58" height="38" rx="6" fill="none" stroke="#6b6b78" stroke-dasharray="4 4"/>
+  <text x="313" y="104" text-anchor="middle" font-size="14" font-weight="600" style="fill:#101013">4</text>
+  <text x="380" y="104" text-anchor="middle" font-size="14" font-weight="600" style="fill:#101013">5</text>
+  <text x="380" y="52" text-anchor="middle" font-size="12" style="fill:#9a968c">asyncio.Queue(maxsize=3)</text>
+  <text x="380" y="154" text-anchor="middle" font-size="11" style="fill:#9a968c">full: put() waits · empty: get() waits</text>
+
+  <rect x="580" y="28" width="150" height="56" rx="10" fill="#9440e6"/>
+  <text x="655" y="53" text-anchor="middle" font-size="14" font-weight="600">worker A</text>
+  <text x="655" y="71" text-anchor="middle" font-size="11">await queue.get()</text>
+  <rect x="580" y="114" width="150" height="56" rx="10" fill="#9440e6"/>
+  <text x="655" y="139" text-anchor="middle" font-size="14" font-weight="600">worker B</text>
+  <text x="655" y="157" text-anchor="middle" font-size="11">await queue.get()</text>
+
+  <path d="M180 99 H268" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M490 88 L578 60" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+  <path d="M490 110 L578 138" stroke="#ff8c1a" stroke-width="1.6" marker-end="url(#arr)"/>
+</svg>
+<figcaption>The producer and the workers never call each other. They only know the queue.</figcaption>
+</figure>
+
+<div class="label">examples/09_queue.py</div>
+<pre><code class="py">"""A queue: one side puts work in, workers take it out."""
+import asyncio
+
+
+async def producer(queue):
+    for n in range(1, 7):
+        await queue.put(n)
+        print("produced", n)
+        await asyncio.sleep(0.05)
+
+
+async def worker(name, queue):
+    while True:
+        n = await queue.get()           # sleeps here while the queue is empty
+        await asyncio.sleep(0.2)        # the work
+        print(f"   {name} finished {n}")
+        queue.task_done()
+
+
+async def main():
+    queue = asyncio.Queue(maxsize=3)    # put() waits when 3 items are waiting
+    workers = [asyncio.create_task(worker(name, queue))
+               for name in ("worker A", "worker B")]
+
+    await producer(queue)
+    await queue.join()                  # until every item is task_done()
+    for w in workers:
+        w.cancel()                      # they loop forever: stop them
+    print("all work done")
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">produced 1
+produced 2
+produced 3
+produced 4
+   worker A finished 1
+produced 5
+   worker B finished 2
+produced 6
+   worker A finished 3
+   worker B finished 4
+   worker A finished 5
+   worker B finished 6
+all work done</pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Call</th><th>What it does</th></tr>
+  <tr><td><code>await queue.put(item)</code></td><td>Adds an item. Waits if the queue is full.</td></tr>
+  <tr><td><code>await queue.get()</code></td><td>Takes the oldest item. Waits if the queue is empty.</td></tr>
+  <tr><td><code>queue.task_done()</code></td><td>"The item I took is finished." One call per <code>get()</code>.</td></tr>
+  <tr><td><code>await queue.join()</code></td><td>Waits until every item put in has been marked done.</td></tr>
+  <tr><td><code>queue.qsize()</code></td><td>How many items are waiting now.</td></tr>
+</table></div>
+
+<div class="box"><div class="t">Why give it a maximum size</div>
+<p>Look at the output: after <code>produced 4</code> the producer has to wait for a worker. With <code>maxsize</code>, a fast producer is slowed down to the speed of the workers instead of filling the memory. This is called back-pressure, and it is free.</p></div>
+</section>
+
+<!-- ================================================================ 12 -->
+<section id="withfor">
+<h2><span class="n">12</span>async with, async for</h2>
+<p class="goal">The two statements you already know, for the cases where entering, leaving or getting the next item needs a wait.</p>
+
+<div class="label">examples/10_async_with_for.py</div>
+<pre><code class="py">"""async with, async for, and the async generator."""
+import asyncio
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def connection(name):
+    print("open ", name)                # could await a real connect here
+    await asyncio.sleep(0.1)
+    try:
+        yield name.upper()              # the value after "as"
+    finally:
+        await asyncio.sleep(0.1)
+        print("close", name)            # runs even if the block raises
+
+
+async def countdown(n):                 # async def + yield = async generator
+    while n &gt; 0:
+        await asyncio.sleep(0.1)        # each value may need a wait
+        yield n
+        n -= 1
+
+
+async def main():
+    async with connection("db") as db:
+        print("using", db)
+
+    async for n in countdown(3):
+        print(n)
+
+    squares = [n * n async for n in countdown(3)]
+    print(squares)
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">open  db
+using DB
+close db
+3
+2
+1
+[9, 4, 1]</pre>
+
+<div class="tablewrap"><table>
+  <tr><th>Normal</th><th>Async</th><th>Why an async version exists</th></tr>
+  <tr><td><code>with x as y:</code></td><td><code>async with x as y:</code></td><td>Opening or closing needs a wait: connect to a database, take a lock, close a socket cleanly.</td></tr>
+  <tr><td><code>for item in x:</code></td><td><code>async for item in x:</code></td><td>Each next item needs a wait: the next line from a socket, the next row, the next message.</td></tr>
+  <tr><td><code>def</code> + <code>yield</code></td><td><code>async def</code> + <code>yield</code></td><td>A generator that may <code>await</code> between two values.</td></tr>
+  <tr><td><code>[f(x) for x in it]</code></td><td><code>[f(x) async for x in it]</code></td><td>The same loop, in one line.</td></tr>
+</table></div>
+
+<p>You have already used them: <code>async with asyncio.TaskGroup()</code>, <code>async with asyncio.timeout(…)</code>, <code>async with lock</code>. The library tells you which form to use; you rarely have to guess.</p>
+
+<div class="box warn"><div class="t">async for is not concurrent</div>
+<p><code>async for</code> handles the items <strong>one after the other</strong>. It only lets <em>other tasks</em> run while it waits for the next item. To treat the items at the same time, create a task for each inside the loop, or use a queue with several workers.</p></div>
+</section>
+
+<!-- ================================================================ 13 -->
+<section id="callbacks">
+<h2><span class="n">13</span>Lambda meets asyncio</h2>
+<p class="goal">Back to section 02: the places where asyncio asks you for "a function to call later".</p>
+
+<div class="label">examples/11_callbacks.py</div>
+<pre><code class="py">"""Where lambda meets asyncio: callbacks, and delayed calls."""
+import asyncio
+import functools
+import time
+
+
+def resize(name, width, height):        # ordinary, blocking code
+    time.sleep(0.2)
+    return f"{name} resized to {width}x{height}"
+
+
+async def compute():
+    await asyncio.sleep(0.1)
+    return 42
+
+
+async def main():
+    loop = asyncio.get_running_loop()
+
+    # 1. call a plain function later
+    loop.call_later(0.3, lambda: print("0.3 s passed"))
+
+    # 2. be told when a task finishes
+    task = asyncio.create_task(compute())
+    task.add_done_callback(lambda t: print("task result:", t.result()))
+
+    # 3. give arguments to a function that will be called for you
+    #    (run_in_executor refuses keyword arguments: wrap the call)
+    print(await loop.run_in_executor(None, lambda: resize("a.png", width=64, height=64)))
+    print(await loop.run_in_executor(None, functools.partial(resize, "b.png", width=32, height=32)))
+    print(await asyncio.to_thread(resize, "c.png", 16, 16))     # the simplest
+
+    # 4. a lambda cannot contain await, but it can RETURN a coroutine
+    make = lambda: compute()
+    print("made:", await make())
+
+    await asyncio.sleep(0.2)            # leave time for the 0.3 s callback
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">task result: 42
+a.png resized to 64x64
+0.3 s passed
+b.png resized to 32x32
+c.png resized to 16x16
+made: 42</pre>
+
+<p>The order of the lines tells the story: the task finished first (0.1 s), then the first resize (0.2 s), then the timer (0.3 s) fired while the second resize was still in its thread.</p>
+
+<h3>Three ways to pass arguments</h3>
+<p>These APIs call your function with <strong>no argument</strong>, or with positional arguments only. <code>run_in_executor</code> and <code>call_later</code>, for example, refuse <code>width=64</code>. When your call needs more than they allow, you wrap it:</p>
+<div class="tablewrap"><table>
+  <tr><th>Way</th><th>Code</th><th>Note</th></tr>
+  <tr><td>A lambda</td><td class="wrap"><code>lambda: resize("a.png", width=64, height=64)</code></td><td>Short and readable. Mind the loop trap of section 02.</td></tr>
+  <tr><td><code>functools.partial</code></td><td class="wrap"><code>partial(resize, "a.png", width=64, height=64)</code></td><td>Freezes the arguments <em>now</em>: no loop trap. Has a readable name in error messages.</td></tr>
+  <tr><td>Arguments after</td><td class="wrap"><code>asyncio.to_thread(resize, "a.png", 64, 64)</code></td><td>When the API accepts them, the simplest. <code>to_thread</code> takes keyword arguments too; <code>call_later</code>, <code>call_soon</code> and <code>run_in_executor</code> take positional ones only.</td></tr>
+</table></div>
+
+<h3>Lambda and await</h3>
+<p>A lambda is never async, so <code>lambda: await compute()</code> is a syntax error. Two things are still possible:</p>
+<pre><code class="py">make = lambda: compute()                 # returns a coroutine: someone must await it
+result = await make()
+
+async def on_click():                    # more than one await? write a real async def
+    data = await compute()
+    await save(data)</code></pre>
+<p>The first form is common for retries and factories: "here is how to <em>build</em> the job, each time you need a fresh one". A coroutine can be awaited only once, so a function that makes a new one is useful:</p>
+<pre><code class="py">async def retry(make_job, times):
+    for attempt in range(times):
+        try:
+            return await make_job()      # a new coroutine at every attempt
+        except OSError:
+            await asyncio.sleep(1)
+    raise TimeoutError("gave up")
+
+page = await retry(lambda: fetch("slow", 0.3), times=3)</code></pre>
+
+<div class="box warn"><div class="t">A callback is not a coroutine</div>
+<p>The function given to <code>call_later</code> or <code>add_done_callback</code> is a <strong>plain</strong> function: it runs inside the loop and must return quickly, without waiting. To start async work from a callback, create a task: <code>lambda: tasks.add(asyncio.create_task(job()))</code> (keeping the task in a set, as section 06 asks).</p></div>
+
+<div class="box key"><div class="t">In modern code</div>
+<p>You need callbacks much less than in older tutorials. <code>result = await something()</code> replaces "call this function when the result is there". Keep callbacks for timers, for libraries that demand them, and for the border with non-async code.</p></div>
+</section>
+
+<!-- ================================================================ 14 -->
+<section id="server">
+<h2><span class="n">14</span>A complete program</h2>
+<p class="goal">Everything together: a TCP server that answers three clients at the same time, in about forty lines.</p>
+
+<div class="label">examples/12_echo_server.py</div>
+<pre><code class="py">"""A complete program: a TCP server and three clients, in one event loop."""
+import asyncio
+
+HOST, PORT = "127.0.0.1", 8888
+
+
+async def handle(reader, writer):       # runs once PER client, as a task
+    async for line in reader:           # one line at a time, until the client leaves
+        text = line.decode().strip()
+        print(f"server: got {text!r}")
+        writer.write(f"echo: {text}\n".encode())
+        await writer.drain()            # wait until the bytes are really sent
+    writer.close()
+    await writer.wait_closed()
+
+
+async def client(name, delay):
+    reader, writer = await asyncio.open_connection(HOST, PORT)
+    for word in ("hello", "bye"):
+        writer.write(f"{name} says {word}\n".encode())
+        await writer.drain()
+        answer = await reader.readline()
+        print(f"{name}: received {answer.decode().strip()!r}")
+        await asyncio.sleep(delay)
+    writer.close()
+    await writer.wait_closed()
+
+
+async def main():
+    server = await asyncio.start_server(handle, HOST, PORT)
+    async with server:                  # the server listens inside this block
+        async with asyncio.TaskGroup() as group:
+            group.create_task(client("ann", 0.2))
+            group.create_task(client("bob", 0.3))
+            group.create_task(client("cat", 0.1))
+    print("all clients left, server closed")
+
+
+asyncio.run(main())</code></pre>
+<div class="label run">it prints</div>
+<pre class="out">server: got 'ann says hello'
+server: got 'bob says hello'
+server: got 'cat says hello'
+ann: received 'echo: ann says hello'
+bob: received 'echo: bob says hello'
+cat: received 'echo: cat says hello'
+server: got 'cat says bye'
+cat: received 'echo: cat says bye'
+server: got 'ann says bye'
+ann: received 'echo: ann says bye'
+server: got 'bob says bye'
+bob: received 'echo: bob says bye'
+all clients left, server closed</pre>
+
+<p>Read the output: the three conversations are mixed. The server did not finish with <code>ann</code> before listening to <code>bob</code>. Yet there is no thread and no lock anywhere in the file.</p>
+
+<h3>What you can recognise</h3>
+<div class="tablewrap"><table>
+  <tr><th>Line</th><th>Seen in</th><th>What it does here</th></tr>
+  <tr><td class="wrap"><code>asyncio.start_server(handle, …)</code></td><td><a href="#lambda">02</a></td><td>A function passed as a value: asyncio calls <code>handle</code> for each client that connects, each in its own task.</td></tr>
+  <tr><td><code>async for line in reader</code></td><td><a href="#withfor">12</a></td><td>The next line needs a wait; other clients are served meanwhile.</td></tr>
+  <tr><td><code>await writer.drain()</code></td><td><a href="#queue">11</a></td><td>Back-pressure: do not write faster than the network sends.</td></tr>
+  <tr><td><code>async with server</code></td><td><a href="#withfor">12</a></td><td>Closes the listening socket at the end of the block, whatever happens.</td></tr>
+  <tr><td><code>asyncio.TaskGroup()</code></td><td><a href="#groups">07</a></td><td>Runs the three clients and waits for all of them.</td></tr>
+</table></div>
+
+<div class="box"><div class="t">Try it</div>
+<p>Change a client's delay, add a fourth client, or put a <code>time.sleep(1)</code> in <code>handle</code> and watch every client slow down together (section <a href="#blocking">09</a>). For a server that stays up, replace the <code>TaskGroup</code> block by <code>await server.serve_forever()</code> and talk to it from another terminal with <code>nc 127.0.0.1 8888</code>.</p></div>
+</section>
+
+<!-- ================================================================ 15 -->
+<section id="practice">
+<h2><span class="n">15</span>Practice</h2>
+<p class="goal">Reading is not knowing. Three programs to write yourself, from easy to real.</p>
+
+<p>Create your own file next to the examples, for instance <code>examples/mine.py</code>, and run it the same way. Each exercise has a tested answer in <code>solutions/</code>, folded below.</p>
+
+<h3>1 · Sort with a lambda</h3>
+<p>Start from this list. Print the products with the most expensive first; when two prices are equal, in alphabetical order. Then print the name of the cheapest one.</p>
+<pre><code class="py">products = [
+    {"name": "pen", "price": 2},
+    {"name": "lamp", "price": 30},
+    {"name": "cup", "price": 12},
+    {"name": "book", "price": 12},
+]</code></pre>
+<p>Hint: a key may return a tuple (section <a href="#lambda">02</a>).</p>
+<details class="fold sol"><summary>solutions/01_sort_with_lambda.py</summary>
+<div class="a"><pre><code class="py">"""Practice 1: sorting with a lambda."""
+
+products = [
+    {"name": "pen", "price": 2},
+    {"name": "lamp", "price": 30},
+    {"name": "cup", "price": 12},
+    {"name": "book", "price": 12},
+]
+
+# The key returns a tuple: compare the first value, then the second.
+# The minus sign turns "smallest first" into "most expensive first".
+ordered = sorted(products, key=lambda p: (-p["price"], p["name"]))
+for p in ordered:
+    print(f'{p["price"]:&gt;3}  {p["name"]}')
+
+cheapest = min(products, key=lambda p: p["price"])
+print("cheapest:", cheapest["name"])</code></pre>
+<pre class="out"> 30  lamp
+ 12  book
+ 12  cup
+  2  pen
+cheapest: pen</pre></div></details>
+
+<h3>2 · A polite downloader</h3>
+<p>Ten pages to fetch, numbered 0 to 9. A fetch is simulated by <code>await asyncio.sleep(0.2 * (n % 3 + 1))</code> and returns <code>"page n"</code>. Your program must:</p>
+<ul>
+  <li>run at most <strong>three</strong> fetches at the same time;</li>
+  <li>print each page <strong>as soon as it arrives</strong>, with the time since the start;</li>
+  <li>give up after <strong>0.9 second</strong>, stop what is still running, and say how many pages arrived.</li>
+</ul>
+<p>Hint: one tool from section <a href="#limits">10</a>, one from <a href="#groups">07</a>, one from <a href="#cancel">08</a>.</p>
+<details class="fold sol"><summary>solutions/02_polite_downloader.py</summary>
+<div class="a"><pre><code class="py">"""Practice 2: ten downloads, three at a time, 0.9 second in all."""
+import asyncio
+import time
+
+start = time.perf_counter()
+
+
+async def fetch(n, gate):
+    async with gate:                            # three seats
+        await asyncio.sleep(0.2 * (n % 3 + 1))  # 0.2, 0.4 or 0.6 s
+        return f"page {n}"
+
+
+async def main():
+    gate = asyncio.Semaphore(3)
+    tasks = [asyncio.create_task(fetch(n, gate)) for n in range(10)]
+    received = 0
+    try:
+        async with asyncio.timeout(0.9):
+            for finished in asyncio.as_completed(tasks):
+                page = await finished
+                received += 1
+                print(f"{time.perf_counter() - start:.1f} s  {page}")
+    except TimeoutError:
+        for task in tasks:
+            task.cancel()                       # do not leave the rest running
+        print(f"time is over: {received} of {len(tasks)} pages received")
+
+
+asyncio.run(main())</code></pre>
+<pre class="out">0.2 s  page 0
+0.4 s  page 1
+0.4 s  page 3
+0.6 s  page 2
+0.8 s  page 6
+0.8 s  page 4
+time is over: 6 of 10 pages received</pre>
+<p>Two pages that finish at the same instant may swap places from one run to the next.</p></div></details>
+
+<h3>3 · A chat server</h3>
+<p>Copy <code>examples/12_echo_server.py</code> and change the server: a line sent by one client must reach <strong>all the other</strong> clients, and not the one who wrote it. Test it with two clients that listen and one that speaks.</p>
+<p>Hint: the server has to remember who is connected. Think about what happens to that memory when a client leaves, even badly.</p>
+<details class="fold sol"><summary>solutions/03_chat_server.py</summary>
+<div class="a"><pre><code class="py">"""Practice 3: a chat server. What one client writes, all the others read."""
+import asyncio
+
+HOST, PORT = "127.0.0.1", 8889
+clients = set()                         # the writers of everyone connected
+
+
+async def handle(reader, writer):
+    clients.add(writer)
+    try:
+        async for line in reader:
+            for other in clients:       # no await in this loop: nobody can
+                if other is not writer: # join or leave while we walk the set
+                    other.write(line)
+    finally:
+        clients.discard(writer)         # also when the client vanishes
+        writer.close()
+        await writer.wait_closed()
+
+
+async def listener(name):
+    reader, writer = await asyncio.open_connection(HOST, PORT)
+    line = await reader.readline()      # sleeps until somebody speaks
+    print(f"{name} heard: {line.decode().strip()}")
+    writer.close()
+    await writer.wait_closed()
+
+
+async def speaker(name):
+    reader, writer = await asyncio.open_connection(HOST, PORT)
+    await asyncio.sleep(0.2)            # let the listeners arrive
+    writer.write(f"{name}: hello everyone\n".encode())
+    await writer.drain()
+    writer.close()
+    await writer.wait_closed()
+
+
+async def main():
+    server = await asyncio.start_server(handle, HOST, PORT)
+    async with server:
+        async with asyncio.TaskGroup() as group:
+            group.create_task(listener("bob"))
+            group.create_task(listener("cat"))
+            group.create_task(speaker("ann"))
+    print("everybody left")
+
+
+asyncio.run(main())</code></pre>
+<pre class="out">bob heard: ann: hello everyone
+cat heard: ann: hello everyone
+everybody left</pre>
+<p>The loop over <code>clients</code> contains no <code>await</code>, so the set cannot change while it is being walked: section <a href="#limits">10</a> again, used on purpose.</p></div></details>
+</section>
+
+<!-- ================================================================ 16 -->
+<section id="cheat">
+<h2><span class="n">16</span>Cheat sheet</h2>
+<p class="goal">One screen to keep open.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>I want to…</th><th>Write</th></tr>
+  <tr><td>Write a tiny function in place</td><td class="wrap"><code>lambda x: x * 2</code></td></tr>
+  <tr><td>Pass a call for later</td><td class="wrap"><code>lambda: f(a, b)</code> or <code>functools.partial(f, a, b)</code></td></tr>
+  <tr><td>Keep the loop value in a lambda</td><td class="wrap"><code>lambda i=i: use(i)</code></td></tr>
+  <tr><td>Declare a function that can wait</td><td class="wrap"><code>async def job(): …</code></td></tr>
+  <tr><td>Start the program</td><td class="wrap"><code>asyncio.run(main())</code></td></tr>
+  <tr><td>Run one coroutine and get its result</td><td class="wrap"><code>result = await job()</code></td></tr>
+  <tr><td>Pause without blocking</td><td class="wrap"><code>await asyncio.sleep(1)</code></td></tr>
+  <tr><td>Start something in the background</td><td class="wrap"><code>task = asyncio.create_task(job())</code></td></tr>
+  <tr><td>Run several and get all results</td><td class="wrap"><code>a, b = await asyncio.gather(job1(), job2())</code></td></tr>
+  <tr><td>Run several, all or nothing</td><td class="wrap"><code>async with asyncio.TaskGroup() as g: g.create_task(job())</code></td></tr>
+  <tr><td>Get results as they finish</td><td class="wrap"><code>for done in asyncio.as_completed(jobs): r = await done</code></td></tr>
+  <tr><td>Set a time limit</td><td class="wrap"><code>async with asyncio.timeout(5): …</code></td></tr>
+  <tr><td>Stop a task</td><td class="wrap"><code>task.cancel()</code></td></tr>
+  <tr><td>Call blocking code</td><td class="wrap"><code>await asyncio.to_thread(function, arg)</code></td></tr>
+  <tr><td>Limit how many run at once</td><td class="wrap"><code>async with semaphore: …</code> with <code>asyncio.Semaphore(10)</code></td></tr>
+  <tr><td>Protect read – await – write</td><td class="wrap"><code>async with lock: …</code> with <code>asyncio.Lock()</code></td></tr>
+  <tr><td>Hand work to other tasks</td><td class="wrap"><code>await queue.put(x)</code> · <code>x = await queue.get()</code></td></tr>
+  <tr><td>Wait for a signal</td><td class="wrap"><code>await event.wait()</code> · <code>event.set()</code></td></tr>
+  <tr><td>Call a plain function in 2 seconds</td><td class="wrap"><code>asyncio.get_running_loop().call_later(2, function)</code></td></tr>
+  <tr><td>Be told when a task ends</td><td class="wrap"><code>task.add_done_callback(lambda t: …)</code></td></tr>
+</table></div>
+
+<h3>The vocabulary</h3>
+<div class="tablewrap"><table>
+  <tr><th>Word</th><th>In one sentence</th></tr>
+  <tr><td>Coroutine function</td><td>What <code>async def</code> defines.</td></tr>
+  <tr><td>Coroutine</td><td>What you get by calling it: the function, paused before its first line. It runs when awaited.</td></tr>
+  <tr><td>Task</td><td>A coroutine handed to the event loop to run in the background. Made by <code>create_task</code>.</td></tr>
+  <tr><td>Awaitable</td><td>Anything allowed after <code>await</code>: a coroutine, a task, a future.</td></tr>
+  <tr><td>Future</td><td>A box for a result that does not exist yet. A task is one. You rarely make one yourself.</td></tr>
+  <tr><td>Event loop</td><td>The engine that runs the ready tasks one at a time and wakes the waiting ones.</td></tr>
+  <tr><td>Blocking</td><td>Holding the thread without an <code>await</code>, so that nothing else can run.</td></tr>
+  <tr><td>Callback</td><td>A plain function you hand over to be called later.</td></tr>
+  <tr><td>Concurrent</td><td>Several jobs in progress, taking turns. What asyncio does.</td></tr>
+  <tr><td>Parallel</td><td>Several jobs computing at the same instant, on several cores. What processes do.</td></tr>
+</table></div>
+</section>
+
+<!-- ================================================================ 17 -->
+<section id="trouble">
+<h2><span class="n">17</span>When it does not work</h2>
+<p class="goal">The messages you will meet, and what each one means.</p>
+
+<div class="tablewrap"><table>
+  <tr><th>What you see</th><th>What it means</th></tr>
+  <tr><td class="wrap"><code>can't open file '…/examples/01_lambda.py'</code></td><td>The terminal is not in the <code>python_async</code> folder. <code>cd python_async</code>, then run the command again.</td></tr>
+  <tr><td class="wrap"><code>RuntimeWarning: coroutine '…' was never awaited</code></td><td>You called an async function without <code>await</code>. Nothing ran. Add <code>await</code>, or <code>create_task</code>.</td></tr>
+  <tr><td class="wrap"><code>SyntaxError: 'await' outside async function</code></td><td>The surrounding function is a plain <code>def</code> (or a lambda). Make it <code>async def</code>.</td></tr>
+  <tr><td class="wrap"><code>&lt;coroutine object … at 0x…&gt;</code> printed instead of a value</td><td>Same cause: you printed the recipe, not the dish. <code>await</code> it.</td></tr>
+  <tr><td class="wrap"><code>RuntimeError: asyncio.run() cannot be called from a running event loop</code></td><td>You are already in async code (or in a notebook, which runs its own loop). Use <code>await main()</code> instead.</td></tr>
+  <tr><td>It works, but it is not faster</td><td>You wrote <code>await a(); await b()</code>: one after the other. Use <code>gather</code>, a <code>TaskGroup</code> or tasks (sections 06 and 07).</td></tr>
+  <tr><td>Everything freezes for a moment</td><td>A blocking call holds the loop: <code>time.sleep</code>, <code>requests</code>, a long computation. Section 09; find it with <code>python3 -X dev</code>.</td></tr>
+  <tr><td>A background task stops in silence</td><td>Nobody kept a reference to it, or nobody awaited it, so its error was never shown. Keep tasks, and prefer a <code>TaskGroup</code>.</td></tr>
+  <tr><td class="wrap"><code>Task exception was never retrieved</code></td><td>A task failed and nobody awaited it. <code>await</code> the task, or read <code>task.exception()</code> in a done callback.</td></tr>
+  <tr><td>All my lambdas use the last value</td><td>The loop trap of section 02. Write <code>lambda i=i: …</code> or use <code>functools.partial</code>.</td></tr>
+  <tr><td>A timeout or a cancel does nothing</td><td>The task has no <code>await</code> to stop at, or it catches <code>CancelledError</code> without <code>raise</code>.</td></tr>
+  <tr><td class="wrap"><code>OSError: … Address already in use</code></td><td>Another program, often a previous run of the same example, still listens on that port. Stop it, or change <code>PORT</code>.</td></tr>
+  <tr><td class="wrap"><code>AttributeError: module 'asyncio' has no attribute 'TaskGroup'</code> (or <code>'timeout'</code>)</td><td>Your Python is older than 3.11. Check with <code>python3 --version</code>.</td></tr>
+  <tr><td class="wrap"><code>ExceptionGroup: unhandled errors in a TaskGroup</code></td><td>One or more tasks of the group failed. The real errors are listed below that line; catch them with <code>except*</code>.</td></tr>
+</table></div>
+
+<footer>
+  Read next: the files in <code>examples/</code>, in order, changing one thing in each, then the three exercises of section 15. After that, the official pages <a href="https://docs.python.org/3/library/asyncio.html">docs.python.org/3/library/asyncio.html</a>, starting with "Coroutines and Tasks" and "Streams".
+</footer>
+</section>
+
+</main>
+</div>
+
+<script>
+// ---- the event loop viewer of section 05: a hand-written trace, one decision per step ----
+(function () {
+  var code = document.getElementById("st-code");
+  if (!code) return;
+  var LINES = [
+    'async def cook(dish):',
+    '    print("start", dish)',
+    '    await asyncio.sleep(1)',
+    '    print("ready", dish)',
+    '',
+    'async def main():',
+    '    rice = asyncio.create_task(cook("rice"))',
+    '    soup = asyncio.create_task(cook("soup"))',
+    '    await rice',
+    '    await soup',
+    '',
+    'asyncio.run(main())'
+  ];
+  var COLOR = { main: "#ffd91a", rice: "#ff8c1a", soup: "#b57bf0", loop: "#9a968c" };
+  var PRINTED = ["start rice", "start soup", "ready rice", "ready soup"];
+  // who: whose line is lit · run: who holds the thread · out: how many lines are printed so far
+  var STEPS = [
+    { t: "0.0", who: "loop", line: 12, run: null, ready: ["main"], wait: [], out: 0,
+      note: "<code>asyncio.run()</code> creates the event loop and puts <b>main</b> in the ready list. Nothing has run yet." },
+    { t: "0.0", who: "main", line: 7, run: "main", ready: ["rice"], wait: [], out: 0,
+      note: "The loop picks <b>main</b>. <code>create_task</code> puts <b>rice</b> in the ready list. It has not started: main still holds the thread." },
+    { t: "0.0", who: "main", line: 8, run: "main", ready: ["rice", "soup"], wait: [], out: 0,
+      note: "The same for <b>soup</b>. Two tasks are ready, and neither has run a single line." },
+    { t: "0.0", who: "main", line: 9, run: null, ready: ["rice", "soup"], wait: [["main", "for rice"]], out: 0,
+      note: "<code>await rice</code>: main pauses on this line until rice is finished, and gives the thread back to the loop." },
+    { t: "0.0", who: "rice", line: 2, run: "rice", ready: ["soup"], wait: [["main", "for rice"]], out: 1,
+      note: "The loop picks the first ready task. <b>rice</b> starts at last, and prints." },
+    { t: "0.0", who: "rice", line: 3, run: null, ready: ["soup"], wait: [["main", "for rice"], ["rice", "timer 1 s"]], out: 1,
+      note: "<code>await asyncio.sleep(1)</code>: rice asks the loop for a one-second timer and pauses. The thread is free again." },
+    { t: "0.0", who: "soup", line: 2, run: "soup", ready: [], wait: [["main", "for rice"], ["rice", "timer 1 s"]], out: 2,
+      note: "Next ready task: <b>soup</b>. Still at time 0.0: rice's wait has only just begun." },
+    { t: "0.0", who: "soup", line: 3, run: null, ready: [], wait: [["main", "for rice"], ["rice", "timer 1 s"], ["soup", "timer 1 s"]], out: 2,
+      note: "soup pauses too. Nobody is ready, so the loop itself goes to sleep. No processor time is used." },
+    { t: "1.0", who: "loop", line: 0, run: null, ready: ["rice", "soup"], wait: [["main", "for rice"]], out: 2,
+      note: "One second later both timers ring together. The loop moves <b>rice</b> and <b>soup</b> back to the ready list." },
+    { t: "1.0", who: "rice", line: 4, run: "rice", ready: ["soup", "main"], wait: [], out: 3,
+      note: "rice continues just after its <code>await</code>, prints, and ends. That is what main was waiting for: <b>main</b> becomes ready." },
+    { t: "1.0", who: "soup", line: 4, run: "soup", ready: ["main"], wait: [], out: 4,
+      note: "soup continues, prints, and ends." },
+    { t: "1.0", who: "main", line: 10, run: "main", ready: [], wait: [], out: 4,
+      note: "main continues. <code>await soup</code>: soup is already finished, so this <code>await</code> does not pause at all." },
+    { t: "1.0", who: "loop", line: 12, run: null, ready: [], wait: [], out: 4,
+      note: "main ends and <code>asyncio.run()</code> returns. Two one-second jobs took 1.0 s, and never did two lines run at once." }
+  ];
+
+  LINES.forEach(function (text) {
+    var el = document.createElement("code");
+    el.className = "py ln";
+    el.textContent = text || " ";
+    code.appendChild(el);
+  });
+  var rows = code.querySelectorAll("code.ln");
+  function byId(id) { return document.getElementById(id); }
+  function chip(name, detail) {
+    return '<span class="chip" style="background:' + COLOR[name] + '">' + name +
+           (detail ? " <small>" + detail + "</small>" : "") + "</span>";
+  }
+  var i = 0;
+  function render() {
+    var s = STEPS[i];
+    code.style.setProperty("--who", COLOR[s.who]);
+    code.style.setProperty("--who-soft", COLOR[s.who] + "26");
+    rows.forEach(function (row, n) { row.classList.toggle("on", n + 1 === s.line); });
+    byId("st-clock").innerHTML = '<b style="color:var(--text)">' + s.t + " s</b>";
+    byId("st-run").innerHTML = s.run ? chip(s.run) : "nobody";
+    byId("st-ready").innerHTML = s.ready.map(function (n) { return chip(n); }).join("") || "empty";
+    byId("st-wait").innerHTML = s.wait.map(function (w) { return chip(w[0], w[1]); }).join("") || "empty";
+    byId("st-out").textContent = PRINTED.slice(0, s.out).join("\n");
+    byId("st-note").innerHTML = s.note;
+    byId("st-n").textContent = (i + 1) + " / " + STEPS.length;
+    byId("st-back").disabled = i === 0;
+    byId("st-next").disabled = i === STEPS.length - 1;
+  }
+  byId("st-next").addEventListener("click", function () { if (i < STEPS.length - 1) { i++; render(); } });
+  byId("st-back").addEventListener("click", function () { if (i > 0) { i--; render(); } });
+  byId("st-reset").addEventListener("click", function () { i = 0; render(); });
+  render();
+})();
+
+// ---- a very small Python colouriser: comments, strings, keywords, numbers ----
+(function () {
+  var TOKEN = /\b(\d+(?:\.\d+)?)\b|\b(?:import|from|def|return|if|else|elif|not|and|or|global|nonlocal|for|in|while|async|await|with|as|is|None|True|False|class|try|except|raise|lambda|yield|finally|pass)\b/g;
+  document.querySelectorAll("code.py").forEach(function (el) {
+    var out = el.innerHTML.split("\n").map(function (line) {
+      var hash = -1, quote = null;
+      for (var i = 0; i < line.length; i++) {          // find a # that is not inside a string
+        var ch = line[i];
+        if (quote) { if (ch === quote) quote = null; }
+        else if (ch === '"' || ch === "'") quote = ch;
+        else if (ch === "#") { hash = i; break; }
+      }
+      var code = hash < 0 ? line : line.slice(0, hash);
+      var comment = hash < 0 ? "" : '<span class="c">' + line.slice(hash) + "</span>";
+      var parts = code.split(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/);
+      code = parts.map(function (p, n) {
+        if (n % 2) return '<span class="s">' + p + "</span>";
+        // one pass, so a keyword is never searched inside a tag we just wrote
+        return p.replace(TOKEN, function (m, number) {
+          return '<span class="' + (number ? "num" : "k") + '">' + m + "</span>";
+        });
+      }).join("");
+      return code + comment;
+    }).join("\n");
+    el.innerHTML = out;
+  });
+})();
+</script>
+</body>
+</html>
