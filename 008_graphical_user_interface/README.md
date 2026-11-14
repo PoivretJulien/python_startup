@@ -140,3 +140,5 @@ video = VideoThread("client", "network/link.toml", on_frame=lambda picture: app.
 The connection settings (same machine by default, or two machines on a local
 network) are in `network/link.toml`; the guide and the headers of
 `examples/02_udp_drag/main.py` and `examples/03_udp_video/main.py` explain them.
+## This api is elaborated with this board in mind:
+https://www.arduino.cc/product-ventuno-q/
