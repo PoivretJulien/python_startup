@@ -37,10 +37,11 @@ async def tasks_launcher() -> asyncio.Future:
         # not an exception so await the future
         await result[-1].wait()
     return result
-
+# Custom error handling 
 class MyCustomErrorType(Exception):
     """ My custom error """
-
+    
+# function that raise the custom error type
 def runtime_test(input:bool):
     if input:
         print("ok")
@@ -57,7 +58,8 @@ async def main() -> int:
         else:
             print(f"{green}ok: {r}{rst}")
     print()
-
+    #  usate of a fundtion routine that implement the custom 
+    #  error type  usefull to identify the faulty part of the code.
     # faulty error handling
     try:
         runtime_test(False)
