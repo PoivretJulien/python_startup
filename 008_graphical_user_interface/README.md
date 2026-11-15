@@ -1,3 +1,5 @@
+<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/8e94eb1f-c88e-4fd6-8f8f-7c70b3719c78" />
+
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -152,3 +154,5 @@ video = VideoThread("client", "network/link.toml", on_frame=lambda picture: app.
 The connection settings (same machine by default, or two machines on a local
 network) are in `network/link.toml`; the guide and the headers of
 `examples/02_udp_drag/main.py` and `examples/03_udp_video/main.py` explain them.
+## This api is elaborated with this board in mind:
+https://www.arduino.cc/product-ventuno-q/
