@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/b28eecf9-b65d-4ced-bdda-d4ec6a2c832d" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -25,6 +23,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              08_map_viewer     pinch / wheel zoom and pan of a large map inside a rounded frame
              09_solids         lit solid shapes, a model from an .obj file, shaders, ray marching
              10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
+             11_dashboard      a live dashboard: gauges, charts, levels, a compass, and 3D bars / pie / tank
 guide.html   the step-by-step guide, ending with the full API reference (chapter 20)
 ```
 
@@ -55,6 +54,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/08_map_viewer/main.py           # add --image your_map.jpg for your own picture
 .venv/bin/python examples/09_solids/main.py               # add --raymarch for exact shapes and soft shadows
 .venv/bin/python examples/10_curves/main.py               # add --points 200000 for a longer polyline
+.venv/bin/python examples/11_dashboard/main.py            # every data widget, fed by simulated sensors
 .venv/bin/python graphics/main.py
 ```
 
@@ -106,6 +106,18 @@ volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimu
 ```
 
 ```python
+from charts2d import History                   # graphics/ — data widgets: anchor, size, data, colours
+wind = History(360)                            # the last 360 readings of a sensor
+# in draw_frame:
+#   ui.draw_gauge((30, 48), (150, 150), pressure, 0, 10, label=f"{pressure:.1f} bar")     # a dial with a needle
+#   wind.add(speed); ui.draw_line_chart((30, 234), (285, 96), wind.values, (.2, .85, .85)) # a scrolling curve
+#   ui.draw_pie((410, 368), (130, 130), [30, 50, 20], [RED, GREEN, BLUE], hole=0.5)        # one colour per slice
+#   ui.draw_bars(...)  draw_level  draw_meter  draw_compass  draw_radar  draw_heatmap  draw_scatter  draw_stacked_bar
+#   ui.draw_bars_3d(...)  draw_pie_3d  draw_tank_3d                                        # the same, as lit solids
+#   app.request_redraw()                                                                   # live data: next frame, please
+```
+
+```python
 from curve3d import Nurbs                      # graphics/
 # in draw_frame:
 #   ui.draw_rect((0, 0, 0), (2, 0, 0), (0, 0, 1), (1, .2, .4, .5))   # 3D rectangle: corner, side u, side v, rgba
@@ -140,5 +152,3 @@ video = VideoThread("client", "network/link.toml", on_frame=lambda picture: app.
 The connection settings (same machine by default, or two machines on a local
 network) are in `network/link.toml`; the guide and the headers of
 `examples/02_udp_drag/main.py` and `examples/03_udp_video/main.py` explain them.
-## This api is elaborated with this board in mind:
-https://www.arduino.cc/product-ventuno-q/

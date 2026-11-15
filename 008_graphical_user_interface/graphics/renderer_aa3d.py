@@ -422,23 +422,40 @@ class AAGridArrowRenderer(SceneRenderer):
         Returns the advance width in pixels, so a caller can right-align or
         anchor something after the string. Text is AA-only, like ``draw_text``.
         """
-        vertices = geometry_aa3d.text_vertices(
-            (x, y, 0.0),
-            text,
-            size_px,
-            color=tuple(color[:3]),  # strokes carry rgb only: a 4th value is dropped
-            right=(1.0, 0.0, 0.0),
-            up=(0.0, -1.0, 0.0),  # screen y grows down
-            tracking=tracking,
-        )
-        if vertices.shape[0]:
-            self._submit(
-                self.screen_pipeline,
-                self._camera_uniforms(feather=AA_FEATHER_PX),
-                geometry_aa3d.stroke_vertices(vertices, width_px * 0.5),
+        # Laying a string out into strokes is the slow part, and most strings
+        # are drawn again and again (titles, units, a value that has not
+        # changed). The strokes are remembered, laid out at the origin; a call
+        # then only shifts a copy to (x, y) and colours it.
+        cache = self.__dict__.setdefault("_screen_text_cache", {})
+        key = (text, float(size_px), float(tracking), float(width_px))
+        entry = cache.pop(key, None)
+        if entry is None:
+            vertices = geometry_aa3d.text_vertices(
+                (0.0, 0.0, 0.0),
+                text,
+                size_px,
+                color=(1.0, 1.0, 1.0),
+                right=(1.0, 0.0, 0.0),
+                up=(0.0, -1.0, 0.0),  # screen y grows down
+                tracking=tracking,
             )
-
-        return self.measure_screen_text(text, size_px, tracking)
+            strokes = geometry_aa3d.stroke_vertices(vertices, width_px * 0.5) if vertices.shape[0] else None
+            entry = (strokes, geometry_aa3d.text_width(text, size_px, tracking))
+            if len(cache) >= 1024:  # forget the string used longest ago
+                cache.pop(next(iter(cache)))
+        cache[key] = entry  # (re)inserted last: the most recently used
+        strokes, advance = entry
+        if strokes is not None:
+            placed = strokes.copy()
+            placed[:, 0:2] += (x, y)  # both ends of every stroke
+            placed[:, 3:5] += (x, y)
+            placed[:, 6:9] = color[:3]  # strokes carry rgb only: a 4th value is dropped
+            if self.__dict__.get("_screen_text_serial") != self.gpu.frame_serial:
+                # The same uniforms serve every string of a frame.
+                self._screen_text_serial = self.gpu.frame_serial
+                self._screen_text_uniforms = self._camera_uniforms(feather=AA_FEATHER_PX)
+            self._submit(self.screen_pipeline, self._screen_text_uniforms, placed)
+        return advance
 
     def measure_screen_text(
         self,

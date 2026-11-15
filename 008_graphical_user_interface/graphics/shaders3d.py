@@ -526,6 +526,69 @@ fn fs_main(i: SOut) -> @location(0) vec4<f32> {
 """
 )
 
+# Arcs and sectors: the slice of a ring between two radii and two angles. One
+# instance per slice, so a whole pie chart or the track of a gauge is one draw
+# call. Angles are in radians, 0 toward +x, growing clockwise on screen.
+SCREEN_ARCS = (
+    COMMON
+    + """
+struct AIn {
+    @location(0) center: vec2<f32>,      // window points, top-left origin
+    @location(1) radii: vec2<f32>,       // inner, outer (points)
+    @location(2) angles: vec2<f32>,      // middle of the slice, half of its opening (radians)
+    @location(3) color: vec4<f32>,
+};
+
+struct AOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) local: vec2<f32>,    // from the centre, pixels
+    @location(2) @interpolate(flat) radii: vec2<f32>,      // pixels
+    @location(3) @interpolate(flat) angles: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex: u32, a: AIn) -> AOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+    );
+    let scale = u.viewport / u.screen;
+    let unit = min(scale.x, scale.y);
+    let outer = a.radii.y * unit;
+    let local = corners[vertex] * (outer + 1.5);
+    let pixel = a.center * scale + local;
+    var out: AOut;
+    out.position = vec4<f32>(pixel.x / u.viewport.x * 2.0 - 1.0, 1.0 - pixel.y / u.viewport.y * 2.0, 0.0, 1.0);
+    out.color = a.color;
+    out.local = local;
+    out.radii = a.radii * unit;
+    out.angles = a.angles;
+    return out;
+}
+
+@fragment
+fn fs_main(i: AOut) -> @location(0) vec4<f32> {
+    let r = length(i.local);
+    var d = max(i.radii.x - r, r - i.radii.y);                 // inside the ring
+    if (i.angles.y < 3.14159) {
+        // Turn the slice so its middle lies on +x; it is then symmetric, and
+        // the distance to its two straight sides is one formula.
+        let c = cos(i.angles.x);
+        let s = sin(i.angles.x);
+        let p = vec2<f32>(i.local.x * c + i.local.y * s, abs(i.local.y * c - i.local.x * s));
+        d = max(d, p.y * cos(i.angles.y) - p.x * sin(i.angles.y));
+    }
+    let coverage = clamp(0.5 - d, 0.0, 1.0);
+    if (coverage <= 0.001) {
+        discard;
+    }
+    return vec4<f32>(i.color.rgb, i.color.a * coverage);
+}
+"""
+)
+SCREEN_ARC_LAYOUT = (10, ((0, 2, 0), (1, 2, 2), (2, 2, 4), (3, 4, 6)))
+
 # radius == 0: no distance field, no discard, no fade — the rasteriser's own
 # edges are the rectangle. This is the cheapest fragment shader there is.
 SCREEN_RECT_SHARP = (
@@ -924,6 +987,7 @@ ALL_SHADERS = {
     "screen_shapes": SCREEN_SHAPES,
     "screen_rect_sharp": SCREEN_RECT_SHARP,
     "screen_acrylic": SCREEN_ACRYLIC,
+    "screen_arcs": SCREEN_ARCS,
     "screen_lines": SCREEN_LINES,
     "screen_gradient_shapes": SCREEN_GRADIENT_SHAPES,
     "screen_shape_edges": SCREEN_SHAPE_EDGES,

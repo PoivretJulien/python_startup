@@ -90,6 +90,7 @@ def check_project() -> None:
         ("gestures3d", "graphics: pan / zoom gestures on every system"),
         ("solid3d", "graphics: solid shapes and .obj models"),
         ("curve3d", "graphics: polylines and NURBS curves"),
+        ("charts2d", "graphics: data widgets (gauges, charts, levels)"),
         ("curve_edit3d", "graphics: picking and moving curve points with a gizmo"),
         ("solid_shaders3d", "graphics: shaders for the solids"),
         ("udp_link", "network: strings over UDP"),

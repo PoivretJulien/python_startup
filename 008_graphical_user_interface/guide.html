@@ -154,6 +154,7 @@
     <li><a href="#network">Sending strings</a></li>
     <li><a href="#together">Window + network</a></li>
     <li><a href="#video">Video between two windows</a></li>
+    <li><a href="#widgets">Data widgets</a></li>
     <li><a href="#cheat">Cheat sheet</a></li>
     <li><a href="#reference">API reference</a></li>
     <li><a href="#trouble">When it does not work</a></li>
@@ -211,7 +212,7 @@
   <tr><td><code>toolchain/</code></td><td>One installer per operating system, and a checker. Creates <code>.venv</code> at the project root.</td><td><code>setup-macos.sh</code> · <code>setup-linux.sh</code> · <code>setup-windows.ps1</code></td></tr>
   <tr><td><code>graphics/</code></td><td>The drawing library. Lines, arrows, particles, pictures, text and lit solid shapes in 3D; rectangles, circles and text on the screen.</td><td><code>app3d.py</code>, then <code>main.py</code></td></tr>
   <tr><td><code>network/</code></td><td>The communication library. <code>udp_link</code> sends Python strings between two programs; <code>video_link</code> streams a camera.</td><td><code>udp_link/bridge.py</code>, <code>link.toml</code></td></tr>
-  <tr><td><code>examples/</code></td><td>Ten small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer, solid shapes, curves.</td><td><code>01_hover_shapes/main.py</code></td></tr>
+  <tr><td><code>examples/</code></td><td>Eleven small complete programs that use the libraries: hover, drag over UDP, video over UDP, two linked circles, the keyboard, sliders, a gradient gauge, a map viewer, solid shapes, curves, a live dashboard.</td><td><code>01_hover_shapes/main.py</code></td></tr>
 </table></div>
 </section>
 
@@ -2028,9 +2029,111 @@ def draw_frame():
 <p>The installed build is the <em>headless</em> one: it captures, encodes and decodes but opens no window of its own, so it never conflicts with the window of this project. The stream can also be used without any window, from the <code>network</code> folder (<code>python -m video_link.run_server --source test</code>, <code>python -m video_link.run_client --save-dir snapshots</code>); the full reference is <code>network/video_link/README.md</code>.</p>
 </section>
 
+<!-- ================================================================ widgets -->
+<section id="widgets">
+<h2><span class="n">19</span>Data widgets</h2>
+<p class="goal">Values turned into pictures: gauges, charts, levels — for live readings and for statistics.</p>
+
+<p>A sensor gives a number. A <em>widget</em> turns it into something read at a glance: a needle on a dial, a bar, a curve. Every widget is <strong>one method</strong> that takes the same three things, in the same order:</p>
+<pre><code class="py">ui.draw_gauge((30, 48), (150, 150), pressure, 0, 10)
+#             anchor    size        the data ...
+#             top-left  width,      then the scale,
+#             corner    height      then the colours</code></pre>
+<p>They keep nothing between frames. Call them from <code>draw_frame</code> with the current values and the picture follows the data. Example 11 shows all of them, fed by simulated sensors:</p>
+<pre class="shell">.venv/bin/python examples/11_dashboard/main.py</pre>
+
+<h3>Which widget for which data</h3>
+<div class="tablewrap"><table>
+  <tr><th>You have</th><th>Widget</th><th>Typical use</th></tr>
+  <tr><td rowspan="4">One value on a scale</td><td><code>draw_gauge</code></td><td>A pressure, a speed, a temperature: a needle on a dial.</td></tr>
+  <tr><td><code>draw_level</code></td><td>A water level, a battery, a progress bar: a container that fills.</td></tr>
+  <tr><td><code>draw_meter</code></td><td>A signal or sound level: lights that come on one after the other.</td></tr>
+  <tr><td><code>draw_compass</code></td><td>A direction: the wind, a heading.</td></tr>
+  <tr><td>One value over time</td><td><code>draw_line_chart</code></td><td>The history of a reading; several curves at once.</td></tr>
+  <tr><td rowspan="2">Several values of the same kind</td><td><code>draw_bars</code></td><td>The torque of each motor, the count of each category.</td></tr>
+  <tr><td><code>draw_radar</code></td><td>The same, as a shape: imbalance shows at once.</td></tr>
+  <tr><td rowspan="2">The parts of a whole</td><td><code>draw_pie</code></td><td>Shares of a total; with <code>hole</code>, a ring chart.</td></tr>
+  <tr><td><code>draw_stacked_bar</code></td><td>The same in one flat bar: a disk, a budget.</td></tr>
+  <tr><td rowspan="2">Many values</td><td><code>draw_heatmap</code></td><td>A grid of sensors as coloured cells.</td></tr>
+  <tr><td><code>draw_scatter</code></td><td>Pairs of values as a cloud of points.</td></tr>
+  <tr><td rowspan="3">The same, in the 3D scene</td><td><code>draw_bars_3d</code></td><td>A row or a field of lit blocks.</td></tr>
+  <tr><td><code>draw_pie_3d</code></td><td>A pie with thickness.</td></tr>
+  <tr><td><code>draw_tank_3d</code></td><td>A glass tank with a liquid inside.</td></tr>
+</table></div>
+
+<h3>Colours: one per thing, or a gradient along the scale</h3>
+<p>The rule is the one of the gradient shapes (chapter <a href="#shapes">05</a>). Where a widget shows <strong>several things</strong>, <code>colors</code> is a list with one colour per thing; a shorter list is reused in turn, and no list at all gives a built-in palette:</p>
+<pre><code class="py">ui.draw_pie((20, 20), (200, 200), [30, 50, 20], [RED, GREEN, BLUE])          # one colour per slice
+ui.draw_bars((240, 20), (300, 200), torques, [BLUE, CYAN, GREEN])              # reused: 4th bar blue again
+ui.draw_bars((240, 20), (300, 200), torques, ORANGE)                           # one colour for all</code></pre>
+<p>Where a widget shows <strong>one value on a scale</strong>, <code>stops</code> and <code>colors</code> describe a gradient along that scale: position 0 is the minimum, 1 the maximum.</p>
+<pre><code class="py">ui.draw_gauge(anchor, size, rpm, 0, 8000, stops=[0, 0.7, 1], colors=[GREEN, YELLOW, RED])
+ui.draw_level(anchor, size, fuel, stops=[0, 0.2, 0.4], colors=[RED, ORANGE, BLUE])     # red when nearly empty
+ui.draw_meter(anchor, size, signal)                                                    # the default: green, yellow, orange, red</code></pre>
+
+<h3>One value on a scale</h3>
+<pre><code class="py">ui.draw_gauge((30, 48), (150, 150), pressure, 0, 10, label=f"{pressure:.1f} bar")
+ui.draw_level((380, 48), (64, 150), water, label=f"{water * 100:.0f}%")       # taller than wide: fills upward
+ui.draw_level((520, 48), (96, 26), battery, color=GREEN)                       # wider than tall: fills sideways
+ui.draw_meter((470, 48), (26, 150), signal, segments=14)
+ui.draw_compass((205, 48), (150, 150), wind_from, ORANGE)                      # degrees: 0 = north (up), 90 = east</code></pre>
+<p><code>draw_gauge</code>, <code>draw_level</code> and <code>draw_meter</code> take <code>value, minimum, maximum</code>; the scale is 0 to 1 when the last two are left out. Numbers are not written unless you ask: <code>label</code> is a text you format yourself, so the unit and the number of decimals are yours.</p>
+
+<h3>History: a curve that scrolls</h3>
+<p>A line chart draws a series of values, oldest first. For a live reading, the series is "the last N readings". <code>History</code> keeps them for you:</p>
+<pre><code class="py">from charts2d import History                   # in graphics/
+
+wind = History(360)                            # the last 360 readings
+
+def draw_frame():
+    wind.add(read_wind_speed())                # one more reading; the oldest one leaves
+    ui.draw_line_chart((30, 234), (285, 96), wind.values, CYAN, minimum=0, maximum=20, fill=0.25, grid=3)
+    app.request_redraw()                       # live data: ask for the next frame</code></pre>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>values</code></td><td>The series. A list, an array, or <code>history.values</code>. A 2D array — one row per series — draws several curves, each with its colour from <code>colors</code>.</td></tr>
+  <tr><td><code>minimum</code>, <code>maximum</code></td><td>The vertical scale. Left out, it follows the data — which makes a live curve stretch and shrink; give both for a steady picture.</td></tr>
+  <tr><td><code>fill</code></td><td>0 to 1: shades the area under the curve with that opacity.</td></tr>
+  <tr><td><code>grid</code></td><td>That many horizontal guide lines.</td></tr>
+</table></div>
+<div class="box key"><div class="t">Live data needs frames</div>
+<p>The loop of this project draws a frame only when something happened (chapter <a href="#loop">15</a>). A dashboard changes without any event, so its <code>draw_frame</code> ends with <code>app.request_redraw()</code>. When the data arrives from elsewhere — a network link, a serial port read in a thread — call <code>app.request_redraw()</code> from there instead: the dashboard then redraws exactly when there is something new, and sleeps the rest of the time.</p></div>
+
+<h3>Several values, parts of a whole, many values</h3>
+<pre><code class="py">ui.draw_bars((30, 368), (190, 130), torques, colors, maximum=80)              # give `maximum` for live data
+ui.draw_bars(anchor, size, torques, colors, horizontal=True)                    # lying on their side
+ui.draw_radar((240, 368), (150, 130), torques, PURPLE, maximum=80)
+
+ui.draw_pie((410, 368), (130, 130), energy, colors)                             # a pie
+ui.draw_pie((410, 368), (130, 130), energy, colors, hole=0.55, gap=2)           # a ring, slices 2 degrees apart
+ui.draw_stacked_bar((520, 108), (96, 18), energy, colors)
+
+ui.draw_heatmap((30, 538), (285, 150), temperatures, minimum=14, maximum=26, gap=2)   # a 2D array: rows, columns
+ui.draw_scatter((332, 538), (285, 150), xs, ys, PURPLE, x_range=(-4, 4), y_range=(-3, 3))</code></pre>
+<p>Bars start from zero: with a negative <code>minimum</code>, negative values hang below the line. A pie ignores negative values. <code>draw_heatmap</code> colours each cell with a gradient, <code>stops</code> and <code>colors</code> as everywhere else (blue to yellow to red by default).</p>
+
+<h3>In the 3D scene</h3>
+<p>Three widgets are solids (chapter <a href="#solids">13</a>): lit by the light, casting shadows, and you can turn around them. They take a place in the world instead of an anchor on the screen.</p>
+<pre><code class="py">ui.draw_bars_3d((0, 0.8, 0), (3.6, 2.4, 2.2), grid, colors, maximum=16)       # corner on the floor; (length, depth, height)
+ui.draw_pie_3d((4.6, -1.6, 0), 1.3, 0.45, energy, colors, explode=0.08)        # centre, radius, thickness
+ui.draw_tank_3d((1.2, -2.2, 0), 0.8, 2.4, water, color=BLUE)                   # base, radius, height, value (0..1)</code></pre>
+<p><code>draw_bars_3d</code> takes a list (one row of bars) or a 2D array (a field). <code>draw_tank_3d</code> is a see-through solid: draw it after the opaque things of the scene. With <code>--raymarch</code> the bars cast soft shadows, at the cost described in chapter 13: a field of 24 bars is 24 ray-marched shapes.</p>
+
+<h3>An arc, for your own widgets</h3>
+<p>Pies and gauges are made of one new shape, which is yours too:</p>
+<pre><code class="py">ui.draw_screen_arc((200, 200), 80, 0, 90, ORANGE)                  # a quarter of a disc: from "up" to "right"
+ui.draw_screen_arc((200, 200), 80, -135, 135, GREY, thickness=12)  # a thick arc open at the bottom</code></pre>
+<p>Angles are in degrees like the hours of a clock: 0 is up, 90 to the right, and they grow clockwise.</p>
+
+<h3>How fast</h3>
+<p>A widget is a few draw calls whatever the amount of data: all the slices of a pie are one call, all the bars one call, a curve of ten thousand points one call, the 60 cells of a heat map one call. The whole dashboard of example 11 — twelve widgets, three more in 3D, and all its text — is 88 draw calls, and runs at about 110 frames per second on the machine this was written on.</p>
+<div class="box warn"><div class="t">Text is the expensive part</div>
+<p>A string that was drawn before costs almost nothing: its layout is remembered. A string that changes every frame — a value with many decimals — is laid out again each time. Format live numbers with the precision you need to read, not more: <code>f"{pressure:.1f} bar"</code> changes ten times less often than <code>f"{pressure:.3f} bar"</code>.</p></div>
+</section>
+
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">19</span>Cheat sheet</h2>
+<h2><span class="n">20</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -2064,6 +2167,18 @@ ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content
 ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
 screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)
 screen2d.line_distance(cursor, start, end)                screen2d.triangle_points(anchor, base, height, direction) -&gt; (a, b, tip)</code></pre>
+
+<h3>Data widgets — anchor, size, data, colours</h3>
+<pre><code class="py">ui.draw_gauge(anchor, size, value, minimum=0, maximum=1, stops=…, colors=…, label=None)        # a dial with a needle
+ui.draw_level(anchor, size, value, minimum=0, maximum=1, color=None, stops=None, colors=None, label=None)
+ui.draw_meter(anchor, size, value, minimum=0, maximum=1, segments=12, stops=…, colors=…)       # a row of lights
+ui.draw_compass(anchor, size, heading, color)                                                    # degrees, 0 = up
+ui.draw_line_chart(anchor, size, values, colors, minimum=None, maximum=None, fill=0, grid=0)     # history = History(n); history.add(v); history.values
+ui.draw_bars(anchor, size, values, colors, minimum=0, maximum=None, gap=0.25, horizontal=False)  ui.draw_radar(anchor, size, values, color, maximum=None)
+ui.draw_pie(anchor, size, values, colors, hole=0, start=0, gap=0)                                ui.draw_stacked_bar(anchor, size, values, colors)
+ui.draw_heatmap(anchor, size, grid, stops, colors, minimum=None, maximum=None, gap=0)            ui.draw_scatter(anchor, size, xs, ys, colors, x_range=None, y_range=None)
+ui.draw_bars_3d(origin, (length, depth, height), values, colors, maximum=None)                   ui.draw_pie_3d(center, radius, height, values, colors, explode=0)
+ui.draw_tank_3d(base, radius, height, value, minimum=0, maximum=1, color=None)                   ui.draw_screen_arc(center, radius, start, end, color, thickness=0)</code></pre>
 
 <h3>Controls</h3>
 <pre><code class="py">slider = Slider(start, end, minimum=0, maximum=1, value=None, line_color=…, handle_color=…, hover_color=…,
@@ -2120,7 +2235,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ reference -->
 <section id="reference">
-<h2><span class="n">20</span>API reference</h2>
+<h2><span class="n">21</span>API reference</h2>
 <p class="goal">Every class, method and function you can call, with every argument.</p>
 
 <p>The chapters before this one explain; this one lists. Each table gives the exact call, what comes back, and what it does. <code>ui</code> is <code>app.aa</code> (or <code>app.plain</code>: the same methods, without anti-aliasing). Arguments after a <code>*</code> must be given by name.</p>
@@ -2309,6 +2424,33 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>nurbs_point(control_points, t, degree, weights, knots, closed)</code></td><td>one point</td><td><code>Nurbs(...).point(t)</code> without making the object.</td></tr>
   <tr><td class="wrap"><code>length(points, closed)</code></td><td>float</td><td>The total length of a polyline.</td></tr>
   <tr><td class="wrap"><code>segments(points, closed)</code></td><td><code>(starts, ends)</code></td><td>The start and the end of every segment of a polyline, as two arrays.</td></tr>
+</table></div><h3>Data widgets</h3>
+<p>Values as pictures. Every screen widget takes <code>anchor</code> (top-left corner) and <code>size=(width, height)</code> in pixels, then the data, then the colours. <code>colors</code> is one colour, or a list with one per item (reused in turn; a built-in palette when left out). <code>stops</code> and <code>colors</code> together are a gradient along the scale, as for the gradient shapes. <code>background</code> is an optional colour drawn behind the widget.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>draw_gauge(anchor, size, value, minimum, maximum, *, stops, colors, track, needle, thickness, sweep, label, background)</code></td><td>—</td><td>A dial with a needle. The arc is coloured up to the value by the gradient; <code>track</code> is the rest. <code>thickness</code>: width of the arc as a share of the radius; <code>sweep</code>: its opening in degrees (270); <code>needle=None</code> removes the needle; <code>label</code>: a text for the middle.</td></tr>
+  <tr><td class="wrap"><code>draw_level(anchor, size, value, minimum, maximum, color, *, stops, colors, track, radius, horizontal, label)</code></td><td>—</td><td>A container that fills: from the bottom, or from the left when wider than tall. One <code>color</code>, or the colour of the gradient at the value.</td></tr>
+  <tr><td class="wrap"><code>draw_meter(anchor, size, value, minimum, maximum, *, segments, stops, colors, track, gap, horizontal)</code></td><td>—</td><td>A row of <code>segments</code> lights along the longer side; each lit one has the gradient's colour at its place.</td></tr>
+  <tr><td class="wrap"><code>draw_compass(anchor, size, heading, color, *, track, ticks, labels, background)</code></td><td>—</td><td>A compass rose with a needle. <code>heading</code> in degrees, 0 = up (north), 90 = right (east). <code>labels</code> writes N, E, S, W.</td></tr>
+  <tr><td class="wrap"><code>draw_line_chart(anchor, size, values, colors, *, minimum, maximum, thickness, fill, grid, background)</code></td><td>—</td><td>A curve through a series, oldest first. A 2D array draws one curve per row. The scale follows the data unless <code>minimum</code> / <code>maximum</code> are given; <code>fill</code> (0–1) shades under the curve; <code>grid</code> guide lines.</td></tr>
+  <tr><td class="wrap"><code>draw_bars(anchor, size, values, colors, *, minimum, maximum, gap, horizontal, radius, background)</code></td><td>—</td><td>A bar per value, starting from zero. <code>maximum</code> defaults to the largest value; <code>gap</code> is the empty share of each slot.</td></tr>
+  <tr><td class="wrap"><code>draw_stacked_bar(anchor, size, values, colors, *, horizontal, background)</code></td><td>—</td><td>One bar cut into parts proportional to the values.</td></tr>
+  <tr><td class="wrap"><code>draw_pie(anchor, size, values, colors, *, hole, start, gap, background)</code></td><td>—</td><td>A slice per value. <code>hole</code> (0–1) makes a ring; <code>start</code> turns the first slice (degrees from the top); <code>gap</code> degrees between slices.</td></tr>
+  <tr><td class="wrap"><code>draw_radar(anchor, size, values, color, *, maximum, rings, fill, thickness, background)</code></td><td>—</td><td>A spoke per value, joined into a shape. <code>rings</code> guide rings; <code>fill</code> opacity of the inside.</td></tr>
+  <tr><td class="wrap"><code>draw_heatmap(anchor, size, grid, stops, colors, *, minimum, maximum, gap, background)</code></td><td>—</td><td>A 2D array as coloured cells, each with the gradient's colour at its value.</td></tr>
+  <tr><td class="wrap"><code>draw_scatter(anchor, size, xs, ys, colors, *, x_range, y_range, point, background)</code></td><td>—</td><td>A dot per <code>(x, y)</code> pair. Ranges are <code>(minimum, maximum)</code>, the data's own when left out; <code>point</code> is the dot's radius.</td></tr>
+  <tr><td class="wrap"><code>draw_screen_arc(center, radius, start, end, color, thickness)</code></td><td>—</td><td>An arc, or with <code>thickness=0</code> a filled slice of a disc. Clock degrees: 0 = up, clockwise.</td></tr>
+  <tr><td class="wrap"><code>draw_bars_3d(origin, size, values, colors, *, maximum, gap, **material)</code></td><td>—</td><td>Bars as lit solids. <code>origin</code>: corner on the floor; <code>size=(length, depth, height)</code>; a 2D array makes a field. Extra named arguments go to the solids.</td></tr>
+  <tr><td class="wrap"><code>draw_pie_3d(center, radius, height, values, colors, *, start, explode, **material)</code></td><td>—</td><td>A pie with thickness, lying in the scene. <code>explode</code> pushes the slices apart.</td></tr>
+  <tr><td class="wrap"><code>draw_tank_3d(base, radius, height, value, minimum, maximum, color, *, glass)</code></td><td>—</td><td>A glass tank with a liquid at the level of the value. <code>glass=None</code> draws the liquid alone.</td></tr>
+</table></div><p><code>from charts2d import History</code> — the last readings of a sensor:</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>History(size, fill)</code></td><td>a <code>History</code></td><td>Room for <code>size</code> readings, all <code>fill</code> at the start.</td></tr>
+  <tr><td class="wrap"><code>add(value)</code></td><td>—</td><td>One more reading; the oldest leaves. Costs the same whatever the size.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>history.values</code></td><td>The readings, oldest first, as an array: what <code>draw_line_chart</code> takes.</td></tr>
+  <tr><td><code>history.last</code></td><td>The most recent reading.</td></tr>
+  <tr><td><code>history.count</code></td><td>How many readings were received (at most <code>size</code>).</td></tr>
 </table></div><h3>Controls: <code>widgets2d</code></h3>
 <p><code>from widgets2d import Slider, Ruler</code> — objects made once, with one method to call every frame.</p><div class="tablewrap"><table class="api">
   <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
@@ -2399,7 +2541,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">21</span>When it does not work</h2>
+<h2><span class="n">22</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
@@ -2423,7 +2565,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), <code>examples/11_dashboard/main.py</code> (gauges, charts and levels fed by live data), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 
