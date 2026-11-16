@@ -26,6 +26,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              09_solids         lit solid shapes, a model from an .obj file, shaders, ray marching
              10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
              11_dashboard      a live dashboard: gauges, charts, levels, a compass, and 3D bars / pie / tank
+             12_pages          buttons, three pages, a striped scrollable table; a light look on frosted glass
 guide.html   the step-by-step guide, ending with the full API reference (chapter 20)
 ```
 
@@ -57,6 +58,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/09_solids/main.py               # add --raymarch for exact shapes and soft shadows
 .venv/bin/python examples/10_curves/main.py               # add --points 200000 for a longer polyline
 .venv/bin/python examples/11_dashboard/main.py            # every data widget, fed by simulated sensors
+.venv/bin/python examples/12_pages/main.py                # buttons, pages and a table; draws only when something happens
 .venv/bin/python graphics/main.py
 ```
 
