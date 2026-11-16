@@ -16,6 +16,7 @@ sprites are instanced quads (WebGPU points are 1 px), and the GL state toggles
 from __future__ import annotations
 
 import charts2d
+import controls2d
 import geometry3d
 import gpu3d
 import numpy as np
@@ -33,7 +34,7 @@ from settings3d import ARROW_COLOR, POINT_MAX_PX, POINT_MIN_PX
 MAX_POINT_RADIUS_PX = 0.5 * POINT_MAX_PX
 
 
-class SceneRenderer(solid_renderer3d.SolidMethods, charts2d.ChartMethods):
+class SceneRenderer(solid_renderer3d.SolidMethods, charts2d.ChartMethods, controls2d.ControlMethods):
     """What both renderers share: the GPU, the camera and the uniform packing."""
 
     def __init__(self, gpu: gpu3d.GPU, camera) -> None:

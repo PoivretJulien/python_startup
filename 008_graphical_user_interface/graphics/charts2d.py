@@ -98,7 +98,10 @@ def color_list(colors, count: int) -> np.ndarray:
     """``count`` rows of ``(r, g, b, a)`` from one colour, a list of colours or nothing."""
     if colors is None:
         colors = PALETTE
-    array = np.asarray(colors, dtype=np.float32)
+    try:
+        array = np.asarray(colors, dtype=np.float32)
+    except ValueError:  # (r, g, b) and (r, g, b, a) mixed in one list
+        array = np.asarray([screen2d.rgba(color) for color in colors], dtype=np.float32)
     if array.ndim == 1:
         array = array[None, :]
     if array.shape[1] == 3:

@@ -422,14 +422,24 @@ class AAGridArrowRenderer(SceneRenderer):
         Returns the advance width in pixels, so a caller can right-align or
         anchor something after the string. Text is AA-only, like ``draw_text``.
         """
+        placed = self._screen_text_strokes(x, y, text, size_px, color, tracking, width_px)
+        if placed is not None:
+            self._submit_screen_strokes(placed)
+        return geometry_aa3d.text_width(text, size_px, tracking)
+
+    def _screen_text_strokes(
+        self, x: float, y: float, text: str, size_px: float, color, tracking: float = font3d.TRACKING,
+        width_px: float = AA_TEXT_WIDTH_PX,
+    ) -> np.ndarray | None:  # fmt: skip
+        """The pen strokes of one string, placed and coloured (``None`` if it draws nothing)."""
         # Laying a string out into strokes is the slow part, and most strings
         # are drawn again and again (titles, units, a value that has not
         # changed). The strokes are remembered, laid out at the origin; a call
         # then only shifts a copy to (x, y) and colours it.
         cache = self.__dict__.setdefault("_screen_text_cache", {})
         key = (text, float(size_px), float(tracking), float(width_px))
-        entry = cache.pop(key, None)
-        if entry is None:
+        strokes = cache.pop(key, False)
+        if strokes is False:
             vertices = geometry_aa3d.text_vertices(
                 (0.0, 0.0, 0.0),
                 text,
@@ -440,22 +450,24 @@ class AAGridArrowRenderer(SceneRenderer):
                 tracking=tracking,
             )
             strokes = geometry_aa3d.stroke_vertices(vertices, width_px * 0.5) if vertices.shape[0] else None
-            entry = (strokes, geometry_aa3d.text_width(text, size_px, tracking))
             if len(cache) >= 1024:  # forget the string used longest ago
                 cache.pop(next(iter(cache)))
-        cache[key] = entry  # (re)inserted last: the most recently used
-        strokes, advance = entry
-        if strokes is not None:
-            placed = strokes.copy()
-            placed[:, 0:2] += (x, y)  # both ends of every stroke
-            placed[:, 3:5] += (x, y)
-            placed[:, 6:9] = color[:3]  # strokes carry rgb only: a 4th value is dropped
-            if self.__dict__.get("_screen_text_serial") != self.gpu.frame_serial:
-                # The same uniforms serve every string of a frame.
-                self._screen_text_serial = self.gpu.frame_serial
-                self._screen_text_uniforms = self._camera_uniforms(feather=AA_FEATHER_PX)
-            self._submit(self.screen_pipeline, self._screen_text_uniforms, placed)
-        return advance
+        cache[key] = strokes  # (re)inserted last: the most recently used
+        if strokes is None:
+            return None
+        placed = strokes.copy()
+        placed[:, 0:2] += (x, y)  # both ends of every stroke
+        placed[:, 3:5] += (x, y)
+        placed[:, 6:9] = color[:3]  # strokes carry rgb only: a 4th value is dropped
+        return placed
+
+    def _submit_screen_strokes(self, placed: np.ndarray) -> None:
+        """Send placed strokes — of one string or of a thousand — as one draw call."""
+        if self.__dict__.get("_screen_text_serial") != self.gpu.frame_serial:
+            # The same uniforms serve every string of a frame.
+            self._screen_text_serial = self.gpu.frame_serial
+            self._screen_text_uniforms = self._camera_uniforms(feather=AA_FEATHER_PX)
+        self._submit(self.screen_pipeline, self._screen_text_uniforms, placed)
 
     def measure_screen_text(
         self,

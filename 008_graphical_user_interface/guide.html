@@ -155,6 +155,7 @@
     <li><a href="#together">Window + network</a></li>
     <li><a href="#video">Video between two windows</a></li>
     <li><a href="#widgets">Data widgets</a></li>
+    <li><a href="#controls">Buttons, pages and tables</a></li>
     <li><a href="#cheat">Cheat sheet</a></li>
     <li><a href="#reference">API reference</a></li>
     <li><a href="#trouble">When it does not work</a></li>
@@ -2131,9 +2132,127 @@ ui.draw_screen_arc((200, 200), 80, -135, 135, GREY, thickness=12)  # a thick arc
 <p>A string that was drawn before costs almost nothing: its layout is remembered. A string that changes every frame — a value with many decimals — is laid out again each time. Format live numbers with the precision you need to read, not more: <code>f"{pressure:.1f} bar"</code> changes ten times less often than <code>f"{pressure:.3f} bar"</code>.</p></div>
 </section>
 
+<!-- ================================================================ controls -->
+<section id="controls">
+<h2><span class="n">20</span>Buttons, pages and tables</h2>
+<p class="goal">A button in one line, an interface of several pages, and a list shown as a striped table.</p>
+
+<h3>A button</h3>
+<p>A button is a draw call that answers a question: <em>was I clicked?</em></p>
+<pre><code class="py">if ui.draw_button((20, 20), (120, 34), "Save"):
+    save()                                   # runs once per click</code></pre>
+<p>The call draws a rounded rectangle with the name centred on it, lights it up while the cursor is over it, and returns <code>True</code> in the one frame that follows a click. There is no object to create and no function to register. The arguments, in order:</p>
+<pre><code class="py">ui.draw_button(anchor, size, name, color, hover_color, text_color)
+#              top-left (w, h) text  at rest  under the    the name
+#              corner                         cursor</code></pre>
+<p>All three colours have defaults: a dark green at rest, the accent <code>(0.05, 0.52, 0.57)</code> under the cursor, and the name written in that accent. Under the cursor the name turns black, to stay readable on the accent (<code>hover_text_color</code>). By name you can also give <code>radius</code> (the corners), <code>text_size</code>, <code>border_color</code> (a one-pixel line around the button), <code>blur</code> (frosted glass: give <code>color</code> an alpha below 1 to see through it), and <code>enabled=False</code>, which draws the button faded and makes it deaf.</p>
+<div class="box"><div class="t">What counts as a click</div>
+<p>The button went down <em>and</em> came up on the button. Pressing, sliding away and releasing cancels, as everywhere. The click is taken from the window's events, not read from the state of the mouse: a tap too quick to span two frames is not lost.</p></div>
+<p>A switch is a button whose name and colour say its state:</p>
+<pre><code class="py">ACCENT, DARK, BLACK = (0.05, 0.52, 0.57), (0.02, 0.17, 0.19), (0, 0, 0)
+
+look = (ACCENT, ACCENT, BLACK) if sound else (DARK, ACCENT, ACCENT)     # body, body under the cursor, name
+if ui.draw_button((20, 70), (96, 30), "on" if sound else "off", *look):
+    sound = not sound</code></pre>
+<p>"On" is the accent written in black; "off" is the dark green written in the accent. The buttons that choose a page, below, use the same pair.</p>
+<p>For your own clickable things there is the same question without the drawing: <code>app.clicked(anchor, size)</code> is <code>True</code> after a click inside that rectangle, and <code>app.clicked()</code> after a click anywhere.</p>
+
+<h3>Pages</h3>
+<p>An interface with several pages needs one variable and one function per page. The variable holds the name of the page shown; <code>draw_frame</code> draws the buttons, then calls the function of that name.</p>
+<pre><code class="py">PAGES = ("Overview", "Devices", "Settings")
+page = "Overview"
+
+def draw_frame():
+    global page
+    for index, name in enumerate(PAGES):                      # the buttons, side by side
+        on = name == page                                     # the page shown wears the accent
+        look = (ACCENT, ACCENT, BLACK) if on else (DARK, ACCENT, ACCENT)
+        if ui.draw_button((40 + 132 * index, 34), (128, 30), name, *look):
+            page = name
+    draw_page[page]()                                         # the page: one function
+
+draw_page = {"Overview": overview, "Devices": device_list, "Settings": settings}</code></pre>
+<p>Going to another page is changing the variable. Nothing is opened, closed or hidden: what is not drawn in a frame does not exist in that frame. A button inside a page can change the variable too, and so can a key (<code>app.key_pressed("RIGHT")</code>). Example 12 is this program, complete:</p>
+<pre class="shell">.venv/bin/python examples/12_pages/main.py</pre>
+<h3>A look: light, with one accent</h3>
+<p>Example 12 is dressed as a light desktop application. The whole look is a handful of colours at the top of its file, and four habits:</p>
+<div class="tablewrap"><table>
+  <tr><th>Part</th><th>How it is drawn</th></tr>
+  <tr><td>Background</td><td>A picture, then <code>draw_screen_acrylic_rect</code> over the whole window: frosted glass with a thin, nearly white tint and a light blur, so that the stronger blur of the cards shows against it.</td></tr>
+  <tr><td>Card</td><td>Where content sits: a second, smaller piece of frosted glass (<code>draw_screen_acrylic_rect</code>, radius 8) with a white tint and a stronger blur than the background, and a hairline around it (<code>draw_screen_rect_outline</code>, black at 10 %). Two sliders on the Settings page set its blur and how white it is.</td></tr>
+  <tr><td>Button</td><td>Frosted glass too (<code>blur</code>, a white <code>color</code> with an alpha), with the same hairline (<code>border_color</code>) and a dark name. The one that is "on" — the page shown, a switch — wears the accent, its name in white.</td></tr>
+  <tr><td>Page buttons</td><td>Things that belong together share a box: the three page buttons sit in one small card, 4 pixels inside it. Only the page shown is filled with the accent; the two others are bare names (a <code>color</code> with alpha 0) that light up under the cursor.</td></tr>
+  <tr><td>Text</td><td>Nearly black for values, a middle grey for small titles. Colour is kept for meaning: green, red, and the accent.</td></tr>
+</table></div>
+<pre><code class="py">BLUE, WHITE, INK = (0.00, 0.37, 0.72), (1, 1, 1), (0.10, 0.10, 0.11)
+BORDER = (0, 0, 0, 0.10)
+
+# the background, first in draw_frame
+ui.draw_screen_image((0, 0), (width, height), picture)
+ui.draw_screen_acrylic_rect((0, 0), (width, height), (0.95, 0.96, 0.97, 0.45), blur=10)   # tint: r, g, b, how much it covers
+
+# a card: glass on the glass — whiter, and blurring more
+ui.draw_screen_acrylic_rect(anchor, size, (1, 1, 1, 0.5), radius=8, blur=26)
+ui.draw_screen_rect_outline(anchor, size, BORDER, 8, 1)
+
+# a button at rest, and the same button "on"
+ui.draw_button(anchor, size, "Devices", WHITE, (0.94, 0.95, 0.96), INK, hover_text_color=BLUE, border_color=BORDER)
+ui.draw_button(anchor, size, "Devices", BLUE, BLUE, WHITE, hover_text_color=WHITE)</code></pre>
+<p>The example wraps these two calls in a small function, <code>button(anchor, size, name, on=False)</code>, so each page reads as plainly as before. A dark look is the same code with other colours: a dark grey tint for the glass, darker cards, light text. The example holds both as two objects with the same names, <code>LIGHT</code> and <code>DARK</code>; every colour is read from <code>theme</code> (<code>theme.ink</code>, <code>theme.card</code> …) and the “Dark theme” button of its Settings page swaps one object for the other: <code>theme = LIGHT if theme.dark else DARK</code>. <code>--image photo.jpg</code> puts your own picture behind the glass.</p>
+
+<h3>One factor for all the gaps</h3>
+<p>Example 12 has a Spacing slider that tightens or loosens the whole interface. It needs no layout system, only one habit: a distance <em>between</em> two things is never written as a bare number. It goes through one small function.</p>
+<pre><code class="py">spacing = 1.0                        # 1 = the design, 0 = everything glued, 2 = twice the air
+
+def gap(pixels):
+    return round(pixels * spacing)
+
+# three buttons in a row: the sizes stay, the gap between them goes through gap()
+for index, name in enumerate(PAGES):
+    ui.draw_button((40 + (128 + gap(4)) * index, 40), (128, 30), name)
+
+# two cards side by side: the second starts after the first and a gap,
+# and takes the room that is left
+x = 40 + 270 + gap(20)
+ui.draw_screen_rect((x, top), (860 - x, 164), WHITE, 8)</code></pre>
+<p>Sizes of things do not change; what is flexible — a table, a card that fills a row — takes the room the gaps leave. Because positions are computed in <code>draw_frame</code>, changing the factor redraws everything in its new place in the same frame.</p>
+
+<h3>A table</h3>
+<p>A list of things, one per line:</p>
+<pre><code class="py">rows = [("pump 01", "hall", "online", "50 %"),
+        ("fan 02",  "roof", "online", "94 %"),
+        ("valve 03", "roof", "alarm", "38 %")]
+
+ui.draw_table((40, 100), (560, 440), rows, WHITE, [DARK, DARKER])
+#             anchor     size        list  text   backgrounds, used in turn</code></pre>
+<p><code>backgrounds</code> is a list of colours like the <code>colors</code> of the gradient methods; the lines take them in turn. Two colours make the striped table in which the eye follows a line without slipping to its neighbour. One colour makes a plain table; three work too. <code>text_color</code> is one colour, or a list with one colour per line — a line in alarm written in red.</p>
+<p>A line of <code>rows</code> is a string (a one-column list) or a list of cells; numbers are written as <code>str</code> would. The rest is optional and given by name:</p>
+<div class="tablewrap"><table>
+  <tr><th>Argument</th><th>Meaning</th></tr>
+  <tr><td><code>header=("NAME", "ROOM")</code></td><td>Titles of the columns, on a line of their own. <code>header_color</code>, <code>header_background</code> colour it.</td></tr>
+  <tr><td><code>columns=(3, 2, 1)</code></td><td>Relative widths: the first column three times wider than the last. Equal when not given.</td></tr>
+  <tr><td><code>align="right"</code></td><td><code>"left"</code>, <code>"right"</code> or <code>"center"</code>; one for all, or a list with one per column.</td></tr>
+  <tr><td><code>row_height=26</code>, <code>text_size=11</code></td><td>In pixels.</td></tr>
+  <tr><td><code>first=0</code></td><td>The first line shown. Only the lines that fit in <code>size</code> are drawn: change <code>first</code> to scroll. A thin bar on the right shows where you are.</td></tr>
+  <tr><td><code>hover_color=(1, 1, 1, .07)</code></td><td>Lights the line under the cursor.</td></tr>
+  <tr><td><code>selected=4</code>, <code>selected_color</code></td><td>Marks one line.</td></tr>
+  <tr><td><code>blur=26</code></td><td>Frosted glass behind the table: what was drawn before shows through, blurred, where a background is see-through. Give the backgrounds an alpha below 1, such as <code>(1, 1, 1, 0.5)</code>.</td></tr>
+</table></div>
+<p>A text too wide for its column is cut and ended with two dots. The call returns the number of the line under the cursor — counted in <code>rows</code>, not in what is visible — or <code>None</code>. Choosing a line with a click is then two lines:</p>
+<pre><code class="py">line = ui.draw_table(anchor, size, rows, WHITE, [DARK, DARKER], hover_color=(1, 1, 1, .07), selected=chosen)
+if line is not None and app.clicked(anchor, size):
+    chosen = line</code></pre>
+
+<h3>What it costs</h3>
+<p>Nothing here runs on a timer. The program sleeps inside the system until an event arrives — the mouse moved, a button or a key was pressed — draws one frame, and sleeps again (chapter 15). A page left alone uses no processor and no graphics card; example 12 shows a counter of the frames drawn, which stands still when you take your hand off the mouse.</p>
+<p>The frame itself is small. A button is two draw calls. A table is three whatever its number of lines: every background in one call, every character of every cell in one call. The picture of a table — where each stripe and each stroke of each letter goes — is computed once and remembered; a frame in which the table shows the same thing only looks it up. Scrolling, or a value that changes, rebuilds only what is visible.</p>
+<div class="box"><div class="t">After a click, one more frame</div>
+<p>A click often changes something that was drawn <em>before</em> the button in the same frame. So that you never have to think about the order, a clicked button asks for one more frame by itself. If you change what is shown from somewhere else — a timer, a network message — ask yourself: <code>app.request_redraw()</code>.</p></div>
+</section>
+
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">20</span>Cheat sheet</h2>
+<h2><span class="n">21</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -2167,6 +2286,12 @@ ui.draw_screen_image(anchor, size, source, tint=…)        screen2d.fit(content
 ui.draw_screen_text(x, y, text, size_px, color) -&gt; width  ui.measure_screen_text(text, size_px) -&gt; width
 screen2d.rect_distance(cursor, anchor, size, radius)      screen2d.circle_distance(cursor, center, radius)
 screen2d.line_distance(cursor, start, end)                screen2d.triangle_points(anchor, base, height, direction) -&gt; (a, b, tip)</code></pre>
+
+<h3>Buttons and tables</h3>
+<pre><code class="py">ui.draw_button(anchor, size, name, color=…, hover_color=…, text_color=…, hover_text_color=BLACK, border_color=None, blur=0, radius=4, enabled=True) -&gt; True when clicked
+ui.draw_table(anchor, size, rows, text_color=…, backgrounds=[A, B], header=None, columns=None, align="left",
+              row_height=26, text_size=11, first=0, hover_color=None, selected=None, blur=0) -&gt; line under the cursor, or None
+app.clicked() -&gt; bool                                     app.clicked(anchor, size, radius=0) -&gt; bool</code></pre>
 
 <h3>Data widgets — anchor, size, data, colours</h3>
 <pre><code class="py">ui.draw_gauge(anchor, size, value, minimum=0, maximum=1, stops=…, colors=…, label=None)        # a dial with a needle
@@ -2235,7 +2360,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ reference -->
 <section id="reference">
-<h2><span class="n">21</span>API reference</h2>
+<h2><span class="n">22</span>API reference</h2>
 <p class="goal">Every class, method and function you can call, with every argument.</p>
 
 <p>The chapters before this one explain; this one lists. Each table gives the exact call, what comes back, and what it does. <code>ui</code> is <code>app.aa</code> (or <code>app.plain</code>: the same methods, without anti-aliasing). Arguments after a <code>*</code> must be given by name.</p>
@@ -2260,6 +2385,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td class="wrap"><code>size()</code></td><td><code>(width, height)</code></td><td>The window size, in the pixels of <code>cursor()</code>. Call it every frame: the window can be resized.</td></tr>
   <tr><td class="wrap"><code>cursor()</code></td><td><code>(x, y)</code></td><td>The mouse position, in window pixels.</td></tr>
   <tr><td class="wrap"><code>mouse_down(button)</code></td><td>bool</td><td><code>True</code> while the button is held. Default: the left one; <code>glfw.MOUSE_BUTTON_RIGHT</code> for the right.</td></tr>
+  <tr><td class="wrap"><code>clicked(anchor, size, radius)</code></td><td>bool</td><td><code>True</code> in the one frame that follows a click of the left button: anywhere, or — with <code>anchor</code> and <code>size</code> — pressed and released inside that rectangle.</td></tr>
   <tr><td class="wrap"><code>keys_down()</code></td><td>list of names</td><td>The keys held now, in the order they were pressed: <code>["LEFT SHIFT", "A"]</code>.</td></tr>
   <tr><td class="wrap"><code>key_down(name)</code></td><td>bool</td><td><code>True</code> while that key is held.</td></tr>
   <tr><td class="wrap"><code>keys_pressed(repeat)</code></td><td>tuple of names</td><td>The keys pressed since the previous frame. <code>repeat=True</code> also reports the automatic repeats of a held key.</td></tr>
@@ -2451,6 +2577,21 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td><code>history.values</code></td><td>The readings, oldest first, as an array: what <code>draw_line_chart</code> takes.</td></tr>
   <tr><td><code>history.last</code></td><td>The most recent reading.</td></tr>
   <tr><td><code>history.count</code></td><td>How many readings were received (at most <code>size</code>).</td></tr>
+</table></div><h3>Buttons and tables</h3>
+<p>Drawn like shapes, from <code>draw_frame</code>; they keep nothing between frames. The mouse reaches them through <code>ui.pointer</code>, filled by the <code>App</code> before each frame.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>draw_button(anchor, size, name, color, hover_color, text_color, *, hover_text_color, border_color, blur, radius, text_size, enabled)</code></td><td>bool</td><td>A button with its <code>name</code> centred on it. <code>color</code> at rest, <code>hover_color</code> under the cursor (darker while pressed), where the name is written in <code>hover_text_color</code> (black). <code>border_color</code> adds a one-pixel outline. <code>blur</code> (pixels) makes it frosted glass, seen as far as <code>color</code> is see-through. <code>True</code> in the one frame that follows a click. <code>enabled=False</code>: dimmed, never <code>True</code>.</td></tr>
+  <tr><td class="wrap"><code>draw_table(anchor, size, rows, text_color, backgrounds, *, header, header_color, header_background, columns, align, row_height, text_size, first, hover_color, selected, selected_color, blur)</code></td><td>line number or <code>None</code></td><td>A list as a table. <code>rows</code>: one string, or one list of cells, per line. <code>text_color</code>: one colour or one per line. <code>backgrounds</code>: colours used in turn, line after line. <code>header</code>: column titles. <code>columns</code>: relative widths. <code>align</code>: <code>"left"</code>, <code>"right"</code>, <code>"center"</code>, one or one per column. <code>first</code>: the first line shown (scrolling). <code>hover_color</code> lights the line under the cursor, <code>selected</code> marks one line. <code>blur</code> (pixels) puts frosted glass behind the table, seen through backgrounds whose alpha is below 1. Returns the line under the cursor, counted in <code>rows</code>.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>over(anchor, size, radius)</code></td><td>bool</td><td><code>ui.pointer.over(...)</code>: the cursor is on the rectangle, and no drag begun elsewhere is passing by.</td></tr>
+  <tr><td class="wrap"><code>held(anchor, size, radius)</code></td><td>bool</td><td>The left button is held down on the rectangle.</td></tr>
+  <tr><td class="wrap"><code>clicked(anchor, size, radius)</code></td><td>bool</td><td>As <code>app.clicked</code>.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>ui.pointer.cursor</code></td><td>The mouse position of this frame.</td></tr>
+  <tr><td><code>ui.pointer.press</code></td><td>Where the left button went down, while it is held; else <code>None</code>.</td></tr>
+  <tr><td><code>ui.pointer.clicks</code></td><td>The clicks finished since the previous frame: each one <code>(where pressed, where released)</code>.</td></tr>
 </table></div><h3>Controls: <code>widgets2d</code></h3>
 <p><code>from widgets2d import Slider, Ruler</code> — objects made once, with one method to call every frame.</p><div class="tablewrap"><table class="api">
   <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
@@ -2541,7 +2682,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">22</span>When it does not work</h2>
+<h2><span class="n">23</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
@@ -2565,7 +2706,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), <code>examples/11_dashboard/main.py</code> (gauges, charts and levels fed by live data), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), <code>examples/11_dashboard/main.py</code> (gauges, charts and levels fed by live data), <code>examples/12_pages/main.py</code> (buttons, three pages and a table), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

@@ -91,6 +91,7 @@ def check_project() -> None:
         ("solid3d", "graphics: solid shapes and .obj models"),
         ("curve3d", "graphics: polylines and NURBS curves"),
         ("charts2d", "graphics: data widgets (gauges, charts, levels)"),
+        ("controls2d", "graphics: buttons and tables"),
         ("curve_edit3d", "graphics: picking and moving curve points with a gizmo"),
         ("solid_shaders3d", "graphics: shaders for the solids"),
         ("udp_link", "network: strings over UDP"),

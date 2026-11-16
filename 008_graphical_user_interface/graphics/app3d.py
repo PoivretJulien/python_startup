@@ -44,6 +44,7 @@ import signal
 import time
 from collections.abc import Callable, Sequence
 
+import controls2d
 import gestures3d
 import glfw
 import loop3d
@@ -187,6 +188,16 @@ class App:
         self.plain = GridArrowRenderer(self.gpu, self.camera)
         self.aa = AAGridArrowRenderer(self.gpu, self.camera)
 
+        # The mouse, as the buttons and tables of controls2d want it: where it
+        # is, and the clicks made since the previous frame. Both renderers
+        # read the same object (`ui.pointer`).
+        self.pointer = controls2d.Pointer()
+        self.pointer.redraw = self.request_redraw
+        self.plain.pointer = self.aa.pointer = self.pointer
+        self._press_at: tuple[float, float] | None = None
+        self._pending_clicks: list = []
+        glfw.set_mouse_button_callback(glfw_window, self._on_mouse)
+
         self._running = True
         # Keyboard state. GLFW reports each change once, through a callback;
         # these keep what the callbacks said so draw_frame can simply ask.
@@ -305,6 +316,18 @@ class App:
             self._pending_pressed.append((self._held.get(key) or key_name(key, scancode), True))
         self.reactive.mark()  # the keyboard changed: one frame, please
 
+    def _on_mouse(self, window, button: int, action: int, _mods: int) -> None:
+        # A click is kept as an event, not read as a state: a quick tap can
+        # begin and end between two frames, and must not be lost.
+        if button == glfw.MOUSE_BUTTON_LEFT:
+            where = glfw.get_cursor_pos(window)
+            if action == glfw.PRESS:
+                self._press_at = where
+            elif self._press_at is not None:
+                self._pending_clicks.append((self._press_at, where))
+                self._press_at = None
+        self.reactive.mark()  # as before: one frame to show the change
+
     def _on_char(self, _window, codepoint: int) -> None:
         # A *character* was produced: layout, Shift, dead keys and auto-repeat
         # are already resolved by the system. This is what a text field wants.
@@ -330,6 +353,10 @@ class App:
         self._typed = "".join(self._pending_typed)
         self._pending_pressed.clear()
         self._pending_typed.clear()
+        self.pointer.cursor = glfw.get_cursor_pos(self.window)
+        self.pointer.press = self._press_at
+        self.pointer.clicks = tuple(self._pending_clicks)
+        self._pending_clicks.clear()
 
     # ------------------------------------------------------------------ input
     def cursor(self) -> tuple[float, float]:
@@ -339,6 +366,15 @@ class App:
     def mouse_down(self, button: int = glfw.MOUSE_BUTTON_LEFT) -> bool:
         """True while the mouse button is held."""
         return glfw.get_mouse_button(self.window, button) == glfw.PRESS
+
+    def clicked(self, anchor=None, size=None, radius: float = 0.0) -> bool:
+        """True in the one frame that follows a click of the left button.
+
+        With no argument: a click anywhere. With ``anchor`` and ``size`` (and
+        ``radius``), as for ``draw_screen_rect``: a click pressed *and*
+        released inside that rectangle. The mouse twin of ``key_pressed``.
+        """
+        return self.pointer.clicked(anchor, size, radius)
 
     def keys_down(self) -> list[str]:
         """Names of the keys held right now, in the order they were pressed.
