@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/8e94eb1f-c88e-4fd6-8f8f-7c70b3719c78" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -27,7 +25,7 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
              11_dashboard      a live dashboard: gauges, charts, levels, a compass, and 3D bars / pie / tank
              12_pages          buttons, three pages, a striped scrollable table; a light look on frosted glass
-guide.html   the step-by-step guide, ending with the full API reference (chapter 20)
+guide.html   the step-by-step guide, ending with the full API reference (chapter 22)
 ```
 
 ## Install
@@ -110,6 +108,16 @@ volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimu
 ```
 
 ```python
+# buttons and tables — in draw_frame:
+#   if ui.draw_button((20, 20), (120, 34), "Devices"):          # anchor, size, name -> True once per click
+#       page = "Devices"                                        # a page is a variable; draw what it says
+#   line = ui.draw_table((20, 80), (560, 400), rows, WHITE, [DARK, DARKER], header=("NAME", "STATE"))
+#   # rows: one list of cells per line; backgrounds are used in turn (stripes); returns the line under the cursor
+#   if line is not None and app.clicked((20, 80), (560, 400)):  # a click on that line
+#       chosen = line
+```
+
+```python
 from charts2d import History                   # graphics/ — data widgets: anchor, size, data, colours
 wind = History(360)                            # the last 360 readings of a sensor
 # in draw_frame:
@@ -156,5 +164,3 @@ video = VideoThread("client", "network/link.toml", on_frame=lambda picture: app.
 The connection settings (same machine by default, or two machines on a local
 network) are in `network/link.toml`; the guide and the headers of
 `examples/02_udp_drag/main.py` and `examples/03_udp_video/main.py` explain them.
-## This api is elaborated with this board in mind:
-https://www.arduino.cc/product-ventuno-q/
