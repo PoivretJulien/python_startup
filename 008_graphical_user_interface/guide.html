@@ -156,6 +156,7 @@
     <li><a href="#video">Video between two windows</a></li>
     <li><a href="#widgets">Data widgets</a></li>
     <li><a href="#controls">Buttons, pages and tables</a></li>
+    <li><a href="#hydro">A grow journal</a></li>
     <li><a href="#cheat">Cheat sheet</a></li>
     <li><a href="#reference">API reference</a></li>
     <li><a href="#trouble">When it does not work</a></li>
@@ -2250,9 +2251,80 @@ if line is not None and app.clicked(anchor, size):
 <p>A click often changes something that was drawn <em>before</em> the button in the same frame. So that you never have to think about the order, a clicked button asks for one more frame by itself. If you change what is shown from somewhere else — a timer, a network message — ask yourself: <code>app.request_redraw()</code>.</p></div>
 </section>
 
+<!-- ================================================================ hydro -->
+<section id="hydro">
+<h2><span class="n">21</span>A grow journal</h2>
+<p class="goal">A ready-made widget: one year of readings of an indoor hydroponic culture, zoomable from the year down to a day.</p>
+
+<p>The widgets of chapter 19 show what a sensor says <em>now</em>. A culture is judged over weeks: did the water stay cool in July, was the tank ever left to run low, are the lights really on eighteen hours a day? That needs two things — a place that remembers, and a picture that can be read from far and from close.</p>
+<pre class="shell">.venv/bin/python examples/13_hydroponics/main.py
+.venv/bin/python examples/13_hydroponics/main.py --speed 600      # ten minutes of culture per second
+.venv/bin/python examples/13_hydroponics/main.py --light          # light colours</pre>
+
+<h3>Two objects, three lines</h3>
+<pre><code class="py">from hydro2d import GrowLog, GrowJournal        # in graphics/
+
+log = GrowLog(sampling=60)                      # one reading a minute, for this year
+journal = GrowJournal(log)
+
+def draw_frame():
+    if log.due():                               # has the sampling delay passed?
+        log.add(light=1, pump=0, water_temp=20.4, air_temp=24.1,
+                humidity=61, ph=5.9, ec=1.8, level=72)
+    journal.draw(app, (20, 20), (900, 560))     # anchor, size</code></pre>
+<p><code>GrowLog</code> remembers; <code>GrowJournal</code> draws and handles the mouse. Example 13 has no sensors: a function invents a plausible year, with a few accidents so that the alerts have something to show. Replace its <code>read_sensors</code> with your own readings.</p>
+
+<h3>What is logged</h3>
+<div class="tablewrap"><table>
+  <tr><th>Key</th><th>What</th><th>Safe range</th></tr>
+  <tr><td><code>light</code></td><td>The lights: 1 on, 0 off.</td><td>—</td></tr>
+  <tr><td><code>pump</code></td><td>The watering pump: 1 on, 0 off.</td><td>—</td></tr>
+  <tr><td><code>water_temp</code></td><td>Temperature of the nutrient solution, °C. Warm water holds less oxygen and invites root rot.</td><td>18 to 22</td></tr>
+  <tr><td><code>air_temp</code></td><td>Temperature of the room, °C.</td><td>20 to 28</td></tr>
+  <tr><td><code>humidity</code></td><td>Relative humidity, %.</td><td>50 to 70</td></tr>
+  <tr><td><code>ph</code></td><td>Acidity of the solution: outside the range, the roots stop taking up some nutrients.</td><td>5.5 to 6.5</td></tr>
+  <tr><td><code>ec</code></td><td>Electrical conductivity, mS/cm: how much nutrient is dissolved.</td><td>1.2 to 2.4</td></tr>
+  <tr><td><code>level</code></td><td>How full the tank is, %.</td><td>30 to 100</td></tr>
+</table></div>
+<p>These ranges suit most leafy and fruiting crops. For another crop, or other sensors, give your own list — each line is one <code>Channel</code>:</p>
+<pre><code class="py">from hydro2d import Channel, GrowLog
+
+MINE = (
+    Channel("light", "Lights", cycle=True, color=(1.0, 0.82, 0.25)),            # cycle: on or off
+    Channel("water_temp", "Water temp", "°C", safe=(16, 20), scale=(10, 26)),   # safe: the alert limits; scale: what is drawn
+    Channel("co2", "CO2", "ppm", safe=(600, 1200), scale=(300, 1600), decimals=0),
+)
+log = GrowLog(sampling=30, channels=MINE)
+log.add(light=1, water_temp=18.2, co2=820)</code></pre>
+
+<h3>The sampling delay</h3>
+<p><code>sampling</code> is the number of seconds between two readings: 60 by default, anything from 1 second to an hour. <code>log.due()</code> is <code>True</code> once per delay, so the sensors are read no more often than needed. Two readings in the same delay overwrite each other instead of piling up; a delay with no reading stays empty and is drawn as a gap, never as a zero.</p>
+<p>A year at one reading a minute is half a million values per channel — 2 MB of memory each, 7 MB for the whole year on disk:</p>
+<pre><code class="py">log.save("year.npz")                 # when closing
+log = GrowLog.load("year.npz")       # the next morning</code></pre>
+<div class="box"><div class="t">Sleeping between two readings</div>
+<p>The program draws nothing while nothing happens (chapter 15), so something must wake it when a reading is due. Example 13 uses a small background thread: it sleeps one sampling delay, then calls <code>app.request_redraw()</code>. At one reading a minute, that is one frame a minute.</p></div>
+
+<h3>Three zooms</h3>
+<div class="tablewrap"><table>
+  <tr><th>Zoom</th><th>What you see</th><th>What it answers</th></tr>
+  <tr><td>Year</td><td>One square per day, twelve lines of them. Green: the reading stayed in its safe range. Amber: it touched a limit. Blue or red: its average for the day was too low or too high. Small buttons choose the reading.</td><td>When did something go wrong, and for how long?</td></tr>
+  <tr><td>Month</td><td>One lane per channel, hour by hour. Lights and watering are stripes; each reading is a curve inside the band of its lowest and highest of the hour, red where it left the safe range.</td><td>Is it a drift or an accident? Does it follow the lights?</td></tr>
+  <tr><td>Day</td><td>The same lanes at the full sampling: when the lights went on, each watering, each curve, and the values under the cursor.</td><td>What exactly happened, at what time?</td></tr>
+</table></div>
+<p>Click a month name or a day to zoom in. The three buttons at the top (year, month, day) zoom back out; <code>&lt;</code> and <code>&gt;</code> go to the neighbour. The wheel or a pinch zooms in and out at the cursor. The same from your own keys:</p>
+<pre><code class="py">if app.key_pressed("RIGHT"):     journal.step(+1)       # the next month, or the next day
+if app.key_pressed("BACKSPACE"): journal.zoom_out()     # day -&gt; month -&gt; year</code></pre>
+<p>Next to the top buttons the journal writes how many hours of the month (or of the year) had a reading outside its safe range; <code>log.alerts(month)</code> gives the same number to your program.</p>
+
+<h3>Why a year is not slow</h3>
+<p>Drawing a year must not mean drawing half a million points. Beside the readings, the log keeps their lowest, average and highest <em>per hour</em> and <em>per day</em>, brought up to date each time a reading arrives. The year view reads 365 numbers, the month view 744, the day view one day — and never more than two values per pixel. Every lane is one or two draw calls; a frame of any view is about a hundred, and costs the Python side between one and two milliseconds.</p>
+<p>Light colours: <code>GrowJournal(log, colors=hydro2d.LIGHT)</code>. On a frosted panel (chapter 20), draw the panel first and the journal over it.</p>
+</section>
+
 <!-- ================================================================ 15 -->
 <section id="cheat">
-<h2><span class="n">21</span>Cheat sheet</h2>
+<h2><span class="n">22</span>Cheat sheet</h2>
 <p class="goal">Everything on one screen.</p>
 
 <h3>Start</h3>
@@ -2292,6 +2364,12 @@ screen2d.line_distance(cursor, start, end)                screen2d.triangle_poin
 ui.draw_table(anchor, size, rows, text_color=…, backgrounds=[A, B], header=None, columns=None, align="left",
               row_height=26, text_size=11, first=0, hover_color=None, selected=None, blur=0) -&gt; line under the cursor, or None
 app.clicked() -&gt; bool                                     app.clicked(anchor, size, radius=0) -&gt; bool</code></pre>
+
+<h3>Grow journal</h3>
+<pre><code class="py">log = GrowLog(year=None, sampling=60)          journal = GrowJournal(log, colors=hydro2d.DARK)
+log.due() -&gt; bool                              log.add(light=1, pump=0, water_temp=…, air_temp=…, humidity=…, ph=…, ec=…, level=…)
+journal.draw(app, anchor, size)                journal.step(±1)      journal.zoom_out()
+log.alerts(month=None) -&gt; hours                log.save(path)        GrowLog.load(path)</code></pre>
 
 <h3>Data widgets — anchor, size, data, colours</h3>
 <pre><code class="py">ui.draw_gauge(anchor, size, value, minimum=0, maximum=1, stops=…, colors=…, label=None)        # a dial with a needle
@@ -2360,7 +2438,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ reference -->
 <section id="reference">
-<h2><span class="n">22</span>API reference</h2>
+<h2><span class="n">23</span>API reference</h2>
 <p class="goal">Every class, method and function you can call, with every argument.</p>
 
 <p>The chapters before this one explain; this one lists. Each table gives the exact call, what comes back, and what it does. <code>ui</code> is <code>app.aa</code> (or <code>app.plain</code>: the same methods, without anti-aliasing). Arguments after a <code>*</code> must be given by name.</p>
@@ -2592,6 +2670,40 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
   <tr><td><code>ui.pointer.cursor</code></td><td>The mouse position of this frame.</td></tr>
   <tr><td><code>ui.pointer.press</code></td><td>Where the left button went down, while it is held; else <code>None</code>.</td></tr>
   <tr><td><code>ui.pointer.clicks</code></td><td>The clicks finished since the previous frame: each one <code>(where pressed, where released)</code>.</td></tr>
+</table></div><h3>Grow journal: <code>hydro2d</code></h3>
+<p><code>from hydro2d import GrowLog, GrowJournal</code> — a year of readings of a hydroponic culture, and its picture at three zooms.</p><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>GrowLog(year, sampling, channels)</code></td><td>a <code>GrowLog</code></td><td>Room for one year of readings. <code>year</code>: the current one when not given. <code>sampling</code>: seconds between two readings, 1 to 3600 (adjusted so an hour holds a whole number of them). <code>channels</code>: what is logged; <code>hydro2d.CHANNELS</code> when not given.</td></tr>
+  <tr><td class="wrap"><code>due(when)</code></td><td>bool</td><td><code>True</code> when no reading was logged yet for the sampling delay that <code>when</code> (a <code>datetime</code>, now when not given) falls in.</td></tr>
+  <tr><td class="wrap"><code>add(when, **values)</code></td><td>bool</td><td>Logs one reading: <code>add(water_temp=20.4, light=1)</code>. Some or all channels. <code>False</code> when <code>when</code> is outside the year.</td></tr>
+  <tr><td class="wrap"><code>fill(first, **arrays)</code></td><td>—</td><td>Logs many readings at once, from arrays, starting at slot <code>first</code>. For a file or a simulation.</td></tr>
+  <tr><td class="wrap"><code>slot(when)</code></td><td>int</td><td>The number of the reading a moment belongs to: 0 is 1 January, 00:00.</td></tr>
+  <tr><td class="wrap"><code>day_index(month, day)</code></td><td>int</td><td>The number of a day in the year, from 0.</td></tr>
+  <tr><td class="wrap"><code>day_readings(key, month, day)</code></td><td>array</td><td>Every reading of one channel on one day.</td></tr>
+  <tr><td class="wrap"><code>alerts(month)</code></td><td>int</td><td>How many hours had a reading outside its safe range: in that month, or in the year when not given.</td></tr>
+  <tr><td class="wrap"><code>save(path)</code></td><td>—</td><td>Writes the year to a compressed <code>.npz</code> file.</td></tr>
+  <tr><td class="wrap"><code>GrowLog.load(path, channels)</code></td><td>a <code>GrowLog</code></td><td>Reads a year written by <code>save</code>.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>log.sampling</code></td><td>The delay between two readings actually used, in seconds.</td></tr>
+  <tr><td><code>log.raw[key]</code></td><td>Every reading of a channel, as one array for the year; <code>NaN</code> where nothing was logged.</td></tr>
+  <tr><td><code>log.hourly[key]</code>, <code>log.daily[key]</code></td><td>Lowest, average, highest of each hour and of each day: arrays of shape <code>(hours, 3)</code> and <code>(days, 3)</code>.</td></tr>
+  <tr><td><code>log.last</code></td><td>The slot of the latest reading, −1 when empty.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>GrowJournal(log, *, colors, when)</code></td><td>a <code>GrowJournal</code></td><td>The picture of a log. <code>colors</code>: <code>hydro2d.DARK</code> (default) or <code>hydro2d.LIGHT</code>. <code>when</code>: the date to open on, today when not given.</td></tr>
+  <tr><td class="wrap"><code>draw(app, anchor, size)</code></td><td>—</td><td>Draws the journal in that rectangle and handles the mouse: click to zoom in, the top buttons to zoom out, wheel or pinch for both.</td></tr>
+  <tr><td class="wrap"><code>step(direction)</code></td><td>—</td><td>Previous (−1) or next (+1) month or day, whichever is shown.</td></tr>
+  <tr><td class="wrap"><code>zoom_out()</code></td><td>—</td><td>Day → month → year.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Attribute</th><th>Meaning</th></tr>
+  <tr><td><code>journal.view</code></td><td><code>"year"</code>, <code>"month"</code> or <code>"day"</code>.</td></tr>
+  <tr><td><code>journal.month</code>, <code>journal.day</code></td><td>The date shown.</td></tr>
+  <tr><td><code>journal.focus</code></td><td>The key of the channel that colours the year view.</td></tr>
+  <tr><td><code>journal.colors</code></td><td>The colour set; can be changed at any time.</td></tr>
+</table></div><div class="tablewrap"><table class="api">
+  <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
+  <tr><td class="wrap"><code>Channel(key, name, unit, safe, scale, color, cycle, decimals)</code></td><td>a <code>Channel</code></td><td>One thing that is logged. <code>key</code>: its name in <code>add</code>. <code>safe=(low, high)</code>: the range it should stay in. <code>scale=(low, high)</code>: the range drawn. <code>cycle=True</code>: something on or off, logged as 1 or 0. <code>decimals</code>: how its values are written.</td></tr>
 </table></div><h3>Controls: <code>widgets2d</code></h3>
 <p><code>from widgets2d import Slider, Ruler</code> — objects made once, with one method to call every frame.</p><div class="tablewrap"><table class="api">
   <tr><th>Call</th><th>Returns</th><th>What it does</th></tr>
@@ -2682,7 +2794,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 
 <!-- ================================================================ 16 -->
 <section id="trouble">
-<h2><span class="n">23</span>When it does not work</h2>
+<h2><span class="n">24</span>When it does not work</h2>
 
 <div class="tablewrap"><table>
   <tr><th>What you see</th><th>What to do</th></tr>
@@ -2706,7 +2818,7 @@ texture = Texture(picture, mipmaps=False)                  texture.update(pictur
 </table></div>
 
 <footer>
-  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), <code>examples/11_dashboard/main.py</code> (gauges, charts and levels fed by live data), <code>examples/12_pages/main.py</code> (buttons, three pages and a table), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
+  Read next: <code>examples/01_hover_shapes/main.py</code> (60 lines), then <code>examples/02_udp_drag/main.py</code>, <code>examples/03_udp_video/main.py</code>, <code>examples/04_linked_circles/main.py</code>, <code>examples/05_keyboard/main.py</code>, <code>examples/06_slider/main.py</code>, <code>examples/07_gradient_gauge/main.py</code>, <code>examples/08_map_viewer/main.py</code>, <code>examples/09_solids/main.py</code> (solid shapes, a model from a file, light, shaders and ray marching), <code>examples/10_curves/main.py</code> (polylines and NURBS), <code>examples/11_dashboard/main.py</code> (gauges, charts and levels fed by live data), <code>examples/12_pages/main.py</code> (buttons, three pages and a table), <code>examples/13_hydroponics/main.py</code> (a year of a hydroponic culture, zoomable), and <code>graphics/main.py</code> for the full 3D scene with a million particles.
 </footer>
 </section>
 

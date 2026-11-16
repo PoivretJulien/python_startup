@@ -1,5 +1,3 @@
-<img width="3000" height="2015" alt="python" src="https://github.com/user-attachments/assets/142cbadf-a2fb-466f-bae6-94da2fdf485c" />
-
 # 008 — graphical user interface
 
 A small, self-contained Python project: a window you draw into with one
@@ -27,7 +25,8 @@ examples/    01_hover_shapes   two shapes that change colour under the cursor
              10_curves         polylines and NURBS curves, 3D control points moved with a gizmo, an acrylic panel
              11_dashboard      a live dashboard: gauges, charts, levels, a compass, and 3D bars / pie / tank
              12_pages          buttons, three pages, a striped scrollable table; a light look on frosted glass
-guide.html   the step-by-step guide, ending with the full API reference (chapter 22)
+             13_hydroponics    a year of a hydroponic culture: lights, watering, water temperature, pH ... zoomable to a day
+guide.html   the step-by-step guide, ending with the full API reference (chapter 23)
 ```
 
 ## Install
@@ -59,6 +58,7 @@ and (optional, `--no-opencv` / `-NoOpenCV` to skip) OpenCV, then checks the GPU.
 .venv/bin/python examples/10_curves/main.py               # add --points 200000 for a longer polyline
 .venv/bin/python examples/11_dashboard/main.py            # every data widget, fed by simulated sensors
 .venv/bin/python examples/12_pages/main.py                # buttons, pages and a table; draws only when something happens
+.venv/bin/python examples/13_hydroponics/main.py          # add --speed 600 to watch readings arrive
 .venv/bin/python graphics/main.py
 ```
 
@@ -107,6 +107,16 @@ app.run(draw_frame)
 from widgets2d import Slider                   # graphics/
 volume = Slider((60, 200), (360, 200), 0, 100, value=50)    # start, end, minimum, maximum
 # in draw_frame:  level = volume.draw(app)     -> a float; drag the handle or click the line
+```
+
+```python
+from hydro2d import GrowLog, GrowJournal       # graphics/ — a year of a hydroponic culture, zoomable
+log = GrowLog(sampling=60)                     # one reading a minute; log.save(path) / GrowLog.load(path)
+journal = GrowJournal(log)
+# in draw_frame:
+#   if log.due():                              # once per sampling delay
+#       log.add(light=1, pump=0, water_temp=20.4, air_temp=24.1, humidity=61, ph=5.9, ec=1.8, level=72)
+#   journal.draw(app, (20, 20), (900, 560))    # year -> month -> day: click to zoom in, top buttons to zoom out
 ```
 
 ```python
