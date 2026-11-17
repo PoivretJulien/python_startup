@@ -42,7 +42,7 @@ WORK_ITEMS = [
 
 async def simulated_work(color:int, name: str, row: int, steps: int, delay: float) -> str:
     """Virtual workload: each step waits `delay` seconds (stands in for real I/O)."""
-    bar = ProgressBar(0, total=steps)
+    bar = ProgressBar(0, total=steps, width=70)
     anchor = (1, row)
     for step in range(1, steps + 1):
         await asyncio.sleep(delay)
