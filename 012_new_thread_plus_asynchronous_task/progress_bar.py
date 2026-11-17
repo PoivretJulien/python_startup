@@ -8,7 +8,7 @@ class ProgressBar:
     total: int = 10
     width: int = 20
 
-    def display(self, anchor_xy_tuple) -> None:
+    def display(self, anchor_xy_tuple,color="\x1b[0m") -> None:
         # draw only; the caller sets progress/total
         x, y = anchor_xy_tuple
         # value 1 at minimum
@@ -23,7 +23,7 @@ class ProgressBar:
         percent = 100 * done // total
         # effectively draw the bar with on print call.
         print(
-            f"\x1b7\x1b[{y};{x}H\x1b[2K[{bar}] {percent:3d}%\x1b8",
+            f"{color}\x1b7\x1b[{y};{x}H\x1b[2K[{bar}] {percent:3d}%\x1b8\x1b[0m",
             end="",
             flush=True,
         )
