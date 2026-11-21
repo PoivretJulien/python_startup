@@ -15,7 +15,7 @@ show_cursor = "\x1b[?25h"
 clear_line = "\x1b[2K"
 clear_screen = "\x1b[2J\x1b[1;1H"
 
-# list of timing speed for each arrow on each lines
+# list of timing speeds for each arrow on each lines
 delay_list = [0.03, 0.05, 0.01, 0.1, 0.15, 0.12]
 
 
