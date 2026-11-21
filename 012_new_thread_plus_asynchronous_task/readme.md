@@ -12,6 +12,6 @@ note:
 " in the maker "every day life" the choice of simplicity is wise,
 and allow us to stay involved at the pace of Ia, in humility passion and honesty
 python provide a good quality of life letting us to focus on what matter the most for us
-with a complete tool box that achieve 90% of every day in life work load. "
+with a complete tool box that achieve 90% of every day work load in life. "
 
 
