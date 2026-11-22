@@ -1,5 +1,6 @@
-import threading as th
 import asyncio
+import threading as th
+import time
 
 """
     a 'light weight' python demo code that throw some arrows across the terminal
