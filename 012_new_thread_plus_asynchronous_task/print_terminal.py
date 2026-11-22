@@ -51,7 +51,11 @@ def main() -> int:
         t.join()
     finally:
         # always restore the cursor, even on Ctrl+C
-        print(f"\x1b[{len(delay_list) + 2};1H{show_cursor}\n", end="")
+        actual_time = time.localtime()
+        print(
+            f"\x1b[{len(delay_list) + 2};1H{show_cursor}\n"
+            + f"Program end at {yellow}({actual_time[3]}:{actual_time[4]}:{actual_time[5]}{rst})"
+        )
     return 0
 
 if __name__ == "__main__":
